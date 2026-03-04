@@ -70,6 +70,11 @@ struct DeviceSettings {
 };
 DeviceSettings settings;
 
+// -- feedback LED Setup
+bool ledState = false;
+unsigned long ledStartTime = 0;
+const unsigned long ledDuration = 50;
+
 // -- LCD Setup
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 bool colonState = true;
@@ -116,6 +121,21 @@ int httpResponseCode;
 const char MSG_WELCOME[] PROGMEM = "ESP";
 const char MSG_SUBTITLE[] PROGMEM = "SOLAR - TEM";
 const char MSG_DEVELOPER[] PROGMEM = "developed by M.Maity";
+
+
+//////////////////////   BLINK FEEDBACK LED   //////////////////////
+
+void triggerLED() {
+  digitalWrite(LED_PIN, HIGH);
+  ledState = true;
+  ledStartTime = millis();
+}
+void updateLED() {
+  if (ledState && millis() - ledStartTime >= ledDuration) {
+    digitalWrite(LED_PIN, LOW);
+    ledState = false;
+  }
+}
 
 //////////////////////   DEFAULT SETTINGS   //////////////////////
 
@@ -961,6 +981,67 @@ void handleLUX() {
   // Serial.println(sunlightPercentage);
 }
 
+//////////////////////   RS485 CONTROL   //////////////////////
+void setTransmitMode() {
+  digitalWrite(RS485_EN, HIGH);
+}
+void setReceiveMode() {
+  digitalWrite(RS485_EN, LOW);
+}
+
+
+// -- Send Packet
+void sendPacket(String payload) {
+  setTransmitMode();
+
+  rs485.write(STX);
+  rs485.print(payload);
+  rs485.write(ETX);
+  rs485.flush();
+
+  setReceiveMode();
+}
+
+// --Send Settings JSON
+void sendSettings() {
+  StaticJsonDocument<256> doc;
+  doc["enableRS485"] = settings.enableRS485;
+  doc["modbusDeviceID"] = settings.modbusDeviceID;
+  doc["modbusBaudRate"] = settings.modbusBaudRate;
+  doc["modbusInterval"] = settings.modbusInterval;
+  String output;
+  serializeJson(doc, output);
+  sendPacket(output);
+}
+
+// --Receive Sensor Data
+void receivePacket() {
+  static String buffer = "";
+  static bool receiving = false;
+
+  while (rs485.available()) {
+    byte incoming = rs485.read();
+
+    if (incoming == STX) {
+      buffer = "";
+      receiving = true;
+    } else if (incoming == ETX && receiving) {
+      receiving = false;
+
+      StaticJsonDocument<200> doc;
+      if (!deserializeJson(doc, buffer)) {
+        ntcTemp = doc["ntc"];
+        luxValue = doc["lux"];
+
+        triggerLED();
+        sendSettings();
+      }
+    } else if (receiving) {
+      buffer += (char)incoming;
+    }
+  }
+}
+
 //////////////////////   NODE RED SHARE   //////////////////////
 
 void sendDataToNodeRed() {
@@ -1159,6 +1240,8 @@ void displayLCD() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(RS485_EN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   pinMode(NTC_PIN, INPUT);
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);  // Full 0–3.3V range
@@ -1222,6 +1305,10 @@ void setup() {
   }
   u8g2.sendBuffer();
   delay(1000);
+
+  // --- RS485 modbus receiving mode ---
+  setReceiveMode();
+  rs485.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
   // --- AHT Sensor Init ---
   u8g2.clearBuffer();
@@ -1328,5 +1415,7 @@ void loop() {
   serialOutput();
   displayLCD();
   checkWiFiAndStartServer();
+  receivePacket();
+  updateLED();
   sendDataToNodeRed();
 }
