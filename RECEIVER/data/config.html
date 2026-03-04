@@ -1,0 +1,465 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Device Configuration</title>
+    <link rel="icon" type="image/svg+xml" href="settings.svg" />
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #4e73df, #1cc88a);
+        min-height: 100vh;
+      }
+
+      /* Main Glass Container */
+      .container {
+        max-width: 750px;
+        margin: auto;
+        padding: 25px;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+        color: #fff;
+      }
+
+      /* Main Title */
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-weight: 600;
+        letter-spacing: 1px;
+      }
+
+      /* Section Card */
+      .section {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 20px;
+        margin-bottom: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        transition: transform 0.2s ease;
+      }
+
+      .section:hover {
+        transform: translateY(-2px);
+      }
+
+      /* Section Heading */
+      .section h2 {
+        margin-top: 0;
+        font-size: 18px;
+        padding-left: 12px;
+        border-left: 5px solid #5d009c;
+        border-bottom: none;
+        color: #5d009c;
+        font-weight: 600;
+      }
+
+      /* Labels */
+      label {
+        display: block;
+        margin-top: 15px;
+        font-weight: 500;
+        color: #032727;
+      }
+
+      /* Inputs */
+      input,
+      select {
+        width: 100%;
+        padding: 9px;
+        margin-top: 6px;
+        border-radius: 6px;
+        border: none;
+        outline: none;
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+      }
+
+      /* LUX Grid */
+      .lux-grid {
+        display: flex;
+        gap: 40px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+
+      .lux-box {
+        flex: 1 1 45%;
+      }
+
+      /* Real Time LUX Display */
+      .lux-display {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        text-align: center;
+      }
+
+      .lux-display h3 {
+        margin: 0;
+        color: #032727;
+      }
+
+      #luxValue {
+        font-size: 30px;
+        font-weight: bold;
+        margin-top: 10px;
+        color: #001bff;
+      }
+
+      /* Toggle Switch */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 55px;
+        height: 28px;
+        margin-top: 10px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        background-color: #ccc;
+        border-radius: 34px;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transition: 0.4s;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.4s;
+      }
+
+      input:checked + .slider {
+        background-color: #5d009c;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(26px);
+      }
+
+      /* Button */
+      button {
+        margin-top: 30px;
+        padding: 12px;
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(90deg, #ff8c00, #ff2e63);
+        color: white;
+        transition: 0.3s;
+      }
+
+      button:hover {
+        transform: scale(1.03);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .hidden {
+        display: none;
+      }
+      input:focus,
+      select:focus {
+        box-shadow: 0 0 0 2px #5d009c55;
+        transform: scale(1.01);
+        transition: 0.2s;
+      }
+
+      .section {
+        animation: fadeIn 0.5s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .footer {
+        text-align: center;
+        margin-top: 100px;
+        padding: 15px 10px;
+        font-size: 13px;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <form action="/save" method="POST" onsubmit="return confirmSave(event);">
+        <h1>Device Configuration</h1>
+
+        <!-- Temperature -->
+        <div class="section">
+          <h2>Temperature Settings</h2>
+
+          <label>Temperature Precision</label>
+          <select name="tempPrecision">
+            <option value="0">None</option>
+            <option value="1">Up to 1 Decimal</option>
+            <option value="2">Up to 2 Decimals</option>
+          </select>
+
+          <label>Humidity Precision</label>
+          <select name="humidityPrecision">
+            <option value="0">None</option>
+            <option value="1">Up to 1 Decimal</option>
+            <option value="2">Up to 2 Decimals</option>
+          </select>
+
+          <label>Reading Interval (seconds)</label>
+          <input type="number" name="ahtInterval" min="1" value="1" />
+        </div>
+
+        <!-- NTC -->
+        <div class="section">
+          <h2>NTC Settings</h2>
+
+          <label>NTC Resistance at 25°C (Ohm)</label>
+          <input type="number" name="ntcResistance" placeholder="1000" />
+
+          <label>NTC Beta Constant</label>
+          <input type="number" name="betaConstant" value="3950" />
+
+          <label>NTC Offset (°C)</label>
+          <input type="number" name="ntcOffset" step="0.1" value="0" />
+
+          <label>Reading Interval (seconds)</label>
+          <input type="number" name="ntcInterval" min="1" value="1" />
+        </div>
+
+        <!-- LUX -->
+        <div class="section">
+          <h2>LUX Settings</h2>
+
+          <label>LUX Percentage Mode</label>
+          <select id="luxMode" name="luxMode" onchange="toggleLuxMode()">
+            <option value="0">Auto</option>
+            <option value="1">Manual</option>
+          </select>
+
+          <div class="lux-display">
+            <h3>Real-Time Value</h3>
+            <div id="luxValue">0 LUX</div>
+          </div>
+
+          <div id="manualLuxSection" class="hidden">
+            <div class="lux-grid">
+              <div class="lux-box">
+                <label>Max LUX Value</label>
+                <input type="number" name="maxLuxValue" min="100" />
+              </div>
+              <!-- <div class="lux-box">
+                <label>Max Percentage (%)</label>
+                <input type="number" name="maxLuxPercentage" />
+              </div> -->
+            </div>
+
+            <div class="lux-grid">
+              <div class="lux-box">
+                <label>Min LUX Value</label>
+                <input type="number" name="minLuxValue" min="1" />
+              </div>
+              <!-- <div class="lux-box">
+                <label>Min Percentage (%)</label>
+                <input type="number" name="minLuxPercentage" />
+              </div> -->
+            </div>
+          </div>
+
+          <label>Reading Interval (seconds)</label>
+          <input type="number" name="luxInterval" min="1" value="1" />
+        </div>
+
+        <!-- Node-RED -->
+        <div class="section">
+          <h2>Node-RED Settings</h2>
+
+          <label>Enable Node-RED</label>
+          <label class="switch">
+            <input type="checkbox" id="nodeRedToggle" name="enableNodeRed" />
+            <span class="slider"></span>
+          </label>
+
+          <label>Set IP Address</label>
+          <input type="text" name="nodeRedIP" placeholder="192.168.1.100" />
+
+          <label>Set Port</label>
+          <input type="number" name="nodeRedPort" placeholder="1880" />
+
+          <label>Send Interval (seconds)</label>
+          <input
+            type="number"
+            name="nodeRedInterval"
+            min="1"
+            placeholder="10"
+          />
+        </div>
+
+        <!-- Time -->
+        <div class="section">
+          <h2>Time Settings</h2>
+
+          <label>GMT Offset (seconds)</label>
+          <input
+            type="number"
+            name="gmtOffset"
+            placeholder="19800 for GMT+5:30"
+            step="1800"
+          />
+
+          <label>Clock Format</label>
+          <select name="clockFormat">
+            <option value="24">24 Hour</option>
+            <option value="12">12 Hour</option>
+          </select>
+        </div>
+
+        <button>Save Configuration</button>
+        <button
+          type="button"
+          onclick="confirmReset()"
+          style="
+            background: linear-gradient(90deg, #6c757d, #343a40);
+            margin-top: 10px;
+          "
+        >
+          Reset to Default
+        </button>
+      </form>
+    </div>
+
+    <div class="footer">
+      <div>ESP32 Web Configuration Dashboard | Developer © M.Maity</div>
+    </div>
+
+    <script>
+      function toggleLuxMode() {
+        var mode = document.getElementById("luxMode").value;
+        var section = document.getElementById("manualLuxSection");
+        section.classList.toggle("hidden", mode !== "1");
+      }
+
+      // 🔥 Real-time sensor update
+      setInterval(function () {
+        fetch("/sensor.json")
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById("luxValue").innerText = data.lux + " LUX";
+          })
+          .catch(() => {
+            document.getElementById("luxValue").innerText = "0 LUX";
+          });
+      }, 2000);
+    </script>
+
+    <script>
+      window.addEventListener("load", function () {
+        fetch("/settings.json")
+          .then((response) => response.json())
+          .then((data) => {
+            document.querySelector("[name=tempPrecision]").value =
+              data.tempPrecision;
+            document.querySelector("[name=humidityPrecision]").value =
+              data.humidityPrecision;
+            document.querySelector("[name=ahtInterval]").value =
+              data.ahtInterval;
+
+            document.querySelector("[name=ntcResistance]").value =
+              data.ntcResistance;
+            document.querySelector("[name=betaConstant]").value =
+              data.betaConstant;
+            document.querySelector("[name=ntcOffset]").value = parseFloat(
+              data.ntcOffset,
+            ).toFixed(2);
+            document.querySelector("[name=ntcInterval]").value =
+              data.ntcInterval;
+
+            document.querySelector("[name=luxMode]").value = data.luxMode;
+            toggleLuxMode();
+            document.querySelector("[name=maxLuxValue]").value =
+              data.maxLuxValue;
+            document.querySelector("[name=minLuxValue]").value =
+              data.minLuxValue;
+            document.querySelector("[name=luxInterval]").value =
+              data.luxInterval;
+
+            document.querySelector("[name=enableNodeRed]").checked =
+              data.enableNodeRed == 1;
+
+            document.querySelector("[name=nodeRedIP]").value = data.nodeRedIP;
+            document.querySelector("[name=nodeRedPort]").value =
+              data.nodeRedPort;
+            document.querySelector("[name=nodeRedInterval]").value =
+              data.nodeRedInterval;
+
+            document.querySelector("[name=gmtOffset]").value = data.gmtOffset;
+            document.querySelector("[name=clockFormat]").value =
+              data.clockFormat;
+          });
+      });
+    </script>
+    <script>
+      function confirmSave(event) {
+        event.preventDefault(); // stop immediate submit
+
+        if (confirm("Do you want to save configuration?")) {
+          event.target.submit(); // submit form manually
+          return true;
+        } else {
+          return false; // cancel
+        }
+      }
+    </script>
+    <script>
+      function confirmReset() {
+        if (confirm("Do you want to reset to default settings?")) {
+          fetch("/reset", { method: "POST" })
+            .then(() => {
+              alert("Device reset to default successfully!");
+              location.reload();
+            })
+            .catch(() => {
+              alert("Reset failed!");
+            });
+        }
+      }
+    </script>
+  </body>
+</html>
