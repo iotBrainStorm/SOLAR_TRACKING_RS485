@@ -332,6 +332,38 @@
           />
         </div>
 
+        <!-- RS485 MODBUS -->
+        <div class="section">
+          <h2>RS485 Modbus Settings</h2>
+
+          <label>Enable RS485 Modbus</label>
+          <label class="switch">
+            <input type="checkbox" name="enableRS485" />
+            <span class="slider"></span>
+          </label>
+
+          <label>Modbus Device ID</label>
+          <input
+            type="number"
+            name="modbusDeviceID"
+            min="1"
+            max="247"
+            value="1"
+          />
+
+          <label>Baud Rate</label>
+          <select name="modbusBaudRate">
+            <option value="9600">9600</option>
+            <option value="19200">19200</option>
+            <option value="38400">38400</option>
+            <option value="57600">57600</option>
+            <option value="115200" selected>115200</option>
+          </select>
+
+          <label>Modbus Share Interval (seconds)</label>
+          <input type="number" name="modbusInterval" min="1" value="5" />
+        </div>
+
         <!-- Time -->
         <div class="section">
           <h2>Time Settings</h2>
@@ -428,6 +460,18 @@
               data.nodeRedPort;
             document.querySelector("[name=nodeRedInterval]").value =
               data.nodeRedInterval;
+
+            document.querySelector("[name=enableRS485]").checked =
+              data.enableRS485 == 1;
+
+            document.querySelector("[name=modbusDeviceID]").value =
+              data.modbusDeviceID;
+
+            document.querySelector("[name=modbusBaudRate]").value =
+              data.modbusBaudRate;
+
+            document.querySelector("[name=modbusInterval]").value =
+              data.modbusInterval;
 
             document.querySelector("[name=gmtOffset]").value = data.gmtOffset;
             document.querySelector("[name=clockFormat]").value =
