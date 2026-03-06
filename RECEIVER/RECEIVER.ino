@@ -140,24 +140,30 @@ void updateLED() {
 //////////////////////   DEFAULT SETTINGS   //////////////////////
 
 void setDefaultSettings() {
-  settings.tempPrecision = 2;
-  settings.humidityPrecision = 2;
+  settings.tempPrecision = 1;
+  settings.humidityPrecision = 0;
   settings.ahtInterval = 1;
 
-  settings.ntcResistance = 1000.0;
-  settings.betaConstant = 3950.0;
+  settings.ntcResistance = 10000.0;
+  settings.betaConstant = 3435.0;
   settings.ntcOffset = 0.0;
   settings.ntcInterval = 1;
 
   settings.luxPercentageMode = 0;
-  settings.maxLuxValue = 100000;
-  settings.minLuxValue = 0;
+  settings.maxLuxValue = 100;
+  settings.minLuxValue = 1;
   settings.luxInterval = 1;
 
   settings.enableNodeRed = 0;
   settings.nodeRedIP = "";
   settings.nodeRedPort = 1880;
   settings.nodeRedInterval = 10;
+
+  settings.enableRS485 = 0;
+  settings.modbusDeviceID = 1;
+  settings.modbusBaudRate = 115200;
+  settings.modbusInterval = 5;
+
 
   settings.gmtOffset = 19800;
   settings.clockFormat = 24;
@@ -171,18 +177,18 @@ void loadSettings() {
 
   preferences.begin("device", true);  // read-only
 
-  settings.tempPrecision = preferences.getUChar("tPrec", 2);
-  settings.humidityPrecision = preferences.getUChar("hPrec", 2);
+  settings.tempPrecision = preferences.getUChar("tPrec", 1);
+  settings.humidityPrecision = preferences.getUChar("hPrec", 0);
   settings.ahtInterval = preferences.getUInt("ahtInt", 1);
 
-  settings.ntcResistance = preferences.getFloat("ntcR", 1000.0);
-  settings.betaConstant = preferences.getFloat("beta", 3950.0);
+  settings.ntcResistance = preferences.getFloat("ntcR", 10000.0);
+  settings.betaConstant = preferences.getFloat("beta", 3435.0);
   settings.ntcOffset = preferences.getFloat("ntcOff", 0.0);
   settings.ntcInterval = preferences.getUInt("ntcInt", 1);
 
   settings.luxPercentageMode = preferences.getUChar("luxMode", 0);
-  settings.maxLuxValue = preferences.getULong("luxMax", 100000);
-  settings.minLuxValue = preferences.getULong("luxMin", 0);
+  settings.maxLuxValue = preferences.getULong("luxMax", 100);
+  settings.minLuxValue = preferences.getULong("luxMin", 1);
   settings.luxInterval = preferences.getUInt("luxInt", 1);
 
   settings.enableNodeRed = preferences.getUChar("nrEn", 0);
@@ -590,7 +596,11 @@ void setupWebServer() {
 
 
     // -------- LUX --------
-    if (settings.luxPercentageMode == 0) {
+    uint8_t previousLuxMode = settings.luxPercentageMode;
+    if (request->hasParam("luxMode", true))
+      settings.luxPercentageMode = request->getParam("luxMode", true)->value().toInt();
+
+    if (previousLuxMode == 1 && settings.luxPercentageMode == 0) {
       settings.maxLuxValue = 0;
       settings.minLuxValue = 0;
       Serial.println("[LUX] AUTO mode selected → Min/Max reset");
@@ -600,6 +610,8 @@ void setupWebServer() {
       if (request->hasParam("minLuxValue", true))
         settings.minLuxValue = request->getParam("minLuxValue", true)->value().toInt();
     }
+    if (request->hasParam("luxInterval", true))
+      settings.luxInterval = request->getParam("luxInterval", true)->value().toInt();
 
     // -------- NODE RED --------
     settings.enableNodeRed = request->hasParam("enableNodeRed", true) ? 1 : 0;
@@ -917,6 +929,13 @@ void handleLUX() {
 
     bool updated = false;
 
+    // Initialize min / max on first reading
+    if (settings.maxLuxValue == 0 && settings.minLuxValue == 0) {
+      settings.maxLuxValue = luxFiltered;
+      settings.minLuxValue = luxFiltered;
+      updated = true;
+    }
+
     // Update MAX
     if (luxFiltered > settings.maxLuxValue + threshold) {
       settings.maxLuxValue = (uint32_t)luxFiltered;
@@ -1186,14 +1205,20 @@ void displayLCD() {
 
   char ntcStr[20];
   snprintf(ntcStr, sizeof(ntcStr), "SLR: %.2fC", ntcTemp);
+  char fmtTemp[10];
+  sprintf(fmtTemp, "SLR: %% .%dfC", settings.tempPrecision);
+  snprintf(ntcStr, sizeof(ntcStr), fmtTemp, ntcTemp);
   u8g2.drawStr(0, 12, ntcStr);
 
   char ahtStr[20];
-  snprintf(ahtStr, sizeof(ahtStr), "SRR: %.2fC", ahtTemp);
+  sprintf(fmtTemp, "SRR: %% .%dfC", settings.tempPrecision);
+  snprintf(ahtStr, sizeof(ahtStr), fmtTemp, ahtTemp);
   u8g2.drawStr(0, 24, ahtStr);
 
   char humStr[20];
-  snprintf(humStr, sizeof(humStr), "HUM: %.1f%%", humidity);
+  char fmtHum[10];
+  sprintf(fmtHum, "HUM: %% .%df%%%%", settings.humidityPrecision);
+  snprintf(humStr, sizeof(humStr), fmtHum, humidity);
   u8g2.drawStr(0, 36, humStr);
 
   // Divider line
@@ -1354,10 +1379,6 @@ void setup() {
   connectToSavedWiFi();
   delay(1000);
 
-  // --- Time Setup ---
-  configDateTime();
-  delay(1000);
-
   // --- Server Setup ---
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n==============================");
@@ -1397,6 +1418,10 @@ void setup() {
     u8g2.sendBuffer();
     delay(2000);
   }
+
+  // --- Time Setup ---
+  configDateTime();
+  delay(1000);
 
   // --- Ready ---
   u8g2.clearBuffer();
