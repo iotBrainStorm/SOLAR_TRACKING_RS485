@@ -888,7 +888,7 @@ void handleLUX() {
   lastLuxReadTime = currentMillis;
 
   // ---- Read Sensor ----
-  // luxValue = bh1750.readLightLevel();
+  luxValue = lightMeter.readLightLevel();
 
   // ---- Fake Readings ----
   static float angle = 0;
@@ -1317,12 +1317,12 @@ void setup() {
   Serial.println("==============================");
   Serial.println("[INFO] Checking AHT10 sensor...");
   if (!aht.begin()) {
-    u8g2.drawStr(0, 18, "AHT10 Sensor: ERROR");
+    u8g2.drawStr(0, 18, "AHT10: ERROR");
     Serial.println("[ERROR] AHT10 not detected!");
     Serial.println("[INFO] Check wiring (SDA/SCL) and power supply.");
     Serial.println("==============================\n");
   } else {
-    u8g2.drawStr(0, 18, "AHT10 Sensor: OK");
+    u8g2.drawStr(0, 18, "AHT10: OK");
     Serial.println("[SUCCESS] AHT10 detected successfully.");
     Serial.println("[INFO] Sensor ready for reading");
     Serial.println("==============================\n");
@@ -1412,9 +1412,11 @@ void loop() {
   handleNTC();
   handleAHT();
   handleLUX();
+
   serialOutput();
   displayLCD();
   checkWiFiAndStartServer();
+
   receivePacket();
   updateLED();
   sendDataToNodeRed();
