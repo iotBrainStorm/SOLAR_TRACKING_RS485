@@ -590,18 +590,16 @@ void setupWebServer() {
 
 
     // -------- LUX --------
-    if (request->hasParam("luxMode", true))
-      settings.luxPercentageMode = request->getParam("luxMode", true)->value().toInt();
-
-    if (request->hasParam("maxLuxValue", true))
-      settings.maxLuxValue = request->getParam("maxLuxValue", true)->value().toInt();
-
-    if (request->hasParam("minLuxValue", true))
-      settings.minLuxValue = request->getParam("minLuxValue", true)->value().toInt();
-
-    if (request->hasParam("luxInterval", true))
-      settings.luxInterval = request->getParam("luxInterval", true)->value().toInt();
-
+    if (settings.luxPercentageMode == 0) {
+      settings.maxLuxValue = 0;
+      settings.minLuxValue = 0;
+      Serial.println("[LUX] AUTO mode selected → Min/Max reset");
+    } else {
+      if (request->hasParam("maxLuxValue", true))
+        settings.maxLuxValue = request->getParam("maxLuxValue", true)->value().toInt();
+      if (request->hasParam("minLuxValue", true))
+        settings.minLuxValue = request->getParam("minLuxValue", true)->value().toInt();
+    }
 
     // -------- NODE RED --------
     settings.enableNodeRed = request->hasParam("enableNodeRed", true) ? 1 : 0;

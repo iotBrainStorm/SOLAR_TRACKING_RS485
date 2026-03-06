@@ -252,10 +252,10 @@
           <h2>NTC Settings</h2>
 
           <label>NTC Resistance at 25°C (Ohm)</label>
-          <input type="number" name="ntcResistance" placeholder="1000" />
+          <input type="number" name="ntcResistance" placeholder="10000" />
 
           <label>NTC Beta Constant</label>
-          <input type="number" name="betaConstant" value="3950" />
+          <input type="number" name="betaConstant" value="3435" />
 
           <label>NTC Offset (°C)</label>
           <input type="number" name="ntcOffset" step="0.1" value="0" />
@@ -405,7 +405,19 @@
       function toggleLuxMode() {
         var mode = document.getElementById("luxMode").value;
         var section = document.getElementById("manualLuxSection");
-        section.classList.toggle("hidden", mode !== "1");
+
+        const maxInput = document.querySelector("[name=maxLuxValue]");
+        const minInput = document.querySelector("[name=minLuxValue]");
+
+        if (mode === "1") {
+          section.classList.remove("hidden");
+          maxInput.disabled = false;
+          minInput.disabled = false;
+        } else {
+          section.classList.add("hidden");
+          maxInput.disabled = true;
+          minInput.disabled = true;
+        }
       }
 
       // 🔥 Real-time sensor update
@@ -481,14 +493,28 @@
     </script>
     <script>
       function confirmSave(event) {
-        event.preventDefault(); // stop immediate submit
+        event.preventDefault();
 
-        if (confirm("Do you want to save configuration?")) {
-          event.target.submit(); // submit form manually
-          return true;
-        } else {
-          return false; // cancel
+        if (!confirm("Do you want to save configuration?")) {
+          return false;
         }
+
+        const form = event.target;
+        const formData = new FormData(form);
+
+        fetch("/save", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.text())
+          .then((data) => {
+            alert(data); // popup: "Settings Saved"
+          })
+          .catch(() => {
+            alert("Error saving settings!");
+          });
+
+        return false;
       }
     </script>
     <script>
