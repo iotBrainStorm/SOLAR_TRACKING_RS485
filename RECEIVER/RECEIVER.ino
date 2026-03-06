@@ -1206,18 +1206,18 @@ void displayLCD() {
   char ntcStr[20];
   snprintf(ntcStr, sizeof(ntcStr), "SLR: %.2fC", ntcTemp);
   char fmtTemp[10];
-  sprintf(fmtTemp, "SLR: %% .%dfC", settings.tempPrecision);
+  sprintf(fmtTemp, "SLR: %%.%dfC", settings.tempPrecision);
   snprintf(ntcStr, sizeof(ntcStr), fmtTemp, ntcTemp);
   u8g2.drawStr(0, 12, ntcStr);
 
   char ahtStr[20];
-  sprintf(fmtTemp, "SRR: %% .%dfC", settings.tempPrecision);
+  sprintf(fmtTemp, "SRR: %%.%dfC", settings.tempPrecision);
   snprintf(ahtStr, sizeof(ahtStr), fmtTemp, ahtTemp);
   u8g2.drawStr(0, 24, ahtStr);
 
   char humStr[20];
   char fmtHum[10];
-  sprintf(fmtHum, "HUM: %% .%df%%%%", settings.humidityPrecision);
+  sprintf(fmtHum, "HUM: %%.%df%%%%", settings.humidityPrecision);
   snprintf(humStr, sizeof(humStr), fmtHum, humidity);
   u8g2.drawStr(0, 36, humStr);
 
