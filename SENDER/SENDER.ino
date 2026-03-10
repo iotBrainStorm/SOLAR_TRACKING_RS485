@@ -17,11 +17,11 @@
 #define NTC_PIN 0              // ADC pin
 #define FIXED_RESISTOR 10000.0  // 10k fixed resistor
 #define R0 10000.0               // NTC resistance at 25°C
-#define BETA 3950.0             // 3950 (common value)
+#define BETA 3435.0             // 3950 (common value)
 #define T0 298.15               // 25°C in Kelvin
 #define OFFSET 0.0            // Adjust later (+ or -)
 #define ADC_RESOLUTION 4095.0   // 12 bits (1111 1111 1111)
-#define VREF 3.3                // Maximum sensing voltage of ESP32
+#define VREF 3.3               // Maximum sensing voltage of ESP32
 unsigned long lastNTCReadTime = 0;
 float ntcSampleSum = 0;
 uint8_t ntcSampleCount = 0;
@@ -125,33 +125,58 @@ unsigned long lastSerialPrint = 0;
 //   }
 // }
 
-void calculateNTCFromADC(float adcValue) {
-  float voltage = adcValue * VREF / ADC_RESOLUTION;
-  if (voltage <= 0.001) {
+//--------------------------------
+// Read averaged voltage
+//--------------------------------
+float readNTCVoltage()
+{
+  uint32_t sum = 0;
+
+  for (int i = 0; i < 20; i++)
+  {
+    sum += analogReadMilliVolts(NTC_PIN);
+  }
+
+  float avgMilliVolt = sum / 20.0;
+
+  return avgMilliVolt / 1000.0;   // convert to volts
+}
+
+//--------------------------------
+// Calculate temperature
+//--------------------------------
+void calculateNTCFromADC()
+{
+  float voltage = readNTCVoltage();
+
+  if (voltage <= 0.001)
+  {
     ntcTemp = -100;
     return;
   }
+
   float rNTC = FIXED_RESISTOR * (VREF - voltage) / voltage;
+
   float tempK = 1.0 / ((1.0 / T0) + (1.0 / BETA) * log(rNTC / R0));
+
   ntcTemp = tempK - 273.15;
+
   ntcTemp += OFFSET;
-  // ntcTemp = applyPrecision(ntcTemp, settings.tempPrecision);
 }
 
-void handleNTC() {
+//--------------------------------
+// Handle NTC every 1 second
+//--------------------------------
+void handleNTC()
+{
   unsigned long currentMillis = millis();
-  // Check interval (seconds → milliseconds)
-  if (currentMillis - lastNTCReadTime >= 1000) {
+
+  if (currentMillis - lastNTCReadTime >= 1000)
+  {
     lastNTCReadTime = currentMillis;
-    // Reset averaging
-    ntcSampleSum = 0;
-    ntcSampleCount = 0;
-    // Take 50 samples quickly (no delay)
-    for (int i = 0; i < 50; i++) {
-      ntcSampleSum += analogRead(NTC_PIN);
-    }
-    float adcValue = ntcSampleSum / 50.0;
-    calculateNTCFromADC(adcValue);
+
+    calculateNTCFromADC();
+
   }
 }
 
@@ -208,6 +233,10 @@ void setup() {
 
   pinMode(RS485_EN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(NTC_PIN, INPUT);
+
+  analogReadResolution(12);
+  analogSetAttenuation(ADC_11db);  // Full 0–3.3V range
 
   digitalWrite(LED_PIN, LOW);
 
