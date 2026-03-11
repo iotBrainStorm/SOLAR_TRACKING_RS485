@@ -28,7 +28,7 @@ uint16_t holdingRegisters[10];
 // -------- RS485 Protection --------
 unsigned long lastByteTime = 0;
 unsigned long lastValidPacket = 0;
-const uint16_t BUS_TIMEOUT = 20;      // ms packet timeout
+const uint16_t BUS_TIMEOUT = 200;      // ms packet timeout
 const uint32_t BUS_WATCHDOG = 30000;  // 30s recovery
 uint8_t crcErrorCount = 0;
 const uint8_t CRC_LIMIT = 5;
@@ -104,7 +104,7 @@ void setDefaultSettings() {
   settings.enableRS485 = 1;
   settings.modbusDeviceID = 1;
   settings.modbusBaudRate = 115200;
-  settings.modbusInterval = 5;
+  settings.modbusInterval = 2;
 }
 
 //--------------------------------
@@ -126,7 +126,7 @@ void loadSettings() {
   settings.enableRS485 = preferences.getUChar("rsEn", 1);
   settings.modbusDeviceID = preferences.getUChar("rsID", 1);
   settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
-  settings.modbusInterval = preferences.getUInt("rsInt", 5);
+  settings.modbusInterval = preferences.getUInt("rsInt", 2);
 
   preferences.end();
 
@@ -262,11 +262,21 @@ void handleModbus() {
     lastByteTime = millis();
   }
   if (index > 0 && millis() - lastByteTime > BUS_TIMEOUT) {
+
+    // ---- Fix possible leading garbage byte ----
+    if (buffer[0] == 0x00 && index == 9) {
+      Serial.println("[MODBUS] Removing garbage byte");
+      memmove(buffer, buffer + 1, 8);
+      index = 8;
+    }
+
+    // ---- Minimum Modbus frame check ----
     if (index < 8) {
       Serial.println("[MODBUS] Packet too short");
       index = 0;
       return;
     }
+
     Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
     Serial.print("Raw Packet: ");
     printHex(buffer, index);
@@ -274,9 +284,11 @@ void handleModbus() {
     uint16_t receivedCRC =
       buffer[index - 2] | (buffer[index - 1] << 8);
 
-    uint16_t calcCRC = modbusCRC(buffer, index - 2);
+    uint16_t calcCRC =
+      modbusCRC(buffer, index - 2);
 
     if (receivedCRC != calcCRC) {
+
       Serial.println("[MODBUS] CRC ERROR");
 
       crcErrorCount++;
@@ -285,6 +297,7 @@ void handleModbus() {
       Serial.println(crcErrorCount);
 
       if (crcErrorCount >= CRC_LIMIT) {
+
         Serial.println("[RS485] Too many CRC errors → resetting bus");
 
         resetRS485UART();
@@ -370,10 +383,10 @@ void handleModbus() {
       printHex(response, 5 + regCount * 2);
 
       setTransmitMode();
-
+      delayMicroseconds(200);
       rs485.write(response, 5 + regCount * 2);
       rs485.flush();
-      delayMicroseconds(200);
+      delayMicroseconds(300);
 
       setReceiveMode();
 

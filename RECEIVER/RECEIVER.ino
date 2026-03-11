@@ -168,7 +168,7 @@ void setDefaultSettings() {
   settings.enableRS485 = 0;
   settings.modbusDeviceID = 1;
   settings.modbusBaudRate = 115200;
-  settings.modbusInterval = 5;
+  settings.modbusInterval = 2;
 
 
   settings.gmtOffset = 19800;
@@ -205,7 +205,7 @@ void loadSettings() {
   settings.enableRS485 = preferences.getUChar("rsEn", 0);
   settings.modbusDeviceID = preferences.getUChar("rsID", 1);
   settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
-  settings.modbusInterval = preferences.getUInt("rsInt", 5);
+  settings.modbusInterval = preferences.getUInt("rsInt", 2);
 
   settings.gmtOffset = preferences.getLong("gmt", 19800);
   settings.clockFormat = preferences.getUChar("clkFmt", 24);
@@ -1163,6 +1163,8 @@ uint16_t modbusCRC(uint8_t *buf, int len) {
 
 void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
 
+  while (rs485.available()) rs485.read();
+
   uint8_t frame[8];
 
   frame[0] = id;
@@ -1181,7 +1183,8 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
 
   rs485.write(frame, 8);
   rs485.flush();
-  delayMicroseconds(200);
+
+  delayMicroseconds(300);
 
   setReceiveMode();
 
@@ -1253,7 +1256,7 @@ void readModbusResponse() {
     else
       index = 0;
 
-    if (index >= 11) {  // expected size
+    if (index >= 13) {
 
       uint16_t crcReceived =
         buffer[index - 2] | (buffer[index - 1] << 8);
@@ -1264,17 +1267,16 @@ void readModbusResponse() {
       if (crcReceived == crcCalc) {
 
         Serial.println("[MODBUS] Valid response");
-        triggerLED(ledDurationRX);
 
-        int16_t temp =
+        int16_t tempRaw =
           (buffer[3] << 8) | buffer[4];
 
-        ntcTemp = temp / 100.0;
+        ntcTemp = tempRaw / 100.0;
 
         luxValue =
           (buffer[5] << 8) | buffer[6];
 
-        Serial.print("Remote NTC: ");
+        Serial.print("Remote Temp: ");
         Serial.println(ntcTemp);
 
         Serial.print("Remote Lux: ");
