@@ -1290,5 +1290,5 @@ void loop() {
   checkWiFiAndStartServer();
   sendDataToNodeRed();
 
-  updateLED();
+  // updateLED();
 }
