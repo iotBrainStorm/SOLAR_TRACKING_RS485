@@ -50,7 +50,9 @@ uint8_t sunlightPercentage = 0;
 // -- Serial Output
 unsigned long lastSerialPrint = 0;
 
-// -- Global variables for settings
+//--------------------------------
+//Global variables for user's settings
+//--------------------------------
 Preferences preferences;
 struct DeviceSettings {
   float ntcResistance;   // 10K in general
@@ -67,8 +69,9 @@ struct DeviceSettings {
 };
 DeviceSettings settings;
 
-//////////////////////   DEFAULT SETTINGS   //////////////////////
-
+//--------------------------------
+//Default user's settings
+//--------------------------------
 void setDefaultSettings() {
   settings.ntcResistance = 10000.0;
   settings.betaConstant = 3435.0;
@@ -83,8 +86,9 @@ void setDefaultSettings() {
   settings.modbusInterval = 5;
 }
 
-//////////////////////   LOAD SETTINGS   //////////////////////
-
+//--------------------------------
+//Loading user's settings
+//--------------------------------
 void loadSettings() {
 
   Serial.println("\n========== LOADING SETTINGS ==========");
@@ -121,8 +125,9 @@ void loadSettings() {
   Serial.println("=======================================\n");
 }
 
-//////////////////////   SAVE SETTINGS   //////////////////////
-
+//--------------------------------
+//Save user's settings
+//--------------------------------
 void saveSettings() {
   preferences.begin("device", false);  // write mode
 
@@ -229,13 +234,10 @@ void saveSettings() {
 //--------------------------------
 float readNTCVoltage() {
   uint32_t sum = 0;
-
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 50; i++) {
     sum += analogReadMilliVolts(NTC_PIN);
   }
-
-  float avgMilliVolt = sum / 20.0;
-
+  float avgMilliVolt = sum / 50.0;
   return avgMilliVolt / 1000.0;  // convert to volts
 }
 
@@ -246,39 +248,35 @@ void calculateNTCFromADC() {
   float voltage = readNTCVoltage();
 
   if (voltage <= 0.001) {
-    ntcTemp = -100;
+    ntcTemp = 0.0;
     return;
   }
 
   float rNTC = FIXED_RESISTOR * (VREF - voltage) / voltage;
-
-  float tempK = 1.0 / ((1.0 / T0) + (1.0 / BETA) * log(rNTC / R0));
-
+  float tempK = 1.0 / ((1.0 / T0) + (1.0 / settings.betaConstant) * log(rNTC / settings.ntcResistance));
   ntcTemp = tempK - 273.15;
-
-  ntcTemp += OFFSET;
+  ntcTemp += settings.ntcOffset;
 }
 
 //--------------------------------
-// Handle NTC every 1 second
+// Handle NTC according to user
 //--------------------------------
 void handleNTC() {
   unsigned long currentMillis = millis();
-
-  if (currentMillis - lastNTCReadTime >= 1000) {
+  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
     lastNTCReadTime = currentMillis;
-
     calculateNTCFromADC();
   }
 }
 
-//////////////////////   CALCULATE LUX   //////////////////////
-
+//--------------------------------
+//LUX value calculation
+//--------------------------------
 void handleLUX() {
   unsigned long currentMillis = millis();
 
   // ---- Interval Control ----
-  if (currentMillis - lastLuxReadTime < 1000)
+  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL)
     return;
   lastLuxReadTime = currentMillis;
 
@@ -286,13 +284,11 @@ void handleLUX() {
   luxValue = lightMeter.readLightLevel();
 }
 
-//////////////////////   SERIAL OUTPUT   //////////////////////
-
+//--------------------------------
+//Serial output control
+//--------------------------------
 void serialOutput() {
-
   unsigned long currentMillis = millis();
-
-  // Run every 1 second (1000 ms)
   if (currentMillis - lastSerialPrint < 1000)
     return;
   lastSerialPrint = currentMillis;
@@ -300,25 +296,14 @@ void serialOutput() {
   Serial.println("\n========================================");
   Serial.println("           Sensor Data Report");
   Serial.println("========================================");
-
   Serial.printf("NTC Temperature  : %8.2f °C\n", ntcTemp);
-  // Serial.printf("AHT Temperature  : %8.2f °C\n", ahtTemp);
-  // Serial.printf("Humidity         : %8.2f %%\n", humidity);
-
-  Serial.println("----------------------------------------");
-
   Serial.printf("Light Intensity  : %8lu lux\n", luxValue);
-  // Serial.printf("Filtered Lux     : %8.2f lux\n", luxFiltered);
-  // Serial.printf("Sunlight Level   : %8u %%\n", sunlightPercentage);
-
-  Serial.println("----------------------------------------");
-
-  // float tempDiff = fabs(ntcTemp - ahtTemp);
-  // Serial.printf("Temp Difference  : %8.2f °C\n", tempDiff);
-
   Serial.println("========================================\n");
 }
 
+//--------------------------------
+//Setup function
+//--------------------------------
 void setup() {
   Serial.begin(115200);
 
@@ -370,8 +355,11 @@ void setup() {
   // rs485.begin(115200, SERIAL_8N1, RXD2, TXD2);
 }
 
-void loop() {
 
+//--------------------------------
+//Loop function
+//--------------------------------
+void loop() {
   handleNTC();
   handleLUX();
   serialOutput();
