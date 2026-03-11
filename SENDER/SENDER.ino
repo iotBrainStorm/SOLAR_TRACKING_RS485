@@ -260,118 +260,117 @@ void handleModbus() {
       index = 0;
     }
     lastByteTime = millis();
+  }
+  if (index > 0 && millis() - lastByteTime > BUS_TIMEOUT) {
 
-    if (index >= 8 && rs485.available() == 0) {
+    Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
+    Serial.print("Raw Packet: ");
+    printHex(buffer, index);
 
-      Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
-      Serial.print("Raw Packet: ");
-      printHex(buffer, index);
+    uint16_t receivedCRC =
+      buffer[index - 2] | (buffer[index - 1] << 8);
 
-      uint16_t receivedCRC =
-        buffer[index - 2] | (buffer[index - 1] << 8);
+    uint16_t calcCRC = modbusCRC(buffer, index - 2);
 
-      uint16_t calcCRC = modbusCRC(buffer, index - 2);
+    if (receivedCRC != calcCRC) {
+      Serial.println("[MODBUS] CRC ERROR");
 
-      if (receivedCRC != calcCRC) {
-        Serial.println("[MODBUS] CRC ERROR");
+      crcErrorCount++;
 
-        crcErrorCount++;
+      Serial.print("CRC Error Count: ");
+      Serial.println(crcErrorCount);
 
-        Serial.print("CRC Error Count: ");
-        Serial.println(crcErrorCount);
+      if (crcErrorCount >= CRC_LIMIT) {
+        Serial.println("[RS485] Too many CRC errors → resetting bus");
 
-        if (crcErrorCount >= CRC_LIMIT) {
-          Serial.println("[RS485] Too many CRC errors → resetting bus");
-
-          resetRS485UART();
-          crcErrorCount = 0;
-        }
-
-        index = 0;
-        return;
-      }
-
-      Serial.println("✔ CRC OK");
-      crcErrorCount = 0;
-      lastValidPacket = millis();
-
-      uint8_t deviceID = buffer[0];
-      uint8_t function = buffer[1];
-
-      Serial.print("Device ID : ");
-      Serial.println(deviceID);
-
-      Serial.print("Function  : ");
-      Serial.println(function, HEX);
-
-      if (deviceID != settings.modbusDeviceID) {
-        Serial.println("⚠ Not my device ID - Ignored");
-        index = 0;
-        return;
-      }
-
-      if (function == 0x03) {
-
-        uint16_t startReg =
-          (buffer[2] << 8) | buffer[3];
-
-        uint16_t regCount =
-          (buffer[4] << 8) | buffer[5];
-
-        Serial.print("Start Register : ");
-        Serial.println(startReg);
-
-        Serial.print("Register Count : ");
-        Serial.println(regCount);
-
-        updateRegisters();
-
-        uint8_t response[64];
-
-        response[0] = deviceID;
-        response[1] = 0x03;
-        response[2] = regCount * 2;
-
-        Serial.println("\nSending Register Values:");
-
-        for (int i = 0; i < regCount && (startReg + i) < 10; i++) {
-
-          uint16_t value =
-            holdingRegisters[startReg + i];
-
-          Serial.print("Reg ");
-          Serial.print(startReg + i);
-          Serial.print(" = ");
-          Serial.println(value);
-
-          response[3 + i * 2] = value >> 8;
-          response[4 + i * 2] = value & 0xFF;
-        }
-
-        uint16_t crc =
-          modbusCRC(response, 3 + regCount * 2);
-
-        response[3 + regCount * 2] = crc & 0xFF;
-        response[4 + regCount * 2] = crc >> 8;
-
-        Serial.println("\n----- MODBUS RESPONSE -----");
-        Serial.print("Response Packet: ");
-        printHex(response, 5 + regCount * 2);
-
-        setTransmitMode();
-
-        rs485.write(response, 5 + regCount * 2);
-        rs485.flush();
-
-        setReceiveMode();
-
-        Serial.println("✔ Response Sent Successfully");
-
-        triggerLED(60);
+        resetRS485UART();
+        crcErrorCount = 0;
       }
 
       index = 0;
+      return;
     }
+
+    Serial.println("✔ CRC OK");
+    crcErrorCount = 0;
+    lastValidPacket = millis();
+
+    uint8_t deviceID = buffer[0];
+    uint8_t function = buffer[1];
+
+    Serial.print("Device ID : ");
+    Serial.println(deviceID);
+
+    Serial.print("Function  : ");
+    Serial.println(function, HEX);
+
+    if (deviceID != settings.modbusDeviceID) {
+      Serial.println("⚠ Not my device ID - Ignored");
+      index = 0;
+      return;
+    }
+
+    if (function == 0x03) {
+
+      uint16_t startReg =
+        (buffer[2] << 8) | buffer[3];
+
+      uint16_t regCount =
+        (buffer[4] << 8) | buffer[5];
+
+      Serial.print("Start Register : ");
+      Serial.println(startReg);
+
+      Serial.print("Register Count : ");
+      Serial.println(regCount);
+
+      updateRegisters();
+
+      uint8_t response[64];
+
+      response[0] = deviceID;
+      response[1] = 0x03;
+      response[2] = regCount * 2;
+
+      Serial.println("\nSending Register Values:");
+
+      for (int i = 0; i < regCount && (startReg + i) < 10; i++) {
+
+        uint16_t value =
+          holdingRegisters[startReg + i];
+
+        Serial.print("Reg ");
+        Serial.print(startReg + i);
+        Serial.print(" = ");
+        Serial.println(value);
+
+        response[3 + i * 2] = value >> 8;
+        response[4 + i * 2] = value & 0xFF;
+      }
+
+      uint16_t crc =
+        modbusCRC(response, 3 + regCount * 2);
+
+      response[3 + regCount * 2] = crc & 0xFF;
+      response[4 + regCount * 2] = crc >> 8;
+
+      Serial.println("\n----- MODBUS RESPONSE -----");
+      Serial.print("Response Packet: ");
+      printHex(response, 5 + regCount * 2);
+
+      setTransmitMode();
+
+      rs485.write(response, 5 + regCount * 2);
+      rs485.flush();
+
+      setReceiveMode();
+
+      Serial.println("✔ Response Sent Successfully");
+
+      triggerLED(60);
+    }
+
+    index = 0;
   }
 }
 
