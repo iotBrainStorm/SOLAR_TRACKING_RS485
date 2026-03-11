@@ -26,9 +26,8 @@
 HardwareSerial rs485(2);
 
 // -- NTC Setup
-#define NTC_PIN 34              // ADC pin
 #define FIXED_RESISTOR 10000.0  // 10k fixed resistor
-#define R0 10000.0               // NTC resistance at 25°C
+#define R0 10000.0              // NTC resistance at 25°C
 #define BETA 3950.0             // 3950 (common value)
 #define T0 298.15               // 25°C in Kelvin
 #define OFFSET 17.29            // Adjust later (+ or -)
@@ -554,9 +553,6 @@ void setupWebServer() {
   });
 
   server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // portENTER_CRITICAL(&measureMux);
-    // Measurements current = readings;
-    // portEXIT_CRITICAL(&measureMux);
     StaticJsonDocument<256> doc;
     doc["ntcTemp"] = ntcTemp;
     doc["ahtTemp"] = ahtTemp;
@@ -799,42 +795,18 @@ void drawCenteredStr(int y, const char *str, const uint8_t *font) {
 //////////////////////   CALCULATE PRECISION   //////////////////////
 
 float applyPrecision(float value, uint8_t precision) {
-  if (precision == 0)
-    return round(value);
-  if (precision == 1)
-    return round(value * 10.0) / 10.0;
-  if (precision == 2)
-    return round(value * 100.0) / 100.0;
+  if (precision == 0) return round(value);
+  if (precision == 1) return round(value * 10.0) / 10.0;
+  if (precision == 2) return round(value * 100.0) / 100.0;
   return value;
-}
-
-void calculateNTCFromADC(float adcValue) {
-  float voltage = adcValue * VREF / ADC_RESOLUTION;
-  if (voltage <= 0.001) {
-    ntcTemp = -100;
-    return;
-  }
-  float rNTC = FIXED_RESISTOR * (VREF - voltage) / voltage;
-  float tempK = 1.0 / ((1.0 / T0) + (1.0 / settings.betaConstant) * log(rNTC / settings.ntcResistance));
-  ntcTemp = tempK - 273.15;
-  ntcTemp += settings.ntcOffset;
-  ntcTemp = applyPrecision(ntcTemp, settings.tempPrecision);
 }
 
 void handleNTC() {
   unsigned long currentMillis = millis();
-  // Check interval (seconds → milliseconds)
   if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
     lastNTCReadTime = currentMillis;
-    // Reset averaging
-    ntcSampleSum = 0;
-    ntcSampleCount = 0;
-    // Take 50 samples quickly (no delay)
-    for (int i = 0; i < 50; i++) {
-      ntcSampleSum += analogRead(NTC_PIN);
-    }
-    float adcValue = ntcSampleSum / 50.0;
-    calculateNTCFromADC(adcValue);
+    ntcTemp += settings.ntcOffset;
+    ntcTemp = applyPrecision(ntcTemp, settings.tempPrecision);
   }
 }
 
@@ -854,7 +826,7 @@ void handleAHT() {
       ahtTemp = applyPrecision(rawTemp, settings.tempPrecision);
       humidity = applyPrecision(rawHumidity, settings.humidityPrecision);
     } else {
-      ahtTemp = -100;  // Error indicator
+      ahtTemp = 0.0;  // Error indicator
       humidity = 0;
     }
   }
@@ -868,19 +840,6 @@ void handleLUX() {
   // ---- Interval Control ----
   if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL) return;
   lastLuxReadTime = currentMillis;
-
-  // ---- Read Sensor ----
-  if (luxConnected) {
-    luxValue = lightMeter.readLightLevel();
-  } else {
-    luxValue = 1;  // fallback value if sensor missing
-  }
-  
-  // ---- First Time Filter Init ----
-  if (!luxInitialized) {
-    luxFiltered = luxValue;
-    luxInitialized = true;
-  }
 
   // ---- EMA Filter ----
   luxFiltered = (luxFiltered * 0.6f) + (luxValue * 0.4f);
@@ -974,59 +933,6 @@ void setReceiveMode() {
   digitalWrite(RS485_EN, LOW);
 }
 
-
-// -- Send Packet
-void sendPacket(String payload) {
-  setTransmitMode();
-
-  rs485.write(STX);
-  rs485.print(payload);
-  rs485.write(ETX);
-  rs485.flush();
-
-  setReceiveMode();
-}
-
-// --Send Settings JSON
-void sendSettings() {
-  StaticJsonDocument<256> doc;
-  doc["enableRS485"] = settings.enableRS485;
-  doc["modbusDeviceID"] = settings.modbusDeviceID;
-  doc["modbusBaudRate"] = settings.modbusBaudRate;
-  doc["modbusInterval"] = settings.modbusInterval;
-  String output;
-  serializeJson(doc, output);
-  sendPacket(output);
-}
-
-// --Receive Sensor Data
-void receivePacket() {
-  static String buffer = "";
-  static bool receiving = false;
-
-  while (rs485.available()) {
-    byte incoming = rs485.read();
-
-    if (incoming == STX) {
-      buffer = "";
-      receiving = true;
-    } else if (incoming == ETX && receiving) {
-      receiving = false;
-
-      StaticJsonDocument<200> doc;
-      if (!deserializeJson(doc, buffer)) {
-        ntcTemp = doc["ntc"];
-        luxValue = doc["lux"];
-
-        triggerLED();
-        sendSettings();
-      }
-    } else if (receiving) {
-      buffer += (char)incoming;
-    }
-  }
-}
-
 //////////////////////   NODE RED SHARE   //////////////////////
 
 void sendDataToNodeRed() {
@@ -1113,8 +1019,7 @@ void serialOutput() {
   unsigned long currentMillis = millis();
 
   // Run every 1 second (1000 ms)
-  if (currentMillis - lastSerialPrint < 1000)
-    return;
+  if (currentMillis - lastSerialPrint < 1000) return;
   lastSerialPrint = currentMillis;
 
   Serial.println("\n========================================");
@@ -1233,9 +1138,6 @@ void setup() {
   Serial.begin(115200);
   pinMode(RS485_EN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(NTC_PIN, INPUT);
-  analogReadResolution(12);
-  analogSetAttenuation(ADC_11db);  // Full 0–3.3V range
 
   u8g2.begin();
 
@@ -1299,7 +1201,7 @@ void setup() {
 
   // --- RS485 modbus receiving mode ---
   setReceiveMode();
-  rs485.begin(115200, SERIAL_8N1, RXD2, TXD2);
+  rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
 
   // --- AHT Sensor Init ---
   u8g2.clearBuffer();
@@ -1307,6 +1209,7 @@ void setup() {
   Serial.println("AHT10 Sensor Initialization");
   Serial.println("==============================");
   Serial.println("[INFO] Checking AHT10 sensor...");
+  Wire.begin();  // SDA, SCL default for ESP32
   if (!aht.begin()) {
     u8g2.drawStr(0, 18, "AHT10: ERROR");
     Serial.println("[ERROR] AHT10 not detected!");
@@ -1316,30 +1219,6 @@ void setup() {
     u8g2.drawStr(0, 18, "AHT10: OK");
     Serial.println("[SUCCESS] AHT10 detected successfully.");
     Serial.println("[INFO] Sensor ready for reading");
-    Serial.println("==============================\n");
-  }
-  u8g2.sendBuffer();
-  delay(1000);
-
-  // --- LUX Sensor Init ---
-  u8g2.clearBuffer();
-  Serial.println("\n==============================");
-  Serial.println("BH1750 Initialization");
-  Serial.println("==============================");
-  Serial.println("[INFO] Starting BH1750...");
-
-  Wire.begin();  // SDA, SCL default for ESP32
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
-    luxConnected = true;
-    u8g2.drawStr(0, 18, "BH1750: OK");
-    Serial.println("[SUCCESS] BH1750 detected.");
-    Serial.println("[INFO] Mode: Continuous High Resolution");
-    Serial.println("==============================\n");
-  } else {
-    u8g2.drawStr(0, 18, "BH1750: ERROR");
-    luxConnected = false;
-    Serial.println("[ERROR] BH1750 not detected!");
-    Serial.println("[INFO] Check SDA/SCL wiring.");
     Serial.println("==============================\n");
   }
   u8g2.sendBuffer();
@@ -1409,8 +1288,7 @@ void loop() {
   serialOutput();
   displayLCD();
   checkWiFiAndStartServer();
-
-  receivePacket();
-  updateLED();
   sendDataToNodeRed();
+
+  updateLED();
 }

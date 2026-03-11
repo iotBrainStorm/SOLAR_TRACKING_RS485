@@ -428,6 +428,12 @@ void handleLUX() {
   } else {
     luxValue = 1;  // fallback value if sensor missing
   }
+
+  // ---- First Time Filter Init ----
+  if (!luxInitialized) {
+    luxFiltered = luxValue;
+    luxInitialized = true;
+  }
 }
 
 //--------------------------------
