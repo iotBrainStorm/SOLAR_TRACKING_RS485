@@ -35,6 +35,7 @@ uint8_t ntcSampleCount = 0;
 
 // -- Light sensor (LUX) setup
 BH1750 lightMeter;
+bool luxConnected = false;
 unsigned long lastLuxReadTime = 0;
 unsigned long lastLuxSaveTime = 0;
 float luxFiltered = 0;  // EMA filtered value
@@ -281,7 +282,11 @@ void handleLUX() {
   lastLuxReadTime = currentMillis;
 
   // ---- Read Sensor ----
-  luxValue = lightMeter.readLightLevel();
+  if (luxConnected) {
+    luxValue = lightMeter.readLightLevel();
+  } else {
+    luxValue = 1;  // fallback value if sensor missing
+  }
 }
 
 //--------------------------------
@@ -339,10 +344,12 @@ void setup() {
 
   Wire.begin();  // SDA, SCL default for ESP32
   if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
+    luxConnected = true;
     Serial.println("[SUCCESS] BH1750 detected.");
     Serial.println("[INFO] Mode: Continuous High Resolution");
     Serial.println("==============================\n");
   } else {
+    luxConnected = false;
     Serial.println("[ERROR] BH1750 not detected!");
     Serial.println("[INFO] Check SDA/SCL wiring.");
     Serial.println("==============================\n");
