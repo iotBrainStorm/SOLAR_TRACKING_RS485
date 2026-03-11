@@ -25,6 +25,19 @@ String rs485Buffer = "";
 bool receivingPacket = false;
 uint16_t holdingRegisters[10];
 
+// unsigned long lastByteTime = 0;
+// const uint16_t BUS_TIMEOUT = 20;  // ms
+// unsigned long lastRS485Activity = 0;
+// const uint32_t RS485_RESET_TIME = 5000; // 5 seconds
+
+// -------- RS485 Protection --------
+unsigned long lastByteTime = 0;
+unsigned long lastValidPacket = 0;
+const uint16_t BUS_TIMEOUT = 20;      // ms packet timeout
+const uint32_t BUS_WATCHDOG = 30000;  // 30s recovery
+uint8_t crcErrorCount = 0;
+const uint8_t CRC_LIMIT = 5;
+
 // -- NTC Setup
 #define NTC_PIN 0               // ADC pin
 #define FIXED_RESISTOR 10000.0  // 10k fixed resistor
@@ -171,75 +184,6 @@ void updateLED() {
   }
 }
 
-// void handleRS485() {
-
-//   if (!settings.enableRS485) return;
-
-//   unsigned long currentMillis = millis();
-
-//   if (currentMillis - lastModbusSend < settings.modbusInterval * 1000UL)
-//     return;
-
-//   lastModbusSend = currentMillis;
-
-//   // -------- SEND SENSOR DATA --------
-//   StaticJsonDocument<256> doc;
-//   doc["id"] = settings.modbusDeviceID;
-//   doc["ntc"] = ntcTemp;
-//   doc["lux"] = luxValue;
-
-//   String output;
-//   serializeJson(doc, output);
-
-//   sendPacket(output);
-
-//   delayMicroseconds(200);  // allow bus settle
-
-//   // -------- WAIT FOR RESPONSE --------
-//   unsigned long startWait = millis();
-
-//   while (millis() - startWait < 200) {
-
-//     while (rs485.available()) {
-
-//       byte incoming = rs485.read();
-
-//       if (incoming == STX) {
-//         rs485Buffer = "";
-//         receivingPacket = true;
-//       }
-
-//       else if (incoming == ETX && receivingPacket) {
-
-//         receivingPacket = false;
-
-//         StaticJsonDocument<256> doc;
-
-//         DeserializationError err = deserializeJson(doc, rs485Buffer);
-
-//         if (!err) {
-
-//           if (doc.containsKey("interval"))
-//             settings.modbusInterval = doc["interval"];
-
-//           if (doc.containsKey("ntcOffset"))
-//             settings.ntcOffset = doc["ntcOffset"];
-
-//           saveSettings();
-
-//           triggerLED();  // feedback LED
-//         }
-
-//         rs485Buffer = "";
-//       }
-
-//       else if (receivingPacket) {
-//         rs485Buffer += (char)incoming;
-//       }
-//     }
-//   }
-// }
-
 void printHex(uint8_t *data, uint8_t len) {
   for (uint8_t i = 0; i < len; i++) {
     if (data[i] < 16) Serial.print("0");
@@ -255,6 +199,19 @@ void setTransmitMode() {
 }
 void setReceiveMode() {
   digitalWrite(RS485_EN, LOW);
+}
+
+void resetRS485UART() {
+  Serial.println("[RS485] Resetting UART...");
+
+  rs485.flush();
+
+  while (rs485.available())
+    rs485.read();
+
+  setReceiveMode();
+
+  Serial.println("[RS485] UART buffer cleared");
 }
 
 uint16_t modbusCRC(uint8_t *buf, int len) {
@@ -283,15 +240,24 @@ void updateRegisters() {
 }
 
 void handleModbus() {
+  unsigned long lastByteTime = 0;
+  const uint16_t BUS_TIMEOUT = 20;  // ms
 
   if (!settings.enableRS485) return;
 
   static uint8_t buffer[64];
   static uint8_t index = 0;
 
+  unsigned long now = millis();
+  if (index > 0 && (now - lastByteTime > BUS_TIMEOUT)) {
+    Serial.println("[RS485] Packet timeout → buffer cleared");
+    index = 0;
+  }
+
   while (rs485.available()) {
 
     buffer[index++] = rs485.read();
+    lastByteTime = millis();
 
     if (index >= 8) {
 
@@ -305,12 +271,27 @@ void handleModbus() {
       uint16_t calcCRC = modbusCRC(buffer, index - 2);
 
       if (receivedCRC != calcCRC) {
-        Serial.println("❌ CRC ERROR - Packet ignored");
+        Serial.println("[MODBUS] CRC ERROR");
+
+        crcErrorCount++;
+
+        Serial.print("CRC Error Count: ");
+        Serial.println(crcErrorCount);
+
+        if (crcErrorCount >= CRC_LIMIT) {
+          Serial.println("[RS485] Too many CRC errors → resetting bus");
+
+          resetRS485UART();
+          crcErrorCount = 0;
+        }
+
         index = 0;
         return;
       }
 
       Serial.println("✔ CRC OK");
+      crcErrorCount = 0;
+      lastValidPacket = millis();
 
       uint8_t deviceID = buffer[0];
       uint8_t function = buffer[1];
@@ -391,59 +372,6 @@ void handleModbus() {
     }
   }
 }
-
-// // ------------ Send Packet ------------
-// void sendPacket(String payload) {
-
-//   setTransmitMode();
-
-//   rs485.write(STX);
-//   rs485.print(payload);
-//   rs485.write(ETX);
-
-//   rs485.flush();
-
-//   setReceiveMode();
-// }
-
-// // ------------ Send Sensor JSON ------------
-// void sendSensorData() {
-//   StaticJsonDocument<200> doc;
-//   doc["ntc"] = ntcTemp;
-//   doc["lux"] = luxValue;
-
-//   String output;
-//   serializeJson(doc, output);
-
-//   sendPacket(output);
-// }
-
-// // ------------ Receive Settings ------------
-// void receivePacket() {
-//   static String buffer = "";
-//   static bool receiving = false;
-
-//   while (rs485.available()) {
-//     byte incoming = rs485.read();
-
-//     if (incoming == STX) {
-//       buffer = "";
-//       receiving = true;
-//     }
-//     else if (incoming == ETX && receiving) {
-//       receiving = false;
-
-//       StaticJsonDocument<200> doc;
-//       if (!deserializeJson(doc, buffer)) {
-//         sendInterval = doc["interval"] * 1000UL;
-//         triggerLED();
-//       }
-//     }
-//     else if (receiving) {
-//       buffer += (char)incoming;
-//     }
-//   }
-// }
 
 //--------------------------------
 // Read averaged voltage
@@ -586,4 +514,13 @@ void loop() {
   handleModbus();
   serialOutput();
   updateLED();
+
+  // ---- RS485 watchdog ----
+  if (settings.enableRS485 && millis() - lastValidPacket > BUS_WATCHDOG) {
+    Serial.println("[RS485] No communication for 30s → recovering bus");
+
+    resetRS485UART();
+
+    lastValidPacket = millis();
+  }
 }
