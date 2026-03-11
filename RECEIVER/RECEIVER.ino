@@ -24,6 +24,8 @@
 #define STX 0x02
 #define ETX 0x03
 HardwareSerial rs485(2);
+unsigned long lastModbusPoll = 0;
+
 
 // -- NTC Setup
 #define FIXED_RESISTOR 10000.0  // 10k fixed resistor
@@ -72,7 +74,9 @@ DeviceSettings settings;
 // -- feedback LED Setup
 bool ledState = false;
 unsigned long ledStartTime = 0;
-const unsigned long ledDuration = 50;
+unsigned long ledDuration = 50;
+const unsigned long ledDurationRX = 60;   // receive blink
+const unsigned long ledDurationTX = 120;  // transmit blink
 
 // -- LCD Setup
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
@@ -125,11 +129,13 @@ const char MSG_DEVELOPER[] PROGMEM = "developed by M.Maity";
 
 //////////////////////   BLINK FEEDBACK LED   //////////////////////
 
-void triggerLED() {
+void triggerLED(unsigned long duration) {
   digitalWrite(LED_PIN, HIGH);
   ledState = true;
   ledStartTime = millis();
+  ledDuration = duration;
 }
+
 void updateLED() {
   if (ledState && millis() - ledStartTime >= ledDuration) {
     digitalWrite(LED_PIN, LOW);
@@ -645,6 +651,8 @@ void setupWebServer() {
 
     // -------- SAVE TO NVS --------
     saveSettings();
+    sendSettingsToSlave();
+    triggerLED(60);
 
     Serial.println("Settings Saved Successfully");
 
@@ -1132,6 +1140,161 @@ void displayLCD() {
   u8g2.sendBuffer();
 }
 
+//////////////////////   RS485 SETUP   //////////////////////
+
+uint16_t modbusCRC(uint8_t *buf, int len) {
+  uint16_t crc = 0xFFFF;
+
+  for (int pos = 0; pos < len; pos++) {
+    crc ^= buf[pos];
+
+    for (int i = 8; i != 0; i--) {
+      if ((crc & 0x0001) != 0) {
+        crc >>= 1;
+        crc ^= 0xA001;
+      } else {
+        crc >>= 1;
+      }
+    }
+  }
+  return crc;
+}
+
+
+void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
+
+  uint8_t frame[8];
+
+  frame[0] = id;
+  frame[1] = 0x03;
+  frame[2] = reg >> 8;
+  frame[3] = reg & 0xFF;
+  frame[4] = count >> 8;
+  frame[5] = count & 0xFF;
+
+  uint16_t crc = modbusCRC(frame, 6);
+
+  frame[6] = crc & 0xFF;
+  frame[7] = crc >> 8;
+
+  setTransmitMode();
+
+  rs485.write(frame, 8);
+  rs485.flush();
+
+  setReceiveMode();
+
+  Serial.println("[MODBUS] Request sent");
+}
+
+void sendSettingsToSlave() {
+
+  uint8_t frame[32];
+
+  frame[0] = settings.modbusDeviceID;
+  frame[1] = 0x10;
+  frame[2] = 0x00;
+  frame[3] = 0x03;
+  frame[4] = 0x00;
+  frame[5] = 0x06;
+  frame[6] = 12;
+
+  int idx = 7;
+
+  uint16_t val;
+
+  val = settings.ntcResistance;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = settings.betaConstant;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = settings.ntcOffset * 100;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = settings.ntcInterval;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = settings.luxInterval;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = settings.modbusInterval;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  uint16_t crc = modbusCRC(frame, idx);
+
+  frame[idx++] = crc & 0xFF;
+  frame[idx++] = crc >> 8;
+
+  setTransmitMode();
+  rs485.write(frame, idx);
+  rs485.flush();
+  setReceiveMode();
+
+  Serial.println("[MODBUS] Settings sent to slave");
+}
+
+void readModbusResponse() {
+
+  static uint8_t buffer[64];
+  static uint8_t index = 0;
+
+  while (rs485.available()) {
+
+    buffer[index++] = rs485.read();
+
+    if (index >= 9) {
+
+      uint16_t crcReceived = buffer[index - 2] | (buffer[index - 1] << 8);
+      uint16_t crcCalc = modbusCRC(buffer, index - 2);
+
+      if (crcReceived == crcCalc) {
+
+        Serial.println("[MODBUS] Valid response");
+
+        int16_t temp = (buffer[3] << 8) | buffer[4];
+        ntcTemp = temp / 100.0;
+
+        uint16_t luxHigh = (buffer[5] << 8) | buffer[6];
+        uint16_t luxLow = (buffer[7] << 8) | buffer[8];
+
+        luxValue = ((uint32_t)luxHigh << 16) | luxLow;
+
+        Serial.print("Remote NTC: ");
+        Serial.println(ntcTemp);
+
+        Serial.print("Remote Lux: ");
+        Serial.println(luxValue);
+
+      } else {
+
+        Serial.println("[MODBUS] CRC error");
+      }
+
+      index = 0;
+    }
+  }
+}
+
+void handleModbus() {
+  if (settings.enableRS485) {
+
+    if (millis() - lastModbusPoll > settings.modbusInterval * 1000UL) {
+
+      lastModbusPoll = millis();
+
+      sendModbusRequest(settings.modbusDeviceID, 0, 3);
+    }
+
+    readModbusResponse();
+  }
+}
 //////////////////////   SETUP   //////////////////////
 
 void setup() {
@@ -1281,6 +1444,7 @@ void setup() {
 }
 
 void loop() {
+  handleModbus();
   handleNTC();
   handleAHT();
   handleLUX();

@@ -66,7 +66,9 @@ unsigned long lastSerialPrint = 0;
 // -- Feedback LED controll
 bool ledState = false;
 unsigned long ledStartTime = 0;
-const unsigned long ledDuration = 100;
+unsigned long ledDuration = 100;
+const unsigned long ledDurationRX = 60;   // receive blink
+const unsigned long ledDurationTX = 120;  // transmit blink
 
 
 //--------------------------------
@@ -167,11 +169,13 @@ void saveSettings() {
 }
 
 
-void triggerLED() {
+void triggerLED(unsigned long duration) {
   digitalWrite(LED_PIN, HIGH);
   ledState = true;
   ledStartTime = millis();
+  ledDuration = duration;
 }
+
 void updateLED() {
   if (ledState && millis() - ledStartTime >= ledDuration) {
     digitalWrite(LED_PIN, LOW);
@@ -363,7 +367,7 @@ void handleModbus() {
 
         Serial.println("✔ Response Sent Successfully");
 
-        triggerLED();
+        triggerLED(60);
       }
 
       index = 0;
