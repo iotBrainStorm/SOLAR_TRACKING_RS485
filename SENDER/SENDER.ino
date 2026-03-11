@@ -25,11 +25,6 @@ String rs485Buffer = "";
 bool receivingPacket = false;
 uint16_t holdingRegisters[10];
 
-// unsigned long lastByteTime = 0;
-// const uint16_t BUS_TIMEOUT = 20;  // ms
-// unsigned long lastRS485Activity = 0;
-// const uint32_t RS485_RESET_TIME = 5000; // 5 seconds
-
 // -------- RS485 Protection --------
 unsigned long lastByteTime = 0;
 unsigned long lastValidPacket = 0;
@@ -240,8 +235,6 @@ void updateRegisters() {
 }
 
 void handleModbus() {
-  unsigned long lastByteTime = 0;
-  const uint16_t BUS_TIMEOUT = 20;  // ms
 
   if (!settings.enableRS485) return;
 
@@ -256,10 +249,15 @@ void handleModbus() {
 
   while (rs485.available()) {
 
-    buffer[index++] = rs485.read();
+    if (index < sizeof(buffer)) {
+      buffer[index++] = rs485.read();
+    } else {
+      Serial.println("[RS485] Buffer overflow → reset");
+      index = 0;
+    }
     lastByteTime = millis();
 
-    if (index >= 8) {
+    if (index >= 8 && rs485.available() == 0) {
 
       Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
       Serial.print("Raw Packet: ");
@@ -332,7 +330,7 @@ void handleModbus() {
 
         Serial.println("\nSending Register Values:");
 
-        for (int i = 0; i < regCount; i++) {
+        for (int i = 0; i < regCount && (startReg + i) < 10; i++) {
 
           uint16_t value =
             holdingRegisters[startReg + i];
@@ -464,6 +462,8 @@ void setup() {
 
   digitalWrite(LED_PIN, LOW);
 
+  delay(2000);
+
   // --- Storage Init ---
   Serial.println("\n==============================");
   Serial.println("Settings Initialization");
@@ -502,6 +502,7 @@ void setup() {
 
   setReceiveMode();
   rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
+  lastValidPacket = millis();
 }
 
 
