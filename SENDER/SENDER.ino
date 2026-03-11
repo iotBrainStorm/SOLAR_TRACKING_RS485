@@ -262,7 +262,11 @@ void handleModbus() {
     lastByteTime = millis();
   }
   if (index > 0 && millis() - lastByteTime > BUS_TIMEOUT) {
-
+    if (index < 8) {
+      Serial.println("[MODBUS] Packet too short");
+      index = 0;
+      return;
+    }
     Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
     Serial.print("Raw Packet: ");
     printHex(buffer, index);
@@ -292,6 +296,7 @@ void handleModbus() {
     }
 
     Serial.println("✔ CRC OK");
+    triggerLED(ledDurationRX);
     crcErrorCount = 0;
     lastValidPacket = millis();
 
@@ -324,6 +329,12 @@ void handleModbus() {
       Serial.print("Register Count : ");
       Serial.println(regCount);
 
+      if (regCount > 10) {
+        Serial.println("[MODBUS] Register request too large");
+        index = 0;
+        return;
+      }
+
       updateRegisters();
 
       uint8_t response[64];
@@ -334,7 +345,7 @@ void handleModbus() {
 
       Serial.println("\nSending Register Values:");
 
-      for (int i = 0; i < regCount && (startReg + i) < 10; i++) {
+      for (uint16_t i = 0; i < regCount && (startReg + i) < 10; i++) {
 
         uint16_t value =
           holdingRegisters[startReg + i];
@@ -362,12 +373,13 @@ void handleModbus() {
 
       rs485.write(response, 5 + regCount * 2);
       rs485.flush();
+      delayMicroseconds(200);
 
       setReceiveMode();
 
       Serial.println("✔ Response Sent Successfully");
 
-      triggerLED(60);
+      triggerLED(ledDurationRX);
     }
 
     index = 0;
@@ -511,6 +523,7 @@ void setup() {
 
   setReceiveMode();
   rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
+  rs485.setTimeout(2);
   lastValidPacket = millis();
 }
 

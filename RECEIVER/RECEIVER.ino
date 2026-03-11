@@ -23,7 +23,7 @@
 #define LED_PIN 2
 #define STX 0x02
 #define ETX 0x03
-HardwareSerial rs485(2);
+HardwareSerial rs485(1);
 unsigned long lastModbusPoll = 0;
 
 
@@ -1181,6 +1181,7 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
 
   rs485.write(frame, 8);
   rs485.flush();
+  delayMicroseconds(200);
 
   setReceiveMode();
 
@@ -1242,29 +1243,36 @@ void sendSettingsToSlave() {
 
 void readModbusResponse() {
 
-  static uint8_t buffer[64];
+  static uint8_t buffer[32];
   static uint8_t index = 0;
 
   while (rs485.available()) {
 
-    buffer[index++] = rs485.read();
+    if (index < sizeof(buffer))
+      buffer[index++] = rs485.read();
+    else
+      index = 0;
 
-    if (index >= 9) {
+    if (index >= 11) {  // expected size
 
-      uint16_t crcReceived = buffer[index - 2] | (buffer[index - 1] << 8);
-      uint16_t crcCalc = modbusCRC(buffer, index - 2);
+      uint16_t crcReceived =
+        buffer[index - 2] | (buffer[index - 1] << 8);
+
+      uint16_t crcCalc =
+        modbusCRC(buffer, index - 2);
 
       if (crcReceived == crcCalc) {
 
         Serial.println("[MODBUS] Valid response");
+        triggerLED(ledDurationRX);
 
-        int16_t temp = (buffer[3] << 8) | buffer[4];
+        int16_t temp =
+          (buffer[3] << 8) | buffer[4];
+
         ntcTemp = temp / 100.0;
 
-        uint16_t luxHigh = (buffer[5] << 8) | buffer[6];
-        uint16_t luxLow = (buffer[7] << 8) | buffer[8];
-
-        luxValue = ((uint32_t)luxHigh << 16) | luxLow;
+        luxValue =
+          (buffer[5] << 8) | buffer[6];
 
         Serial.print("Remote NTC: ");
         Serial.println(ntcTemp);
@@ -1289,7 +1297,7 @@ void handleModbus() {
 
       lastModbusPoll = millis();
 
-      sendModbusRequest(settings.modbusDeviceID, 0, 3);
+      sendModbusRequest(settings.modbusDeviceID, 0, 4);
     }
 
     readModbusResponse();
@@ -1365,6 +1373,7 @@ void setup() {
   // --- RS485 modbus receiving mode ---
   setReceiveMode();
   rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
+  rs485.setTimeout(2);
 
   // --- AHT Sensor Init ---
   u8g2.clearBuffer();
