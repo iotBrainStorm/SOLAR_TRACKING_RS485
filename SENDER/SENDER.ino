@@ -18,7 +18,12 @@
 #define STX 0x02
 #define ETX 0x03
 
-// HardwareSerial rs485(1);
+// -- Modbus setup
+HardwareSerial rs485(1);
+unsigned long lastModbusSend = 0;
+String rs485Buffer = "";
+bool receivingPacket = false;
+uint16_t holdingRegisters[10];
 
 // -- NTC Setup
 #define NTC_PIN 0               // ADC pin
@@ -46,10 +51,15 @@ long luxDiff = 0;
 // -- Sensor Values Storage
 float ntcTemp = 0.0;
 uint32_t luxValue = 0;
-uint8_t sunlightPercentage = 0;
 
 // -- Serial Output
 unsigned long lastSerialPrint = 0;
+
+// -- Feedback LED controll
+bool ledState = false;
+unsigned long ledStartTime = 0;
+const unsigned long ledDuration = 100;
+
 
 //--------------------------------
 //Global variables for user's settings
@@ -81,7 +91,7 @@ void setDefaultSettings() {
 
   settings.luxInterval = 1;
 
-  settings.enableRS485 = 0;
+  settings.enableRS485 = 1;
   settings.modbusDeviceID = 1;
   settings.modbusBaudRate = 115200;
   settings.modbusInterval = 5;
@@ -103,7 +113,7 @@ void loadSettings() {
 
   settings.luxInterval = preferences.getUInt("luxInt", 1);
 
-  settings.enableRS485 = preferences.getUChar("rsEn", 0);
+  settings.enableRS485 = preferences.getUChar("rsEn", 1);
   settings.modbusDeviceID = preferences.getUChar("rsID", 1);
   settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
   settings.modbusInterval = preferences.getUInt("rsInt", 5);
@@ -148,44 +158,249 @@ void saveSettings() {
   Serial.println("Settings Saved to NVS");
 }
 
-// unsigned long sendInterval = 5000;
-// unsigned long lastSendTime = 0;
 
-// // ------------ Led Control ------------
+void triggerLED() {
+  digitalWrite(LED_PIN, HIGH);
+  ledState = true;
+  ledStartTime = millis();
+}
+void updateLED() {
+  if (ledState && millis() - ledStartTime >= ledDuration) {
+    digitalWrite(LED_PIN, LOW);
+    ledState = false;
+  }
+}
 
-// bool ledState = false;
-// unsigned long ledStartTime = 0;
-// const unsigned long ledDuration = 50;
+// void handleRS485() {
 
-// void triggerLED() {
-//   digitalWrite(LED_PIN, HIGH);
-//   ledState = true;
-//   ledStartTime = millis();
-// }
-// void updateLED() {
-//   if (ledState && millis() - ledStartTime >= ledDuration) {
-//     digitalWrite(LED_PIN, LOW);
-//     ledState = false;
+//   if (!settings.enableRS485) return;
+
+//   unsigned long currentMillis = millis();
+
+//   if (currentMillis - lastModbusSend < settings.modbusInterval * 1000UL)
+//     return;
+
+//   lastModbusSend = currentMillis;
+
+//   // -------- SEND SENSOR DATA --------
+//   StaticJsonDocument<256> doc;
+//   doc["id"] = settings.modbusDeviceID;
+//   doc["ntc"] = ntcTemp;
+//   doc["lux"] = luxValue;
+
+//   String output;
+//   serializeJson(doc, output);
+
+//   sendPacket(output);
+
+//   delayMicroseconds(200);  // allow bus settle
+
+//   // -------- WAIT FOR RESPONSE --------
+//   unsigned long startWait = millis();
+
+//   while (millis() - startWait < 200) {
+
+//     while (rs485.available()) {
+
+//       byte incoming = rs485.read();
+
+//       if (incoming == STX) {
+//         rs485Buffer = "";
+//         receivingPacket = true;
+//       }
+
+//       else if (incoming == ETX && receivingPacket) {
+
+//         receivingPacket = false;
+
+//         StaticJsonDocument<256> doc;
+
+//         DeserializationError err = deserializeJson(doc, rs485Buffer);
+
+//         if (!err) {
+
+//           if (doc.containsKey("interval"))
+//             settings.modbusInterval = doc["interval"];
+
+//           if (doc.containsKey("ntcOffset"))
+//             settings.ntcOffset = doc["ntcOffset"];
+
+//           saveSettings();
+
+//           triggerLED();  // feedback LED
+//         }
+
+//         rs485Buffer = "";
+//       }
+
+//       else if (receivingPacket) {
+//         rs485Buffer += (char)incoming;
+//       }
+//     }
 //   }
 // }
 
-// // ------------ RS485 Control ------------
-// void setTransmitMode() { digitalWrite(RS485_EN, HIGH); }
-// void setReceiveMode()  { digitalWrite(RS485_EN, LOW); }
+void printHex(uint8_t *data, uint8_t len) {
+  for (uint8_t i = 0; i < len; i++) {
+    if (data[i] < 16) Serial.print("0");
+    Serial.print(data[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
 
-// // ------------ Fake Sensor Read ------------
-// void readSensors() {
-//   ntcTemp = random(250, 350) / 10.0;
-//   luxValue = random(100, 1000);
-// }
+// ------------ RS485 Control ------------
+void setTransmitMode() {
+  digitalWrite(RS485_EN, HIGH);
+}
+void setReceiveMode() {
+  digitalWrite(RS485_EN, LOW);
+}
+
+uint16_t modbusCRC(uint8_t *buf, int len) {
+  uint16_t crc = 0xFFFF;
+
+  for (int pos = 0; pos < len; pos++) {
+    crc ^= (uint16_t)buf[pos];
+
+    for (int i = 0; i < 8; i++) {
+
+      if (crc & 0x0001) {
+        crc >>= 1;
+        crc ^= 0xA001;
+      } else
+        crc >>= 1;
+    }
+  }
+  return crc;
+}
+
+void updateRegisters() {
+  holdingRegisters[0] = ntcTemp * 100;
+  holdingRegisters[1] = luxValue;
+  holdingRegisters[2] = luxConnected;
+  holdingRegisters[3] = settings.modbusInterval;
+}
+
+void handleModbus() {
+
+  if (!settings.enableRS485) return;
+
+  static uint8_t buffer[64];
+  static uint8_t index = 0;
+
+  while (rs485.available()) {
+
+    buffer[index++] = rs485.read();
+
+    if (index >= 8) {
+
+      Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
+      Serial.print("Raw Packet: ");
+      printHex(buffer, index);
+
+      uint16_t receivedCRC =
+        buffer[index - 2] | (buffer[index - 1] << 8);
+
+      uint16_t calcCRC = modbusCRC(buffer, index - 2);
+
+      if (receivedCRC != calcCRC) {
+        Serial.println("❌ CRC ERROR - Packet ignored");
+        index = 0;
+        return;
+      }
+
+      Serial.println("✔ CRC OK");
+
+      uint8_t deviceID = buffer[0];
+      uint8_t function = buffer[1];
+
+      Serial.print("Device ID : ");
+      Serial.println(deviceID);
+
+      Serial.print("Function  : ");
+      Serial.println(function, HEX);
+
+      if (deviceID != settings.modbusDeviceID) {
+        Serial.println("⚠ Not my device ID - Ignored");
+        index = 0;
+        return;
+      }
+
+      if (function == 0x03) {
+
+        uint16_t startReg =
+          (buffer[2] << 8) | buffer[3];
+
+        uint16_t regCount =
+          (buffer[4] << 8) | buffer[5];
+
+        Serial.print("Start Register : ");
+        Serial.println(startReg);
+
+        Serial.print("Register Count : ");
+        Serial.println(regCount);
+
+        updateRegisters();
+
+        uint8_t response[64];
+
+        response[0] = deviceID;
+        response[1] = 0x03;
+        response[2] = regCount * 2;
+
+        Serial.println("\nSending Register Values:");
+
+        for (int i = 0; i < regCount; i++) {
+
+          uint16_t value =
+            holdingRegisters[startReg + i];
+
+          Serial.print("Reg ");
+          Serial.print(startReg + i);
+          Serial.print(" = ");
+          Serial.println(value);
+
+          response[3 + i * 2] = value >> 8;
+          response[4 + i * 2] = value & 0xFF;
+        }
+
+        uint16_t crc =
+          modbusCRC(response, 3 + regCount * 2);
+
+        response[3 + regCount * 2] = crc & 0xFF;
+        response[4 + regCount * 2] = crc >> 8;
+
+        Serial.println("\n----- MODBUS RESPONSE -----");
+        Serial.print("Response Packet: ");
+        printHex(response, 5 + regCount * 2);
+
+        setTransmitMode();
+
+        rs485.write(response, 5 + regCount * 2);
+        rs485.flush();
+
+        setReceiveMode();
+
+        Serial.println("✔ Response Sent Successfully");
+
+        triggerLED();
+      }
+
+      index = 0;
+    }
+  }
+}
 
 // // ------------ Send Packet ------------
 // void sendPacket(String payload) {
+
 //   setTransmitMode();
 
 //   rs485.write(STX);
 //   rs485.print(payload);
 //   rs485.write(ETX);
+
 //   rs485.flush();
 
 //   setReceiveMode();
@@ -357,9 +572,8 @@ void setup() {
   delay(1000);
 
 
-  // setReceiveMode();
-
-  // rs485.begin(115200, SERIAL_8N1, RXD2, TXD2);
+  setReceiveMode();
+  rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
 }
 
 
@@ -369,16 +583,7 @@ void setup() {
 void loop() {
   handleNTC();
   handleLUX();
+  handleModbus();
   serialOutput();
-
-  // unsigned long currentMillis = millis();
-
-  // if (currentMillis - lastSendTime >= sendInterval) {
-  //   lastSendTime = currentMillis;
-  //   readSensors();
-  //   sendSensorData();
-  // }
-
-  // receivePacket();
-  // updateLED();
+  updateLED();
 }

@@ -86,6 +86,7 @@ unsigned long lastAHTReadTime = 0;
 
 // -- Light sensor (LUX) setup
 BH1750 lightMeter;
+bool luxConnected = false;
 unsigned long lastLuxReadTime = 0;
 unsigned long lastLuxSaveTime = 0;
 float luxFiltered = 0;  // EMA filtered value
@@ -746,39 +747,11 @@ void checkWiFiAndStartServer() {
       webServerStarted = true;
     }
 
-    //   // Start Firebase task
-    //   if (fbSettings.enabled && strlen(fbSettings.host) > 0 && firebaseTask == NULL) {
-    //     Serial.println("Starting Firebase task...");
-    //     xTaskCreatePinnedToCore(
-    //       firebaseTaskFunction,
-    //       "FirebaseTask",
-    //       8192,
-    //       NULL,
-    //       1,
-    //       &firebaseTask,
-    //       0);
-    //   }
-
-    //   // Optional: show reconnect success on OLED
-    //   if (!menuActive) {
-    //     displayStatusbar();
-    //   }
-    // }
-
     // ===============================
     // 🔴 WiFi Lost
     // ===============================
     if (!isConnected && wasConnected) {
-
       Serial.println("WiFi disconnected!");
-
-      // // Stop Firebase task
-      // if (firebaseTask != NULL) {
-      //   vTaskDelete(firebaseTask);
-      //   firebaseTask = NULL;
-      //   Serial.println("Firebase task stopped");
-      // }
-
       webServerStarted = false;  // allow restart after reconnection
     }
 
@@ -893,20 +866,16 @@ void handleLUX() {
   unsigned long currentMillis = millis();
 
   // ---- Interval Control ----
-  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL)
-    return;
+  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL) return;
   lastLuxReadTime = currentMillis;
 
   // ---- Read Sensor ----
-  luxValue = lightMeter.readLightLevel();
-
-  // ---- Fake Readings ----
-  static float angle = 0;
-  angle += 0.05;
-  luxValue = 60000 + 60000 * sin(angle);
-  if (luxValue < 0)
-    luxValue = 0;
-
+  if (luxConnected) {
+    luxValue = lightMeter.readLightLevel();
+  } else {
+    luxValue = 1;  // fallback value if sensor missing
+  }
+  
   // ---- First Time Filter Init ----
   if (!luxInitialized) {
     luxFiltered = luxValue;
@@ -929,7 +898,7 @@ void handleLUX() {
 
     bool updated = false;
 
-    // Initialize min / max on first reading
+    // Initialize min/max on first reading
     if (settings.maxLuxValue == 0 && settings.minLuxValue == 0) {
       settings.maxLuxValue = luxFiltered;
       settings.minLuxValue = luxFiltered;
@@ -979,12 +948,11 @@ void handleLUX() {
 
     float percent = ((luxFiltered - minLux) * 100.0f) / (float)(maxLux - minLux);
 
-    if (percent < 0)
-      percent = 0;
-    if (percent > 100)
-      percent = 100;
+    if (percent < 0) percent = 0;
+    if (percent > 100) percent = 100;
 
     sunlightPercentage = (uint8_t)percent;
+
   } else {
     sunlightPercentage = 0;  // safety
   }
@@ -1362,12 +1330,14 @@ void setup() {
 
   Wire.begin();  // SDA, SCL default for ESP32
   if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
+    luxConnected = true;
     u8g2.drawStr(0, 18, "BH1750: OK");
     Serial.println("[SUCCESS] BH1750 detected.");
     Serial.println("[INFO] Mode: Continuous High Resolution");
     Serial.println("==============================\n");
   } else {
     u8g2.drawStr(0, 18, "BH1750: ERROR");
+    luxConnected = false;
     Serial.println("[ERROR] BH1750 not detected!");
     Serial.println("[INFO] Check SDA/SCL wiring.");
     Serial.println("==============================\n");
