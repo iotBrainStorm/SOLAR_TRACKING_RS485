@@ -1,20 +1,20 @@
 #include <Arduino.h>
-#include <math.h>  // To calculate NTC
+#include <math.h> // To calculate NTC
 #include <WiFi.h>
-#include <WiFiManager.h>        // To save wifi password, instead of hard coding
-#include <ESPAsyncWebServer.h>  // For web server
-#include <HTTPClient.h>         // Node-Red
-#include <Wire.h>               // I2C communication
+#include <WiFiManager.h>       // To save wifi password, instead of hard coding
+#include <ESPAsyncWebServer.h> // For web server
+#include <HTTPClient.h>        // Node-Red
+#include <Wire.h>              // I2C communication
 #include <SPI.h>
-#include <EEPROM.h>          // Settings storage
-#include <SPIFFS.h>          // File system
-#include <HardwareSerial.h>  // Serial communication
-#include "time.h"            // Time management
-#include <U8g2lib.h>         // OLED display
-#include <ArduinoJson.h>     // make json format
-#include <Preferences.h>     // To store users' settings
-#include <Adafruit_AHT10.h>  // For temperature, humidity
-#include <BH1750.h>          // For LUX measurement of sunlight
+#include <EEPROM.h>         // Settings storage
+#include <SPIFFS.h>         // File system
+#include <HardwareSerial.h> // Serial communication
+#include "time.h"           // Time management
+#include <U8g2lib.h>        // OLED display
+#include <ArduinoJson.h>    // make json format
+#include <Preferences.h>    // To store users' settings
+#include <Adafruit_AHT10.h> // For temperature, humidity
+#include <BH1750.h>         // For LUX measurement of sunlight
 
 // -- RS485 Setup
 #define RXD2 16
@@ -26,48 +26,48 @@
 HardwareSerial rs485(1);
 unsigned long lastModbusPoll = 0;
 
-
 // -- NTC Setup
-#define FIXED_RESISTOR 10000.0  // 10k fixed resistor
-#define R0 10000.0              // NTC resistance at 25°C
-#define BETA 3950.0             // 3950 (common value)
-#define T0 298.15               // 25°C in Kelvin
-#define OFFSET 17.29            // Adjust later (+ or -)
-#define ADC_RESOLUTION 4095.0   // 12 bits (1111 1111 1111)
-#define VREF 3.3                // Maximum sensing voltage of ESP32
+#define FIXED_RESISTOR 10000.0 // 10k fixed resistor
+#define R0 10000.0             // NTC resistance at 25°C
+#define BETA 3950.0            // 3950 (common value)
+#define T0 298.15              // 25°C in Kelvin
+#define OFFSET 17.29           // Adjust later (+ or -)
+#define ADC_RESOLUTION 4095.0  // 12 bits (1111 1111 1111)
+#define VREF 3.3               // Maximum sensing voltage of ESP32
 unsigned long lastNTCReadTime = 0;
 float ntcSampleSum = 0;
 uint8_t ntcSampleCount = 0;
 
 // -- Global variables for settings
 Preferences preferences;
-struct DeviceSettings {
-  uint8_t tempPrecision;      // 0,1,2
-  uint8_t humidityPrecision;  // 0,1,2
-  uint16_t ahtInterval;       // >=1
+struct DeviceSettings
+{
+  uint8_t tempPrecision;     // 0,1,2
+  uint8_t humidityPrecision; // 0,1,2
+  uint16_t ahtInterval;      // >=1
 
   float ntcResistance;
   float betaConstant;
   float ntcOffset;
   uint16_t ntcInterval;
 
-  uint8_t luxPercentageMode;  // 0 auto, 1 manual
+  uint8_t luxPercentageMode; // 0 auto, 1 manual
   uint32_t maxLuxValue;
   uint32_t minLuxValue;
   uint16_t luxInterval;
 
-  uint8_t enableNodeRed;  // 0 or 1
+  uint8_t enableNodeRed; // 0 or 1
   String nodeRedIP;
   uint16_t nodeRedPort;
   uint16_t nodeRedInterval;
 
-  uint8_t enableRS485;      // 0 = disabled, 1 = enabled
-  uint8_t modbusDeviceID;   // 1–247
-  uint32_t modbusBaudRate;  // 9600, 19200, 38400 etc
-  uint16_t modbusInterval;  // seconds (share interval)
+  uint8_t enableRS485;     // 0 = disabled, 1 = enabled
+  uint8_t modbusDeviceID;  // 1–247
+  uint32_t modbusBaudRate; // 9600, 19200, 38400 etc
+  uint16_t modbusInterval; // seconds (share interval)
 
-  long gmtOffset;       // seconds
-  uint8_t clockFormat;  // 12 or 24
+  long gmtOffset;      // seconds
+  uint8_t clockFormat; // 12 or 24
 };
 DeviceSettings settings;
 
@@ -75,8 +75,12 @@ DeviceSettings settings;
 bool ledState = false;
 unsigned long ledStartTime = 0;
 unsigned long ledDuration = 50;
-const unsigned long ledDurationRX = 60;   // receive blink
-const unsigned long ledDurationTX = 120;  // transmit blink
+const unsigned long ledDurationRX = 60;  // receive blink
+const unsigned long ledDurationTX = 120; // transmit blink
+
+// Helper functions for RX/TX LED blink
+void blinkRX() { triggerLED(ledDurationRX); }
+void blinkTX() { triggerLED(ledDurationTX); }
 
 // -- LCD Setup
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
@@ -92,7 +96,7 @@ BH1750 lightMeter;
 bool luxConnected = false;
 unsigned long lastLuxReadTime = 0;
 unsigned long lastLuxSaveTime = 0;
-float luxFiltered = 0;  // EMA filtered value
+float luxFiltered = 0; // EMA filtered value
 bool luxInitialized = false;
 float previousLux = 0;
 long luxDiff = 0;
@@ -126,26 +130,33 @@ const char MSG_WELCOME[] PROGMEM = "ESP";
 const char MSG_SUBTITLE[] PROGMEM = "SOLAR - TEM";
 const char MSG_DEVELOPER[] PROGMEM = "developed by M.Maity";
 
-
 //////////////////////   BLINK FEEDBACK LED   //////////////////////
 
-void triggerLED(unsigned long duration) {
+void triggerLED(unsigned long duration)
+{
   digitalWrite(LED_PIN, HIGH);
   ledState = true;
   ledStartTime = millis();
   ledDuration = duration;
 }
 
-void updateLED() {
-  if (ledState && millis() - ledStartTime >= ledDuration) {
+void updateLED()
+{
+  if (ledState && millis() - ledStartTime >= ledDuration)
+  {
     digitalWrite(LED_PIN, LOW);
     ledState = false;
   }
 }
 
+// Usage:
+// Call blinkRX() in your RS485 receive handler (when valid data is received)
+// Call blinkTX() after sending data over RS485
+
 //////////////////////   DEFAULT SETTINGS   //////////////////////
 
-void setDefaultSettings() {
+void setDefaultSettings()
+{
   settings.tempPrecision = 1;
   settings.humidityPrecision = 0;
   settings.ahtInterval = 1;
@@ -168,8 +179,7 @@ void setDefaultSettings() {
   settings.enableRS485 = 0;
   settings.modbusDeviceID = 1;
   settings.modbusBaudRate = 115200;
-  settings.modbusInterval = 2;
-
+  settings.modbusInterval = 5;
 
   settings.gmtOffset = 19800;
   settings.clockFormat = 24;
@@ -177,11 +187,12 @@ void setDefaultSettings() {
 
 //////////////////////   LOAD SETTINGS   //////////////////////
 
-void loadSettings() {
+void loadSettings()
+{
 
   Serial.println("\n========== LOADING SETTINGS ==========");
 
-  preferences.begin("device", true);  // read-only
+  preferences.begin("device", true); // read-only
 
   settings.tempPrecision = preferences.getUChar("tPrec", 1);
   settings.humidityPrecision = preferences.getUChar("hPrec", 0);
@@ -205,7 +216,7 @@ void loadSettings() {
   settings.enableRS485 = preferences.getUChar("rsEn", 0);
   settings.modbusDeviceID = preferences.getUChar("rsID", 1);
   settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
-  settings.modbusInterval = preferences.getUInt("rsInt", 2);
+  settings.modbusInterval = preferences.getUInt("rsInt", 5);
 
   settings.gmtOffset = preferences.getLong("gmt", 19800);
   settings.clockFormat = preferences.getUChar("clkFmt", 24);
@@ -245,8 +256,9 @@ void loadSettings() {
 
 //////////////////////   SAVE SETTINGS   //////////////////////
 
-void saveSettings() {
-  preferences.begin("device", false);  // write mode
+void saveSettings()
+{
+  preferences.begin("device", false); // write mode
 
   preferences.putUChar("tPrec", settings.tempPrecision);
   preferences.putUChar("hPrec", settings.humidityPrecision);
@@ -281,7 +293,8 @@ void saveSettings() {
 
 //////////////////////   WIFI SETUP   //////////////////////
 
-bool connectToSavedWiFi() {
+bool connectToSavedWiFi()
+{
 
   Serial.println("\n==============================");
   Serial.println("WiFi Connection Started");
@@ -301,7 +314,8 @@ bool connectToSavedWiFi() {
   int attempts = 0;
   const int MAX_ATTEMPTS = 5;
 
-  while (attempts < MAX_ATTEMPTS) {
+  while (attempts < MAX_ATTEMPTS)
+  {
 
     char attemptStr[16];
     snprintf(attemptStr, sizeof(attemptStr), "Attempt: %d/5", attempts + 1);
@@ -311,7 +325,8 @@ bool connectToSavedWiFi() {
 
     Serial.printf("[INFO] %s\n", attemptStr);
 
-    if (WiFi.status() == WL_CONNECTED) {
+    if (WiFi.status() == WL_CONNECTED)
+    {
 
       Serial.println("\n[SUCCESS] Connected to Saved WiFi");
       Serial.printf("SSID       : %s\n", WiFi.SSID().c_str());
@@ -355,7 +370,8 @@ bool connectToSavedWiFi() {
   wm.setConfigPortalTimeout(60);
   success = wm.autoConnect("Solar Weather");
 
-  if (success) {
+  if (success)
+  {
 
     Serial.println("\n[SUCCESS] WiFi Connected via Config Portal");
     Serial.printf("SSID       : %s\n", WiFi.SSID().c_str());
@@ -372,7 +388,9 @@ bool connectToSavedWiFi() {
 
     delay(2000);
     return true;
-  } else {
+  }
+  else
+  {
 
     Serial.println("\n[ERROR] Config Portal Timeout!");
     Serial.println("Device not connected to WiFi.");
@@ -383,19 +401,21 @@ bool connectToSavedWiFi() {
     u8g2.sendBuffer();
 
     delay(1000);
-    return false;  // Better logic than returning true
+    return false; // Better logic than returning true
   }
 }
 
 //////////////////////   TIME SETUP   //////////////////////
 
-void configDateTime() {
+void configDateTime()
+{
 
   Serial.println("\n==============================");
   Serial.println("Date & Time Configuration");
   Serial.println("==============================");
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED)
+  {
 
     Serial.println("[WARNING] WiFi not connected!");
     Serial.println("[INFO] Running in offline mode.");
@@ -421,7 +441,7 @@ void configDateTime() {
     tm.tm_sec = 0;
 
     time_t t = mktime(&tm);
-    struct timeval now = { .tv_sec = t };
+    struct timeval now = {.tv_sec = t};
     settimeofday(&now, nullptr);
 
     Serial.println("[SUCCESS] Default time applied.");
@@ -445,7 +465,8 @@ void configDateTime() {
   const int MAX_ATTEMPTS = 5;
   struct tm timeinfo;
 
-  while (attempts < MAX_ATTEMPTS) {
+  while (attempts < MAX_ATTEMPTS)
+  {
 
     Serial.printf("[INFO] NTP Attempt %d/%d\n", attempts + 1, MAX_ATTEMPTS);
 
@@ -463,7 +484,8 @@ void configDateTime() {
     while (millis() - start < 1000)
       yield();
 
-    if (getLocalTime(&timeinfo)) {
+    if (getLocalTime(&timeinfo))
+    {
       Serial.println("[SUCCESS] Time synced from NTP server.");
       break;
     }
@@ -471,7 +493,8 @@ void configDateTime() {
     attempts++;
   }
 
-  if (getLocalTime(&timeinfo)) {
+  if (getLocalTime(&timeinfo))
+  {
 
     char timeStr[16];
     char dateStr[18];
@@ -502,7 +525,9 @@ void configDateTime() {
     start = millis();
     while (millis() - start < 2000)
       yield();
-  } else {
+  }
+  else
+  {
 
     Serial.println("[ERROR] NTP sync failed!");
     Serial.println("[INFO] Applying default offline time.");
@@ -517,7 +542,7 @@ void configDateTime() {
     tm.tm_sec = 0;
 
     time_t t = mktime(&tm);
-    struct timeval now = { .tv_sec = t };
+    struct timeval now = {.tv_sec = t};
     settimeofday(&now, nullptr);
 
     Serial.println("[SUCCESS] Default time applied.");
@@ -537,28 +562,27 @@ void configDateTime() {
 
 //////////////////////   SERVER SETUP   //////////////////////
 
-void setupWebServer() {
+void setupWebServer()
+{
   if (webServerStarted)
-    return;  // Already started
+    return; // Already started
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     // Serial.println("Root Requested");
-    request->send(SPIFFS, "/index.html", "text/html");
-  });
+    request->send(SPIFFS, "/index.html", "text/html"); });
 
-  server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/config.html", "text/html");
-  });
+  server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/config.html", "text/html"); });
 
-  server.on("/dashboard.svg", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/dashboard.svg", "image/svg+xml");
-  });
+  server.on("/dashboard.svg", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/dashboard.svg", "image/svg+xml"); });
 
-  server.on("/settings.svg", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/settings.svg", "image/svg+xml");
-  });
+  server.on("/settings.svg", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/settings.svg", "image/svg+xml"); });
 
-  server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     StaticJsonDocument<256> doc;
     doc["ntcTemp"] = ntcTemp;
     doc["ahtTemp"] = ahtTemp;
@@ -569,10 +593,10 @@ void setupWebServer() {
     String response;
     serializeJson(doc, response);
 
-    request->send(200, "application/json", response);
-  });
+    request->send(200, "application/json", response); });
 
-  server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request)
+            {
     // -------- TEMPERATURE --------
     if (request->hasParam("tempPrecision", true))
       settings.tempPrecision = request->getParam("tempPrecision", true)->value().toInt();
@@ -656,10 +680,10 @@ void setupWebServer() {
 
     Serial.println("Settings Saved Successfully");
 
-    request->send(200, "text/plain", "Settings Saved");
-  });
+    request->send(200, "text/plain", "Settings Saved"); });
 
-  server.on("/settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/settings.json", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     StaticJsonDocument<768> doc;
 
     doc["tempPrecision"] = settings.tempPrecision;
@@ -691,10 +715,10 @@ void setupWebServer() {
 
     String response;
     serializeJson(doc, response);
-    request->send(200, "application/json", response);
-  });
+    request->send(200, "application/json", response); });
 
-  server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
+            {
     Serial.println("\n===== FACTORY RESET REQUEST RECEIVED =====");
 
     // 1️⃣ Clear old preferences
@@ -717,8 +741,7 @@ void setupWebServer() {
 
     // 5️⃣ Optional: restart device after short delay
     delay(1000);
-    ESP.restart();
-  });
+    ESP.restart(); });
 
   server.begin();
   webServerStarted = true;
@@ -726,13 +749,14 @@ void setupWebServer() {
 
 //////////////////////   SERVER RECONNECT   //////////////////////
 
-void checkWiFiAndStartServer() {
+void checkWiFiAndStartServer()
+{
   static unsigned long lastCheck = 0;
   static bool wasConnected = false;
   static unsigned long lastReconnectAttempt = 0;
 
   if (millis() - lastCheck < 3000)
-    return;  // Check every 3s
+    return; // Check every 3s
   lastCheck = millis();
 
   bool isConnected = (WiFi.status() == WL_CONNECTED);
@@ -740,31 +764,36 @@ void checkWiFiAndStartServer() {
   // ===============================
   // 🔵 WiFi Just Connected
   // ===============================
-  if (isConnected && !wasConnected) {
+  if (isConnected && !wasConnected)
+  {
 
     Serial.println("WiFi connected!");
 
     // Start Web Server
-    if (!webServerStarted) {
+    if (!webServerStarted)
+    {
       Serial.println("Starting WebServer...");
-      setupWebServer();  // must include server.begin()
+      setupWebServer(); // must include server.begin()
       webServerStarted = true;
     }
 
     // ===============================
     // 🔴 WiFi Lost
     // ===============================
-    if (!isConnected && wasConnected) {
+    if (!isConnected && wasConnected)
+    {
       Serial.println("WiFi disconnected!");
-      webServerStarted = false;  // allow restart after reconnection
+      webServerStarted = false; // allow restart after reconnection
     }
 
     // ===============================
     // 🟡 Attempt Reconnect
     // ===============================
-    if (!isConnected) {
+    if (!isConnected)
+    {
 
-      if (millis() - lastReconnectAttempt > 20000) {  // every 20 sec
+      if (millis() - lastReconnectAttempt > 20000)
+      { // every 20 sec
         lastReconnectAttempt = millis();
 
         Serial.println("Attempting WiFi reconnection...");
@@ -780,7 +809,8 @@ void checkWiFiAndStartServer() {
 
 //////////////////////   WELCOME MESSAGE   //////////////////////
 
-void welcomeMsg() {
+void welcomeMsg()
+{
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB18_tr);
   u8g2.drawStr(0, 22, MSG_WELCOME);
@@ -793,7 +823,8 @@ void welcomeMsg() {
 
 //////////////////////   CENTRE TEXT   //////////////////////
 
-void drawCenteredStr(int y, const char *str, const uint8_t *font) {
+void drawCenteredStr(int y, const char *str, const uint8_t *font)
+{
   u8g2.setFont(font);
   int16_t strWidth = u8g2.getStrWidth(str);
   int16_t x = (128 - strWidth) / 2;
@@ -802,16 +833,22 @@ void drawCenteredStr(int y, const char *str, const uint8_t *font) {
 
 //////////////////////   CALCULATE PRECISION   //////////////////////
 
-float applyPrecision(float value, uint8_t precision) {
-  if (precision == 0) return round(value);
-  if (precision == 1) return round(value * 10.0) / 10.0;
-  if (precision == 2) return round(value * 100.0) / 100.0;
+float applyPrecision(float value, uint8_t precision)
+{
+  if (precision == 0)
+    return round(value);
+  if (precision == 1)
+    return round(value * 10.0) / 10.0;
+  if (precision == 2)
+    return round(value * 100.0) / 100.0;
   return value;
 }
 
-void handleNTC() {
+void handleNTC()
+{
   unsigned long currentMillis = millis();
-  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
+  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL)
+  {
     lastNTCReadTime = currentMillis;
     ntcTemp += settings.ntcOffset;
     ntcTemp = applyPrecision(ntcTemp, settings.tempPrecision);
@@ -820,21 +857,26 @@ void handleNTC() {
 
 //////////////////////   AHT10   //////////////////////
 
-void handleAHT() {
+void handleAHT()
+{
   unsigned long currentMillis = millis();
   // Check interval (seconds → milliseconds)
-  if (currentMillis - lastAHTReadTime >= settings.ahtInterval * 1000UL) {
+  if (currentMillis - lastAHTReadTime >= settings.ahtInterval * 1000UL)
+  {
     lastAHTReadTime = currentMillis;
     sensors_event_t humidityEvent, tempEvent;
-    if (aht.getEvent(&humidityEvent, &tempEvent)) {
+    if (aht.getEvent(&humidityEvent, &tempEvent))
+    {
       // Raw values
       float rawTemp = tempEvent.temperature;
       float rawHumidity = humidityEvent.relative_humidity;
       // Apply precision from settings
       ahtTemp = applyPrecision(rawTemp, settings.tempPrecision);
       humidity = applyPrecision(rawHumidity, settings.humidityPrecision);
-    } else {
-      ahtTemp = 0.0;  // Error indicator
+    }
+    else
+    {
+      ahtTemp = 0.0; // Error indicator
       humidity = 0;
     }
   }
@@ -842,11 +884,13 @@ void handleAHT() {
 
 //////////////////////   CALCULATE LUX   //////////////////////
 
-void handleLUX() {
+void handleLUX()
+{
   unsigned long currentMillis = millis();
 
   // ---- Interval Control ----
-  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL) return;
+  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL)
+    return;
   lastLuxReadTime = currentMillis;
 
   // ---- EMA Filter ----
@@ -858,34 +902,39 @@ void handleLUX() {
   // ==========================================================
   // ====================== AUTO MODE =========================
   // ==========================================================
-  if (settings.luxPercentageMode == 0) {
+  if (settings.luxPercentageMode == 0)
+  {
 
-    const uint32_t threshold = 200;        // Min change to update
-    const uint32_t saveInterval = 300000;  // 5 min EEPROM safety
+    const uint32_t threshold = 200;       // Min change to update
+    const uint32_t saveInterval = 300000; // 5 min EEPROM safety
 
     bool updated = false;
 
     // Initialize min/max on first reading
-    if (settings.maxLuxValue == 0 && settings.minLuxValue == 0) {
+    if (settings.maxLuxValue == 0 && settings.minLuxValue == 0)
+    {
       settings.maxLuxValue = luxFiltered;
       settings.minLuxValue = luxFiltered;
       updated = true;
     }
 
     // Update MAX
-    if (luxFiltered > settings.maxLuxValue + threshold) {
+    if (luxFiltered > settings.maxLuxValue + threshold)
+    {
       settings.maxLuxValue = (uint32_t)luxFiltered;
       updated = true;
     }
 
     // Update MIN
-    if (luxFiltered + threshold < settings.minLuxValue) {
+    if (luxFiltered + threshold < settings.minLuxValue)
+    {
       settings.minLuxValue = (uint32_t)luxFiltered;
       updated = true;
     }
 
     // EEPROM Save Protection
-    if (updated && (currentMillis - lastLuxSaveTime > saveInterval)) {
+    if (updated && (currentMillis - lastLuxSaveTime > saveInterval))
+    {
       saveSettings();
       lastLuxSaveTime = currentMillis;
       Serial.println("[LUX] AUTO: Min/Max updated & saved");
@@ -895,7 +944,8 @@ void handleLUX() {
   // ==========================================================
   // ===================== MANUAL MODE ========================
   // ==========================================================
-  else if (settings.luxPercentageMode == 1) {
+  else if (settings.luxPercentageMode == 1)
+  {
 
     // Do nothing with min/max
     // Just use stored calibration values
@@ -911,17 +961,21 @@ void handleLUX() {
   uint32_t minLux = settings.minLuxValue;
   uint32_t maxLux = settings.maxLuxValue;
 
-  if (maxLux > minLux) {
+  if (maxLux > minLux)
+  {
 
     float percent = ((luxFiltered - minLux) * 100.0f) / (float)(maxLux - minLux);
 
-    if (percent < 0) percent = 0;
-    if (percent > 100) percent = 100;
+    if (percent < 0)
+      percent = 0;
+    if (percent > 100)
+      percent = 100;
 
     sunlightPercentage = (uint8_t)percent;
-
-  } else {
-    sunlightPercentage = 0;  // safety
+  }
+  else
+  {
+    sunlightPercentage = 0; // safety
   }
 
   // // Debug
@@ -934,16 +988,19 @@ void handleLUX() {
 }
 
 //////////////////////   RS485 CONTROL   //////////////////////
-void setTransmitMode() {
+void setTransmitMode()
+{
   digitalWrite(RS485_EN, HIGH);
 }
-void setReceiveMode() {
+void setReceiveMode()
+{
   digitalWrite(RS485_EN, LOW);
 }
 
 //////////////////////   NODE RED SHARE   //////////////////////
 
-void sendDataToNodeRed() {
+void sendDataToNodeRed()
+{
 
   static unsigned long lastUpdate = 0;
 
@@ -954,13 +1011,15 @@ void sendDataToNodeRed() {
   Serial.println(F("\n[Node-RED] Send attempt started"));
 
   // Check enabled
-  if (!settings.enableNodeRed) {
+  if (!settings.enableNodeRed)
+  {
     Serial.println(F("[Node-RED] Disabled in settings"));
     return;
   }
 
   // Check WiFi
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED)
+  {
     Serial.println(F("[Node-RED] WiFi not connected"));
     return;
   }
@@ -1001,14 +1060,17 @@ void sendDataToNodeRed() {
   Serial.print(F("[Node-RED] HTTP Response code: "));
   Serial.println(httpResponseCode);
 
-  if (httpResponseCode > 0) {
+  if (httpResponseCode > 0)
+  {
     String response = http.getString();
     Serial.print(F("[Node-RED] Response body: "));
     Serial.println(response);
 
     nodeRedConnected = true;
     lastNodeRedResponse = String(httpResponseCode);
-  } else {
+  }
+  else
+  {
     Serial.print(F("[Node-RED] Error: "));
     Serial.println(http.errorToString(httpResponseCode));
 
@@ -1022,12 +1084,14 @@ void sendDataToNodeRed() {
 
 //////////////////////   SERIAL OUTPUT   //////////////////////
 
-void serialOutput() {
+void serialOutput()
+{
 
   unsigned long currentMillis = millis();
 
   // Run every 1 second (1000 ms)
-  if (currentMillis - lastSerialPrint < 1000) return;
+  if (currentMillis - lastSerialPrint < 1000)
+    return;
   lastSerialPrint = currentMillis;
 
   Serial.println("\n========================================");
@@ -1054,7 +1118,8 @@ void serialOutput() {
 
 //////////////////////   DISPLAY LCD   //////////////////////
 
-void displayLCD() {
+void displayLCD()
+{
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x12_tf);
@@ -1063,21 +1128,28 @@ void displayLCD() {
   struct tm timeinfo;
   bool hasTime = getLocalTime(&timeinfo);
   char timeStr[6] = "--:--";
-  if (hasTime) {
-    if (settings.clockFormat == 12) {
+  if (hasTime)
+  {
+    if (settings.clockFormat == 12)
+    {
       strftime(timeStr, sizeof(timeStr), "%I:%M", &timeinfo);
-    } else {
+    }
+    else
+    {
       strftime(timeStr, sizeof(timeStr), "%H:%M", &timeinfo);
     }
   }
   u8g2.drawStr(77, 12, timeStr);
 
   // ================= WIFI RSSI =================
-  int rssi = WiFi.isConnected() ? WiFi.RSSI() : -99;  // e.g., -40 strong, -90 weak
+  int rssi = WiFi.isConnected() ? WiFi.RSSI() : -99; // e.g., -40 strong, -90 weak
   char wifiStr[15];
-  if (WiFi.isConnected()) {
+  if (WiFi.isConnected())
+  {
     snprintf(wifiStr, sizeof(wifiStr), "W:%ddBm", rssi);
-  } else {
+  }
+  else
+  {
     snprintf(wifiStr, sizeof(wifiStr), "W:Disc");
   }
   u8g2.drawStr(77, 24, wifiStr);
@@ -1116,23 +1188,26 @@ void displayLCD() {
     snprintf(diffStr, sizeof(diffStr), "+%ld", luxDiff);
   else
     snprintf(diffStr, sizeof(diffStr), "%ld", luxDiff);
-  u8g2.drawStr(83, 52, diffStr);  // Adjust X if needed
+  u8g2.drawStr(83, 52, diffStr); // Adjust X if needed
 
   // Sunlight % PROGRESS BAR
   char sunStr[20];
   snprintf(sunStr, sizeof(sunStr), "SUN: %u%%", sunlightPercentage);
   u8g2.drawStr(0, 64, sunStr);
   int barWidth = map(sunlightPercentage, 0, 100, 0, 60);
-  barWidth = constrain(barWidth, 0, 60);  // Prevent overflow
-  u8g2.drawFrame(64, 56, 64, 8);          // Frame
-  u8g2.drawBox(66, 58, barWidth, 4);      // Fill
+  barWidth = constrain(barWidth, 0, 60); // Prevent overflow
+  u8g2.drawFrame(64, 56, 64, 8);         // Frame
+  u8g2.drawBox(66, 58, barWidth, 4);     // Fill
 
   // ================= NODE-RED STATUS =================
   char nrStr[25];
-  if (lastNodeRedResponse.length() > 0) {
+  if (lastNodeRedResponse.length() > 0)
+  {
     String responseCodeString = String(httpResponseCode);
     snprintf(nrStr, sizeof(nrStr), "NR: %s", responseCodeString.c_str());
-  } else {
+  }
+  else
+  {
     snprintf(nrStr, sizeof(nrStr), "NR: --");
   }
   u8g2.drawStr(77, 36, nrStr);
@@ -1142,17 +1217,23 @@ void displayLCD() {
 
 //////////////////////   RS485 SETUP   //////////////////////
 
-uint16_t modbusCRC(uint8_t *buf, int len) {
+uint16_t modbusCRC(uint8_t *buf, int len)
+{
   uint16_t crc = 0xFFFF;
 
-  for (int pos = 0; pos < len; pos++) {
+  for (int pos = 0; pos < len; pos++)
+  {
     crc ^= buf[pos];
 
-    for (int i = 8; i != 0; i--) {
-      if ((crc & 0x0001) != 0) {
+    for (int i = 8; i != 0; i--)
+    {
+      if ((crc & 0x0001) != 0)
+      {
         crc >>= 1;
         crc ^= 0xA001;
-      } else {
+      }
+      else
+      {
         crc >>= 1;
       }
     }
@@ -1160,10 +1241,11 @@ uint16_t modbusCRC(uint8_t *buf, int len) {
   return crc;
 }
 
+void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count)
+{
 
-void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
-
-  while (rs485.available()) rs485.read();
+  while (rs485.available())
+    rs485.read();
 
   uint8_t frame[8];
 
@@ -1191,7 +1273,8 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
   Serial.println("[MODBUS] Request sent");
 }
 
-void sendSettingsToSlave() {
+void sendSettingsToSlave()
+{
 
   uint8_t frame[32];
 
@@ -1244,45 +1327,50 @@ void sendSettingsToSlave() {
   Serial.println("[MODBUS] Settings sent to slave");
 }
 
-void readModbusResponse() {
+void readModbusResponse()
+{
 
   static uint8_t buffer[32];
   static uint8_t index = 0;
 
-  while (rs485.available()) {
+  while (rs485.available())
+  {
 
     if (index < sizeof(buffer))
       buffer[index++] = rs485.read();
     else
       index = 0;
 
-    if (index >= 13) {
+    if (index >= 13)
+    {
 
       uint16_t crcReceived =
-        buffer[index - 2] | (buffer[index - 1] << 8);
+          buffer[index - 2] | (buffer[index - 1] << 8);
 
       uint16_t crcCalc =
-        modbusCRC(buffer, index - 2);
+          modbusCRC(buffer, index - 2);
 
-      if (crcReceived == crcCalc) {
+      if (crcReceived == crcCalc)
+      {
 
         Serial.println("[MODBUS] Valid response");
 
         int16_t tempRaw =
-          (buffer[3] << 8) | buffer[4];
+            (buffer[3] << 8) | buffer[4];
 
         ntcTemp = tempRaw / 100.0;
 
         luxValue =
-          (buffer[5] << 8) | buffer[6];
+            (buffer[5] << 8) | buffer[6];
 
         Serial.print("Remote Temp: ");
         Serial.println(ntcTemp);
 
         Serial.print("Remote Lux: ");
         Serial.println(luxValue);
-
-      } else {
+      }
+      else
+      {
 
         Serial.println("[MODBUS] CRC error");
       }
@@ -1292,10 +1380,13 @@ void readModbusResponse() {
   }
 }
 
-void handleModbus() {
-  if (settings.enableRS485) {
+void handleModbus()
+{
+  if (settings.enableRS485)
+  {
 
-    if (millis() - lastModbusPoll > settings.modbusInterval * 1000UL) {
+    if (millis() - lastModbusPoll > settings.modbusInterval * 1000UL)
+    {
 
       lastModbusPoll = millis();
 
@@ -1307,7 +1398,8 @@ void handleModbus() {
 }
 //////////////////////   SETUP   //////////////////////
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   pinMode(RS485_EN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
@@ -1333,7 +1425,7 @@ void setup() {
   Serial.println("[SUCCESS] EEPROM Initialized.");
   Serial.printf("[INFO] EEPROM Size: %d bytes\n", 512);
   Serial.println("==============================\n");
-  u8g2.clearBuffer();  // Recommended for clean update
+  u8g2.clearBuffer(); // Recommended for clean update
   u8g2.drawStr(0, 18, "Settings Init: OK");
   u8g2.sendBuffer();
   delay(1000);
@@ -1343,12 +1435,15 @@ void setup() {
   Serial.println("\n==============================");
   Serial.println("SPIFFS Initialization");
   Serial.println("==============================");
-  if (!SPIFFS.begin(true)) {
+  if (!SPIFFS.begin(true))
+  {
     u8g2.drawStr(0, 18, "SPIFFS: ERROR");
     Serial.println("[ERROR] SPIFFS Mount Failed!");
     Serial.println("[INFO] Filesystem not available.");
     Serial.println("==============================\n");
-  } else {
+  }
+  else
+  {
     u8g2.drawStr(0, 18, "SPIFFS: OK");
     Serial.println("[SUCCESS] SPIFFS Mounted Successfully.");
     Serial.println("[INFO] Listing Files:");
@@ -1356,7 +1451,8 @@ void setup() {
     File root = SPIFFS.open("/");
     File file = root.openNextFile();
     int fileCount = 0;
-    while (file) {
+    while (file)
+    {
       Serial.printf("File %02d : %s  |  Size: %d bytes\n",
                     fileCount + 1,
                     file.name(),
@@ -1383,13 +1479,16 @@ void setup() {
   Serial.println("AHT10 Sensor Initialization");
   Serial.println("==============================");
   Serial.println("[INFO] Checking AHT10 sensor...");
-  Wire.begin();  // SDA, SCL default for ESP32
-  if (!aht.begin()) {
+  Wire.begin(); // SDA, SCL default for ESP32
+  if (!aht.begin())
+  {
     u8g2.drawStr(0, 18, "AHT10: ERROR");
     Serial.println("[ERROR] AHT10 not detected!");
     Serial.println("[INFO] Check wiring (SDA/SCL) and power supply.");
     Serial.println("==============================\n");
-  } else {
+  }
+  else
+  {
     u8g2.drawStr(0, 18, "AHT10: OK");
     Serial.println("[SUCCESS] AHT10 detected successfully.");
     Serial.println("[INFO] Sensor ready for reading");
@@ -1403,7 +1502,8 @@ void setup() {
   delay(1000);
 
   // --- Server Setup ---
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED)
+  {
     Serial.println("\n==============================");
     Serial.println("Web Server Initialization");
     Serial.println("==============================");
@@ -1427,7 +1527,9 @@ void setup() {
     u8g2.drawStr(0, 36, WiFi.localIP().toString().c_str());
     u8g2.sendBuffer();
     delay(2000);
-  } else {
+  }
+  else
+  {
     Serial.println("\n==============================");
     Serial.println("Web Server Initialization");
     Serial.println("==============================");
@@ -1454,7 +1556,8 @@ void setup() {
   u8g2.clearBuffer();
 }
 
-void loop() {
+void loop()
+{
   handleModbus();
   handleNTC();
   handleAHT();
