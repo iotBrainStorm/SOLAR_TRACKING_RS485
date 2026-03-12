@@ -1,202 +1,401 @@
-🌞 Solar Panel Smart Monitoring System (ESP32 Based)
-
-Real-time Solar Monitoring + Web Dashboard + Configurable Node-RED Integration
-Built with ESP32, Async Web Server, and Advanced Sensor Monitoring
-
-📸 <b>Project Preview</b>
-
 <p align="center">
-	<img src="display.png" alt="OLED Display Output" width="300" style="margin:10px;"/>
-	<img src="dashboard.png" alt="Web Dashboard" width="300" style="margin:10px;"/>
-	<img src="config.png" alt="Configuration Page" width="300" style="margin:10px;"/>
+  <img src="https://img.shields.io/badge/Platform-ESP32-blue?style=for-the-badge&logo=espressif&logoColor=white" />
+  <img src="https://img.shields.io/badge/Protocol-RS485%20Modbus-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/IDE-Arduino-00979D?style=for-the-badge&logo=arduino&logoColor=white" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 </p>
 
-🌐 Web Dashboard (Real-Time)
+<h1 align="center">🌞 Solar Panel Smart Monitoring System</h1>
 
-⚙ Configuration Page
-
----
-
-## 🚀 Features
-
-<ul>
-	<li>🌞 <b>Real-Time Solar Panel Monitoring</b></li>
-	<li>🌡️ Temperature Monitoring (NTC + AHT)</li>
-	<li>💡 Ambient Light (LUX) Monitoring</li>
-	<li>📶 WiFi Signal Strength (% Based)</li>
-	<li>🔗 Node-RED Data Sharing (Configurable Interval)</li>
-	<li>🛠️ Web-Based Configuration Page</li>
-	<li>⚡ Fully Async Web Server (Non-Blocking)</li>
-	<li>🖥️ OLED Live Display with Smart UI</li>
-	<li>📡 WiFi Signal Bars + Status Icons</li>
-	<li>🌅 Sunlight Progress Bar</li>
-	<li>📈 LUX Increasing/Decreasing Indicator</li>
-	<li>🕒 12H / 24H Time Format Support</li>
-	<li>💾 EEPROM Settings Storage</li>
-	<li>🏭 Industrial-Ready Architecture</li>
-</ul>
-
-📊 Parameters Monitored
-Parameter Sensor Used Purpose
-Panel Temperature NTC Thermistor Monitor panel heating
-Ambient Temperature AHT Sensor Weather condition
-Humidity AHT Sensor Environmental condition
-Sunlight Intensity BH1750 LUX measurement
-WiFi Strength Internal RSSI Network stability
-Node-RED Status HTTP Check Data sharing health
-🛠 Hardware Used
+<p align="center">
+  <b>Dual ESP32 | RS485 Modbus Communication | Web Dashboard | Node-RED Integration</b><br/>
+  <i>Industrial-grade solar monitoring with real-time sensor data, OLED display, and full web configuration</i>
+</p>
 
 ---
 
-## 🛠 Hardware Used
+## 📸 Project Preview
 
-<ul>
-	<li>🟦 <b>ESP32 Development Board</b></li>
-	<li>🖥️ 128x64 OLED Display (I2C)</li>
-	<li>🌡️ NTC Thermistor</li>
-	<li>🌬️ AHT Temperature & Humidity Sensor</li>
-	<li>💡 BH1750 LUX Sensor</li>
-	<li>🔋 Voltage Divider Circuit (for NTC)</li>
-	<li>⚡ Stable 5V/3.3V Power Supply</li>
-</ul>
+<p align="center">
+  <img src="display.png" alt="OLED Display Output" width="280" style="margin:10px; border-radius:12px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"/>
+  <img src="dashboard.png" alt="Web Dashboard" width="280" style="margin:10px; border-radius:12px;"/>
+  <img src="config.png" alt="Configuration Page" width="280" style="margin:10px; border-radius:12px;"/>
+</p>
 
 ---
 
-## 🔌 Pin Configuration (Example)
+## 🏗️ System Architecture
 
-| Device     | ESP32 Pin |
-| ---------- | --------- |
-| OLED SDA   | GPIO 21   |
-| OLED SCL   | GPIO 22   |
-| BH1750 SDA | GPIO 21   |
-| BH1750 SCL | GPIO 22   |
-| AHT SDA    | GPIO 21   |
-| AHT SCL    | GPIO 22   |
-| NTC Analog | GPIO 34   |
-
-> _Modify according to your wiring_
-
----
-
-## 🌐 Web Interface
-
-### 🖥 Dashboard
-
-<ul>
-	<li>📊 Real-time sensor values</li>
-	<li>📶 WiFi strength indicator</li>
-	<li>🌅 Sunlight progress visualization</li>
-	<li>💓 Node-RED heartbeat status</li>
-	<li>📈 LUX trend indicator (+/-)</li>
-</ul>
-
-### ⚙ Configuration Page
-
-<ul>
-	<li>📡 WiFi Settings</li>
-	<li>⏱️ Reading Intervals (Temperature / NTC / LUX)</li>
-	<li>🔗 Node-RED Enable / Disable</li>
-	<li>🔄 Node-RED Data Share Interval</li>
-	<li>🕒 Time Format Selection (12H / 24H)</li>
-	<li>💾 EEPROM Save</li>
-</ul>
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        SOLAR MONITORING SYSTEM                      │
+│                                                                     │
+│   ┌─────────────────────┐    RS485 Modbus    ┌───────────────────┐  │
+│   │   🟢 SENDER (Slave) │◄══════════════════►│ 🔵 RECEIVER       │  │
+│   │      ESP32 #1       │    Half-Duplex     │    (Master)       │  │
+│   │                     │    115200 baud     │    ESP32 #2       │  │
+│   │  • NTC Thermistor   │                    │                   │  │
+│   │  • BH1750 LUX       │                    │  • AHT10 Temp/Hum│  │
+│   │  • LED Feedback     │                    │  • OLED Display   │  │
+│   │                     │                    │  • WiFi + WebUI   │  │
+│   │  Reads sensors and  │                    │  • Node-RED Link  │  │
+│   │  responds to master │                    │  • LED Feedback   │  │
+│   └─────────────────────┘                    └────────┬──────────┘  │
+│                                                       │             │
+│                                              ┌────────▼──────────┐  │
+│                                              │  📱 Web Browser   │  │
+│                                              │  Dashboard + Config│  │
+│                                              └───────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🔄 Node-RED Integration
+## ⚡ Features
 
-<ul>
-	<li>⏲️ Configurable Data Share Interval</li>
-	<li>📤 HTTP POST based data sending</li>
-	<li>⏱️ Timeout protection</li>
-	<li>📡 Network failure safe handling</li>
-</ul>
+### 📡 Communication
 
-🖼 Circuit Diagram
+- **RS485 Modbus RTU** half-duplex communication between two ESP32 modules
+- **Function 0x03** — Master polls sensor data from slave at configurable intervals
+- **Function 0x10** — Master pushes configuration settings to slave with save confirmation
+- Automatic **garbage byte stripping** and CRC validation
+- LED feedback synchronized on both modules (TX/RX blink)
 
-📌 (Add your circuit diagram image here)
+### 🌡️ Sensor Monitoring
 
-Example:
+| Parameter             | Sensor             | Module   | Description                      |
+| --------------------- | ------------------ | -------- | -------------------------------- |
+| Panel Temperature     | NTC 10K Thermistor | Sender   | Direct panel surface temperature |
+| Ambient Temperature   | AHT10              | Receiver | Environmental temperature        |
+| Humidity              | AHT10              | Receiver | Environmental humidity           |
+| Light Intensity (LUX) | BH1750             | Sender   | Sunlight measurement             |
+| Sunlight %            | Calculated         | Receiver | Percentage based on min/max LUX  |
+| WiFi Strength         | Internal RSSI      | Receiver | Network stability monitoring     |
 
-![Circuit Diagram](circuit.png)
+### 🖥️ Display & Interface
 
-If you want, I can generate a clean professional circuit diagram layout for you.
+- **128×64 OLED** live display with smart UI layout
+- **WiFi Signal Bars** + status icons
+- **Sunlight Progress Bar** visualization
+- **LUX Trend** indicator (+/-)
+- **12H / 24H** clock format support
 
-🎥 YouTube Demo
+### 🌐 Web Interface
 
-📺 Watch Full Working Demo Here:
+- **Real-time Dashboard** — all sensor values, WiFi strength, Node-RED status
+- **Configuration Portal** — adjust all settings from any browser
+- **Save Configuration** — saves to both master & slave NVS simultaneously
+- **Factory Reset** — resets both modules to default settings
+- Fully **async** non-blocking web server
 
-👉 [Watch the YouTube Demo](https://youtu.be/oVlurzfXVxU)
+### 🔗 Node-RED Integration
 
-🧠 System Architecture
-
----
-
-## 🧠 System Architecture
-
-<ul>
-	<li>⚡ Non-blocking Async Web Server</li>
-	<li>⏲️ <code>millis()</code> based timing system</li>
-	<li>💾 EEPROM persistent settings</li>
-	<li>🧩 Modular sensor handling</li>
-	<li>🔄 WiFi auto reconnect logic</li>
-	<li>📈 Scalable design</li>
-</ul>
-
-📂 Project Structure
-/data
-index.html
-config.html
-dashboard assets
-/src
-main.ino
-README.md
-display.png
-dashboard.png
-config.png
-🔐 Stability & Safety
+- Configurable HTTP POST data sharing
+- Adjustable share interval
+- Timeout protection & failure handling
+- Enable/Disable toggle from web config
 
 ---
 
-## 🔐 Stability & Safety
+## 🔄 How It Works
 
-<ul>
-	<li>⏱️ HTTP timeout protection</li>
-	<li>🔄 WiFi reconnect logic</li>
-	<li>🧠 Memory-efficient design</li>
-	<li>⏳ Long runtime tested</li>
-</ul>
+### Modbus Data Polling (Every `modbusInterval` seconds)
 
-📈 Future Improvements
+```
+  RECEIVER (Master)                              SENDER (Slave)
+  ─────────────────                              ────────────────
+
+  1. TX LED blinks
+     Sends Modbus request ──────────────────────►
+     (Function 0x03, 4 registers)                2. RX LED blinks
+                                                    Receives request
+                                                    Reads sensors
+                                                    Builds response
+
+                          ◄────────────────────── 3. TX LED blinks
+                                                    Sends: ntcTemp,
+  4. RX LED blinks                                  luxValue,
+     Receives response                              luxConnected,
+     Updates local values                           modbusInterval
+
+  5. Waits modbusInterval...
+     Then repeats from step 1
+```
+
+### Settings Sync (On "Save" or "Reset" button click)
+
+```
+  RECEIVER (Master)                              SENDER (Slave)
+  ─────────────────                              ────────────────
+
+  1. User clicks Save/Reset
+     on Web Config Portal
+
+  2. Saves settings to own NVS
+
+  3. TX LED blinks
+     Sends settings via ────────────────────────►
+     Function 0x10                               4. Receives settings
+     (9 registers)                                  Saves to NVS
+
+                          ◄──────────────────────  5. Sends confirmation
+  6. Receives confirmation                          (echo Function 0x10)
+     LED glows 1 second ✔                          LED glows 1 second ✔
+     Serial: "Slave confirmed
+     settings saved!"
+```
+
+---
+
+## 🔌 Pin Configuration
+
+### RECEIVER (Master) — ESP32
+
+| Component            | Function           | GPIO Pin    |
+| -------------------- | ------------------ | ----------- |
+| RS485 Module RO (RX) | UART Receive       | **GPIO 16** |
+| RS485 Module DI (TX) | UART Transmit      | **GPIO 17** |
+| RS485 Module DE/RE   | TX/RX Direction    | **GPIO 4**  |
+| OLED Display SDA     | I2C Data           | **GPIO 21** |
+| OLED Display SCL     | I2C Clock          | **GPIO 22** |
+| AHT10 SDA            | I2C Data (shared)  | **GPIO 21** |
+| AHT10 SCL            | I2C Clock (shared) | **GPIO 22** |
+| Status LED           | TX/RX Feedback     | **GPIO 2**  |
+
+### SENDER (Slave) — ESP32
+
+| Component            | Function        | GPIO Pin    |
+| -------------------- | --------------- | ----------- |
+| RS485 Module RO (RX) | UART Receive    | **GPIO 20** |
+| RS485 Module DI (TX) | UART Transmit   | **GPIO 21** |
+| RS485 Module DE/RE   | TX/RX Direction | **GPIO 4**  |
+| BH1750 SDA           | I2C Data        | **GPIO 21** |
+| BH1750 SCL           | I2C Clock       | **GPIO 22** |
+| NTC Thermistor       | ADC Input       | **GPIO 0**  |
+| Status LED           | TX/RX Feedback  | **GPIO 2**  |
+
+> ⚠️ **Note:** On the Sender, GPIO 21 is shared between RS485 TX and I2C SDA — ensure your board variant supports this or remap accordingly.
+
+---
+
+## 🔧 Circuit Diagram
+
+```
+                    ┌──────────────┐               ┌──────────────┐
+                    │  ESP32 #2    │               │  ESP32 #1    │
+                    │  (RECEIVER)  │               │  (SENDER)    │
+                    │              │               │              │
+                    │  GPIO16 (RX)─┤               ├─GPIO20 (RX)  │
+                    │  GPIO17 (TX)─┤               ├─GPIO21 (TX)  │
+                    │  GPIO4  (EN)─┤               ├─GPIO4  (EN)  │
+                    │              │               │              │
+                    │  GPIO21(SDA)─┤               ├─GPIO21(SDA)  │
+                    │  GPIO22(SCL)─┤               ├─GPIO22(SCL)  │
+                    │              │               │              │
+                    │  GPIO2 (LED)─┤               ├─GPIO2 (LED)  │
+                    │              │               ├─GPIO0 (NTC)  │
+                    └──────┬───────┘               └──────┬───────┘
+                           │                              │
+                    ┌──────▼───────┐               ┌──────▼───────┐
+                    │ MAX485/      │               │ MAX485/      │
+                    │ RS485 Module │               │ RS485 Module │
+                    │              │               │              │
+                    │    A ────────┼───────────────┼──── A        │
+                    │    B ────────┼───────────────┼──── B        │
+                    │   GND ───────┼───────────────┼─── GND       │
+                    └──────────────┘               └──────────────┘
+
+        ┌─────────┐  ┌─────────┐                   ┌─────────┐  ┌───────────┐
+        │  OLED   │  │ AHT10   │                   │ BH1750  │  │  NTC 10K  │
+        │ SH1106  │  │Temp/Hum │                   │  LUX    │  │Thermistor │
+        │ 128x64  │  │         │                   │         │  │    +      │
+        │         │  │         │                   │         │  │  10K Res  │
+        │ SDA─21  │  │ SDA─21  │                   │ SDA─21  │  │  GPIO0    │
+        │ SCL─22  │  │ SCL─22  │                   │ SCL─22  │  │           │
+        └─────────┘  └─────────┘                   └─────────┘  └───────────┘
+
+        ◄──────── RECEIVER Side ────────►          ◄─────── SENDER Side ──────►
+```
+
+### RS485 Module Wiring (MAX485 / TTL-to-RS485)
+
+```
+  ESP32                MAX485 Module
+  ─────                ─────────────
+  GPIO TX  ──────────► DI  (Data In)
+  GPIO RX  ◄────────── RO  (Receive Out)
+  GPIO EN  ──────────► DE + RE (tied together)
+  3.3V     ──────────► VCC
+  GND      ──────────► GND
+
+  Module A ◄──────────► Module A  (twisted pair)
+  Module B ◄──────────► Module B  (twisted pair)
+  GND      ◄──────────► GND      (common ground)
+```
+
+### NTC Thermistor Voltage Divider (Sender)
+
+```
+  3.3V ─────┬───── 10K Fixed Resistor ─────┬───── GND
+            │                               │
+            └─── (Junction) ── GPIO 0       │
+                                            │
+                              NTC 10K ──────┘
+```
+
+---
+
+## ⚙️ Configurable Settings (via Web Portal)
+
+| Setting           | Range       | Default | Description                                 |
+| ----------------- | ----------- | ------- | ------------------------------------------- |
+| NTC Resistance    | Ohms        | 10000   | NTC nominal resistance                      |
+| Beta Constant     | —           | 3435    | NTC beta coefficient                        |
+| NTC Offset        | °C          | 0.0     | Temperature calibration                     |
+| NTC Interval      | 1+ sec      | 1       | NTC reading frequency                       |
+| LUX Interval      | 1+ sec      | 1       | Light reading frequency                     |
+| RS485 Enable      | On/Off      | On      | Enable/Disable Modbus polling (master only) |
+| Device ID         | 1–247       | 1       | Modbus slave address                        |
+| Baud Rate         | 9600–115200 | 115200  | RS485 communication speed                   |
+| Modbus Interval   | 1+ sec      | 2       | Polling frequency                           |
+| Node-RED Enable   | On/Off      | Off     | Toggle data sharing                         |
+| Node-RED IP       | IP Address  | —       | Target server                               |
+| Node-RED Port     | 1–65535     | 1880    | Target port                                 |
+| Node-RED Interval | 1+ sec      | 10      | Data push frequency                         |
+| GMT Offset        | Seconds     | 19800   | Timezone (IST default)                      |
+| Clock Format      | 12/24       | 24      | Display time format                         |
+
+---
+
+## 📂 Project Structure
+
+```
+SOLAR_TRACKING_RS485/
+│
+├── RECEIVER/
+│   ├── RECEIVER.ino          # Master ESP32 — WiFi, Web, Display, Modbus Master
+│   └── data/
+│       ├── index.html        # Web Dashboard
+│       └── config.html       # Configuration Portal
+│
+├── SENDER/
+│   └── SENDER.ino            # Slave ESP32 — Sensors, Modbus Slave
+│
+├── display.png               # OLED screenshot
+├── dashboard.png             # Web dashboard screenshot
+├── config.png                # Config page screenshot
+└── README.md
+```
+
+---
+
+## 🛠️ Hardware Required
+
+| #   | Component                           | Qty | Used By           |
+| --- | ----------------------------------- | --- | ----------------- |
+| 1   | ESP32 Development Board             | 2   | Sender + Receiver |
+| 2   | MAX485 / TTL-to-RS485 Module        | 2   | Both modules      |
+| 3   | SH1106 128×64 OLED (I2C)            | 1   | Receiver          |
+| 4   | AHT10 Temperature & Humidity Sensor | 1   | Receiver          |
+| 5   | BH1750 Light Intensity Sensor       | 1   | Sender            |
+| 6   | NTC 10K Thermistor                  | 1   | Sender            |
+| 7   | 10K Resistor (for voltage divider)  | 1   | Sender            |
+| 8   | LEDs (or use onboard LED)           | 2   | Both (GPIO 2)     |
+| 9   | Twisted Pair Cable (for RS485 A/B)  | 1   | Between modules   |
+| 10  | 5V / 3.3V Power Supply              | 2   | Both modules      |
+
+---
+
+## 📦 Libraries Required
+
+| Library             | Purpose                  |
+| ------------------- | ------------------------ |
+| `WiFi.h`            | WiFi connectivity        |
+| `WiFiManager`       | Auto WiFi config portal  |
+| `ESPAsyncWebServer` | Non-blocking web server  |
+| `ArduinoJson`       | JSON serialization       |
+| `U8g2lib`           | OLED display driver      |
+| `Adafruit_AHT10`    | Temperature & humidity   |
+| `BH1750`            | Light intensity sensor   |
+| `Preferences`       | NVS settings storage     |
+| `HardwareSerial`    | RS485 UART communication |
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/iotBrainStorm/SOLAR_TRACKING_RS485.git
+```
+
+### 2. Flash the SENDER
+
+- Open `SENDER/SENDER.ino` in Arduino IDE
+- Select your ESP32 board & COM port
+- Upload
+
+### 3. Flash the RECEIVER
+
+- Open `RECEIVER/RECEIVER.ino` in Arduino IDE
+- **Upload SPIFFS data** first: `Tools → ESP32 Sketch Data Upload`
+- Then upload the sketch
+
+### 4. Connect to WiFi
+
+- On first boot, the Receiver creates an AP: **"Solar Weather"**
+- Connect and configure your WiFi credentials at `192.168.4.1`
+
+### 5. Access Dashboard
+
+- Open the Receiver's IP address in any browser
+- Dashboard: `http://<IP>/`
+- Config: `http://<IP>/config.html`
+
+---
+
+## 🔐 Reliability & Safety
+
+- ✅ CRC-16 validation on every Modbus frame
+- ✅ Automatic garbage byte detection and stripping
+- ✅ Bus watchdog recovery (30s timeout)
+- ✅ HTTP timeout protection for Node-RED
+- ✅ WiFi auto-reconnect with fallback AP
+- ✅ NVS persistent storage (survives power cycles)
+- ✅ Sender RS485 always enabled (cannot be bricked via config)
 
 ---
 
 ## 📈 Future Improvements
 
-<ul>
-	<li>🐶 Watchdog protection</li>
-	<li>🛠️ OTA Firmware Update</li>
-	<li>🌫️ Dust Monitoring Sensor</li>
-	<li>☁️ Cloud Backup Integration</li>
-	<li>💤 Deep Sleep Power Mode</li>
-	<li>💾 Data Logging to SD Card</li>
-</ul>
+- 🐶 Hardware Watchdog Timer
+- 🛠️ OTA Firmware Update
+- 🌫️ Dust/Rain Monitoring Sensor
+- ☁️ Cloud Backup (MQTT / Firebase)
+- 💤 Deep Sleep Power Mode
+- 💾 Data Logging to SD Card
+- 📊 Historical charts on dashboard
 
-👨‍💻 Developed By
+---
+
+## 🎥 Demo
+
+📺 **Watch Full Working Demo:** [YouTube](https://youtu.be/oVlurzfXVxU)
+
+---
+
+## 👨‍💻 Developed By
 
 **Mrinal Maity**  
-_ESP32 Solar Monitoring System_  
+_ESP32 Solar Monitoring System with RS485 Modbus_  
 Made with dedication and engineering passion ❤️
 
-⭐ Support
+---
 
-If you like this project:
-
-<ul>
-	<li>⭐ <b>Star the repository</b></li>
-	<li>🍴 <b>Fork it</b></li>
-	<li>📢 <b>Share it</b></li>
-</ul>
+<p align="center">
+  ⭐ <b>Star this repo</b> if you found it useful! &nbsp; | &nbsp; 🍴 <b>Fork</b> to customize &nbsp; | &nbsp; 📢 <b>Share</b> with fellow makers
+</p>
 
 ---
 
