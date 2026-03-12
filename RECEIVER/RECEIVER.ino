@@ -728,7 +728,10 @@ void setupWebServer()
 
     Serial.println("Default Settings Applied & Saved");
 
-    // 4️⃣ Send response to browser
+    // 4️⃣ Send default settings to slave
+    sendSettingsToSlave();
+
+    // 5️⃣ Send response to browser
     request->send(200, "text/plain", "Factory Reset Successful");
 
     // 5️⃣ Optional: restart device after short delay
@@ -1269,30 +1272,34 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count)
 
 void sendSettingsToSlave()
 {
+  // Modbus Function 0x10 (Write Multiple Registers)
+  // Registers: ntcResistance, betaConstant, ntcOffset*100, ntcInterval,
+  //            luxInterval, modbusDeviceID, modbusBaudRate(hi),
+  //            modbusBaudRate(lo), modbusInterval
+  // = 9 registers = 18 data bytes
 
   uint8_t frame[32];
 
   frame[0] = settings.modbusDeviceID;
-  frame[1] = 0x10;
-  frame[2] = 0x00;
-  frame[3] = 0x03;
-  frame[4] = 0x00;
-  frame[5] = 0x06;
-  frame[6] = 12;
+  frame[1] = 0x10; // Write Multiple Registers
+  frame[2] = 0x00; // Start register high
+  frame[3] = 0x00; // Start register low
+  frame[4] = 0x00; // Register count high
+  frame[5] = 0x09; // Register count low = 9
+  frame[6] = 18;   // Byte count = 9 registers * 2
 
   int idx = 7;
-
   uint16_t val;
 
-  val = settings.ntcResistance;
+  val = (uint16_t)settings.ntcResistance;
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
-  val = settings.betaConstant;
+  val = (uint16_t)settings.betaConstant;
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
-  val = settings.ntcOffset * 100;
+  val = (int16_t)(settings.ntcOffset * 100);
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
@@ -1304,37 +1311,106 @@ void sendSettingsToSlave()
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
+  val = settings.modbusDeviceID;
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = (uint16_t)(settings.modbusBaudRate >> 16); // high word
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
+  val = (uint16_t)(settings.modbusBaudRate & 0xFFFF); // low word
+  frame[idx++] = val >> 8;
+  frame[idx++] = val & 0xFF;
+
   val = settings.modbusInterval;
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
   uint16_t crc = modbusCRC(frame, idx);
-
   frame[idx++] = crc & 0xFF;
   frame[idx++] = crc >> 8;
 
+  // Clear buffer before sending
+  while (rs485.available())
+    rs485.read();
+
   setTransmitMode();
+  delayMicroseconds(100);
+  triggerLED(ledDurationTX);
   rs485.write(frame, idx);
   rs485.flush();
+  delayMicroseconds(500);
   setReceiveMode();
+  delayMicroseconds(100);
+  while (rs485.available())
+    rs485.read();
 
   Serial.println("[MODBUS] Settings sent to slave");
-}
 
-void sendOK()
-{
-  const char *msg = "OK\n";
+  // Wait for slave confirmation (function 0x10 response = 8 bytes)
+  uint8_t buffer[32];
+  int rIdx = 0;
+  unsigned long startTime = millis();
+  unsigned long lastByteTime = 0;
+  const unsigned long RESPONSE_TIMEOUT = 1000;
+  const unsigned long FRAME_TIMEOUT = 10;
 
-  setTransmitMode();
+  while (millis() - startTime < RESPONSE_TIMEOUT)
+  {
+    if (rs485.available())
+    {
+      if (rIdx < (int)sizeof(buffer))
+      {
+        buffer[rIdx++] = rs485.read();
+        lastByteTime = millis();
+      }
+      else
+        break;
+    }
+    else if (rIdx > 0 && millis() - lastByteTime >= FRAME_TIMEOUT)
+    {
+      break;
+    }
+  }
 
-  triggerLED(ledDurationTX);
+  if (rIdx == 0)
+  {
+    Serial.println("[MODBUS] No confirmation from slave");
+    return;
+  }
 
-  rs485.write((uint8_t *)msg, strlen(msg));
-  rs485.flush();
+  // Strip leading 0x00
+  while (rIdx > 0 && buffer[0] == 0x00)
+  {
+    memmove(buffer, buffer + 1, rIdx - 1);
+    rIdx--;
+  }
 
-  delayMicroseconds(200);
+  if (rIdx < 8)
+  {
+    Serial.println("[MODBUS] Settings confirmation too short");
+    return;
+  }
 
-  setReceiveMode();
+  uint16_t crcR = buffer[rIdx - 2] | (buffer[rIdx - 1] << 8);
+  uint16_t crcC = modbusCRC(buffer, rIdx - 2);
+
+  if (crcR != crcC)
+  {
+    Serial.printf("[MODBUS] Settings confirmation CRC error (got: %04X, calc: %04X)\n", crcR, crcC);
+    return;
+  }
+
+  if (buffer[1] == 0x10)
+  {
+    Serial.println("[MODBUS] ✔ Slave confirmed settings saved successfully!");
+    triggerLED(1000); // 1 second LED glow
+  }
+  else
+  {
+    Serial.printf("[MODBUS] Unexpected function in confirmation: 0x%02X\n", buffer[1]);
+  }
 }
 
 void readModbusResponse()

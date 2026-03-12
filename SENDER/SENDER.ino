@@ -423,6 +423,94 @@ void handleModbus()
       Serial.println("✔ Response Sent Successfully");
     }
 
+    // ---- Function 0x10: Write Multiple Registers (receive settings from master) ----
+    else if (function == 0x10)
+    {
+      uint16_t startReg = (buffer[2] << 8) | buffer[3];
+      uint16_t regCount = (buffer[4] << 8) | buffer[5];
+      uint8_t byteCount = buffer[6];
+
+      Serial.println("\n----- MODBUS WRITE REGISTERS -----");
+      Serial.print("Start Register : ");
+      Serial.println(startReg);
+      Serial.print("Register Count : ");
+      Serial.println(regCount);
+      Serial.print("Byte Count     : ");
+      Serial.println(byteCount);
+
+      if (regCount != 9 || byteCount != 18)
+      {
+        Serial.println("[MODBUS] Unexpected register/byte count for settings");
+        index = 0;
+        return;
+      }
+
+      // Parse 9 registers from data starting at buffer[7]
+      int di = 7;
+      settings.ntcResistance = (float)((buffer[di] << 8) | buffer[di + 1]);
+      di += 2;
+      settings.betaConstant = (float)((buffer[di] << 8) | buffer[di + 1]);
+      di += 2;
+      settings.ntcOffset = (int16_t)((buffer[di] << 8) | buffer[di + 1]) / 100.0;
+      di += 2;
+      settings.ntcInterval = (buffer[di] << 8) | buffer[di + 1];
+      di += 2;
+      settings.luxInterval = (buffer[di] << 8) | buffer[di + 1];
+      di += 2;
+      settings.modbusDeviceID = (buffer[di] << 8) | buffer[di + 1];
+      di += 2;
+      uint16_t baudHi = (buffer[di] << 8) | buffer[di + 1];
+      di += 2;
+      uint16_t baudLo = (buffer[di] << 8) | buffer[di + 1];
+      di += 2;
+      settings.modbusBaudRate = ((uint32_t)baudHi << 16) | baudLo;
+      settings.modbusInterval = (buffer[di] << 8) | buffer[di + 1];
+
+      // Always keep RS485 enabled on slave
+      settings.enableRS485 = 1;
+
+      // Save to NVS
+      saveSettings();
+
+      Serial.println("\n----- UPDATED SETTINGS -----");
+      Serial.printf("NTC Resistance  : %.0f\n", settings.ntcResistance);
+      Serial.printf("Beta Constant   : %.0f\n", settings.betaConstant);
+      Serial.printf("NTC Offset      : %.2f\n", settings.ntcOffset);
+      Serial.printf("NTC Interval    : %u sec\n", settings.ntcInterval);
+      Serial.printf("Lux Interval    : %u sec\n", settings.luxInterval);
+      Serial.printf("Device ID       : %u\n", settings.modbusDeviceID);
+      Serial.printf("Baud Rate       : %lu\n", settings.modbusBaudRate);
+      Serial.printf("Modbus Interval : %u sec\n", settings.modbusInterval);
+      Serial.println("✔ Settings saved to NVS");
+
+      // Send standard Modbus 0x10 response (echo first 6 bytes of request + CRC)
+      uint8_t response[8];
+      response[0] = deviceID;
+      response[1] = 0x10;
+      response[2] = buffer[2]; // start reg high
+      response[3] = buffer[3]; // start reg low
+      response[4] = buffer[4]; // reg count high
+      response[5] = buffer[5]; // reg count low
+
+      uint16_t crc = modbusCRC(response, 6);
+      response[6] = crc & 0xFF;
+      response[7] = crc >> 8;
+
+      while (rs485.available())
+        rs485.read();
+      delayMicroseconds(200);
+
+      setTransmitMode();
+      triggerLED(1000); // 1 second LED to confirm save
+      delayMicroseconds(200);
+      rs485.write(response, 8);
+      rs485.flush();
+      delayMicroseconds(500);
+      setReceiveMode();
+
+      Serial.println("✔ Settings confirmation sent to master");
+    }
+
     index = 0;
   }
 }
