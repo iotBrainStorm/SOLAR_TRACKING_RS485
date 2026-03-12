@@ -255,28 +255,6 @@ void updateRegisters()
   holdingRegisters[3] = settings.modbusInterval;
 }
 
-void checkOK()
-{
-  static String buf = "";
-
-  while (rs485.available())
-  {
-    char c = rs485.read();
-
-    if (c == '\n')
-    {
-      if (buf == "OK")
-      {
-        Serial.println("Receiver ACK OK");
-        triggerLED(ledDurationRX);
-      }
-      buf = "";
-    }
-    else
-      buf += c;
-  }
-}
-
 void handleModbus()
 {
 
@@ -303,12 +281,12 @@ void handleModbus()
   if (index > 0 && millis() - lastByteTime > BUS_TIMEOUT)
   {
 
-    // ---- Fix possible leading garbage byte ----
-    if (buffer[0] == 0x00 && index == 9)
+    // ---- Strip leading garbage 0x00 bytes (TX→RX transceiver glitch) ----
+    while (index > 0 && buffer[0] == 0x00)
     {
       Serial.println("[MODBUS] Removing garbage byte");
-      memmove(buffer, buffer + 1, 8);
-      index = 8;
+      memmove(buffer, buffer + 1, index - 1);
+      index--;
     }
 
     // ---- Minimum Modbus frame check ----
@@ -615,7 +593,6 @@ void loop()
   handleModbus();
   serialOutput();
   updateLED();
-  checkOK();
 
   // ---- RS485 watchdog ----
   if (settings.enableRS485 && millis() - lastValidPacket > BUS_WATCHDOG)
