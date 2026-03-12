@@ -1260,6 +1260,9 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count)
   rs485.flush();
   delay(15);
   setReceiveMode();
+  delay(2); // let transceiver settle into RX mode
+  while (rs485.available())
+    rs485.read(); // discard TX→RX switching noise
 
   Serial.println("[MODBUS] Request sent");
 }
@@ -1341,7 +1344,7 @@ void readModbusResponse()
   unsigned long startTime = millis();
   unsigned long lastByteTime = 0;
   const unsigned long RESPONSE_TIMEOUT = 500; // max wait for first byte
-  const unsigned long FRAME_TIMEOUT = 5;      // silence to detect end of frame
+  const unsigned long FRAME_TIMEOUT = 50;     // silence to detect end of frame (must exceed slave turnaround)
 
   // Wait for first byte with timeout
   while (millis() - startTime < RESPONSE_TIMEOUT)
