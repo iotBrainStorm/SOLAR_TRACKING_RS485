@@ -28,7 +28,7 @@ uint16_t holdingRegisters[10];
 // -------- RS485 Protection --------
 unsigned long lastByteTime = 0;
 unsigned long lastValidPacket = 0;
-const uint16_t BUS_TIMEOUT = 200;    // ms packet timeout
+const uint16_t BUS_TIMEOUT = 5;      // ms frame silence timeout (3.5 char times at 115200)
 const uint32_t BUS_WATCHDOG = 30000; // 30s recovery
 uint8_t crcErrorCount = 0;
 const uint8_t CRC_LIMIT = 5;
@@ -286,16 +286,8 @@ void handleModbus()
   static uint8_t buffer[64];
   static uint8_t index = 0;
 
-  unsigned long now = millis();
-  if (index > 0 && (now - lastByteTime > BUS_TIMEOUT))
-  {
-    Serial.println("[RS485] Packet timeout → buffer cleared");
-    index = 0;
-  }
-
   while (rs485.available())
   {
-
     if (index < sizeof(buffer))
     {
       buffer[index++] = rs485.read();
@@ -307,6 +299,7 @@ void handleModbus()
     }
     lastByteTime = millis();
   }
+
   if (index > 0 && millis() - lastByteTime > BUS_TIMEOUT)
   {
 

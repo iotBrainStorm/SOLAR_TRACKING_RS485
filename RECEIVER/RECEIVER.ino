@@ -1254,6 +1254,7 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count)
   frame[7] = crc >> 8;
 
   setTransmitMode();
+  delayMicroseconds(100); // let RS485 transceiver stabilize
   triggerLED(ledDurationTX);
   rs485.write(frame, 8);
   rs485.flush();
@@ -1335,54 +1336,75 @@ void sendOK()
 
 void readModbusResponse()
 {
-  static uint8_t buffer[32];
-  static int index = 0;
-  static unsigned long lastByteTime = 0;
+  uint8_t buffer[32];
+  int index = 0;
+  unsigned long startTime = millis();
+  unsigned long lastByteTime = 0;
+  const unsigned long RESPONSE_TIMEOUT = 500; // max wait for first byte
+  const unsigned long FRAME_TIMEOUT = 5;      // silence to detect end of frame
 
-  while (rs485.available())
+  // Wait for first byte with timeout
+  while (millis() - startTime < RESPONSE_TIMEOUT)
   {
-    buffer[index++] = rs485.read();
-    lastByteTime = millis();
-
-    if (index >= sizeof(buffer))
-      index = 0;
+    if (rs485.available())
+    {
+      buffer[index++] = rs485.read();
+      lastByteTime = millis();
+      break;
+    }
   }
 
-  // wait for frame end (5ms silence)
-  if (index > 0 && millis() - lastByteTime > 20)
+  if (index == 0)
   {
-    int len = index;
-    index = 0;
+    Serial.println("[MODBUS] No response");
+    return;
+  }
 
-    if (len < 5)
+  // Read remaining bytes until frame silence
+  while (millis() - lastByteTime < FRAME_TIMEOUT)
+  {
+    if (rs485.available())
     {
-      Serial.println("[MODBUS] Frame too short");
-      return;
+      if (index < (int)sizeof(buffer))
+      {
+        buffer[index++] = rs485.read();
+        lastByteTime = millis();
+      }
+      else
+      {
+        break;
+      }
     }
+  }
 
-    uint16_t crcReceived = buffer[len - 2] | (buffer[len - 1] << 8);
-    uint16_t crcCalc = modbusCRC(buffer, len - 2);
+  if (index < 5)
+  {
+    Serial.println("[MODBUS] Frame too short");
+    return;
+  }
 
-    if (crcReceived != crcCalc)
-    {
-      Serial.println("[MODBUS] CRC error");
-      return;
-    }
+  uint16_t crcReceived = buffer[index - 2] | (buffer[index - 1] << 8);
+  uint16_t crcCalc = modbusCRC(buffer, index - 2);
 
-    Serial.println("[MODBUS] Valid response");
-    triggerLED(ledDurationRX);
+  if (crcReceived != crcCalc)
+  {
+    Serial.println("[MODBUS] CRC error");
+    return;
+  }
 
-    uint8_t byteCount = buffer[2];
+  Serial.println("[MODBUS] Valid response");
+  triggerLED(ledDurationRX);
 
-    if (byteCount >= 6)
-    {
-      ntcTemp = ((buffer[3] << 8) | buffer[4]) / 100.0;
-      luxValue = (buffer[5] << 8) | buffer[6];
-    }
-    if (byteCount >= 8)
-    {
-      luxConnected = ((buffer[7] << 8) | buffer[8]) > 0;
-    }
+  uint8_t byteCount = buffer[2];
+
+  if (byteCount >= 6)
+  {
+    ntcTemp = ((buffer[3] << 8) | buffer[4]) / 100.0;
+    luxValue = (buffer[5] << 8) | buffer[6];
+  }
+  if (byteCount >= 8)
+  {
+    luxConnected = ((buffer[7] << 8) | buffer[8]) > 0;
   }
 }
 
@@ -1396,10 +1418,15 @@ void handleModbus()
 
       lastModbusPoll = millis();
 
-      sendModbusRequest(settings.modbusDeviceID, 0, 4);
-    }
+      // Clear any stale data before sending
+      while (rs485.available())
+        rs485.read();
 
-    readModbusResponse();
+      sendModbusRequest(settings.modbusDeviceID, 0, 4);
+
+      // Block and wait for slave response
+      readModbusResponse();
+    }
   }
 }
 //////////////////////   SETUP   //////////////////////
