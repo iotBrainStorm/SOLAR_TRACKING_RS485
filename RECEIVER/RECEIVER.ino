@@ -541,24 +541,24 @@ void setupWebServer() {
   if (webServerStarted)
     return;  // Already started
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
     // Serial.println("Root Requested");
     request->send(SPIFFS, "/index.html", "text/html");
   });
 
-  server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/config.html", "text/html");
   });
 
-  server.on("/dashboard.svg", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/dashboard.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/dashboard.svg", "image/svg+xml");
   });
 
-  server.on("/settings.svg", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/settings.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/settings.svg", "image/svg+xml");
   });
 
-  server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest * request) {
     StaticJsonDocument<256> doc;
     doc["ntcTemp"] = ntcTemp;
     doc["ahtTemp"] = ahtTemp;
@@ -572,7 +572,7 @@ void setupWebServer() {
     request->send(200, "application/json", response);
   });
 
-  server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/save", HTTP_POST, [](AsyncWebServerRequest * request) {
     // -------- TEMPERATURE --------
     if (request->hasParam("tempPrecision", true))
       settings.tempPrecision = request->getParam("tempPrecision", true)->value().toInt();
@@ -659,7 +659,7 @@ void setupWebServer() {
     request->send(200, "text/plain", "Settings Saved");
   });
 
-  server.on("/settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/settings.json", HTTP_GET, [](AsyncWebServerRequest * request) {
     StaticJsonDocument<768> doc;
 
     doc["tempPrecision"] = settings.tempPrecision;
@@ -694,7 +694,7 @@ void setupWebServer() {
     request->send(200, "application/json", response);
   });
 
-  server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/reset", HTTP_POST, [](AsyncWebServerRequest * request) {
     Serial.println("\n===== FACTORY RESET REQUEST RECEIVED =====");
 
     // 1️⃣ Clear old preferences
