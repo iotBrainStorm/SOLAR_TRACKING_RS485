@@ -412,8 +412,6 @@ void handleModbus() {
       setReceiveMode();
 
       Serial.println("✔ Response Sent Successfully");
-
-      triggerLED(ledDurationRX);
     }
 
     index = 0;

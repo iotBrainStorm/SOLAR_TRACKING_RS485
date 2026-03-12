@@ -813,7 +813,6 @@ void handleNTC() {
   unsigned long currentMillis = millis();
   if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
     lastNTCReadTime = currentMillis;
-    ntcTemp += settings.ntcOffset;
     ntcTemp = applyPrecision(ntcTemp, settings.tempPrecision);
   }
 }
@@ -1293,9 +1292,12 @@ void readModbusResponse() {
 
     uint8_t byteCount = buffer[2];
 
-    if (byteCount >= 8) {
+    if (byteCount >= 6) {
       ntcTemp = ((buffer[3] << 8) | buffer[4]) / 100.0;
       luxValue = (buffer[5] << 8) | buffer[6];
+    }
+    if (byteCount >= 8) {
+      luxConnected = ((buffer[7] << 8) | buffer[8]) > 0;
     }
   }
 }
@@ -1473,5 +1475,5 @@ void loop() {
   checkWiFiAndStartServer();
   sendDataToNodeRed();
 
-  // updateLED();
+  updateLED();
 }
