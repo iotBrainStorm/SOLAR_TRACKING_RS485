@@ -439,7 +439,7 @@ void handleModbus()
       delayMicroseconds(200);
       rs485.write(response, 5 + regCount * 2);
       rs485.flush();
-      delay(15);
+      delayMicroseconds(500);
       setReceiveMode();
 
       Serial.println("✔ Response Sent Successfully");

@@ -1258,9 +1258,9 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count)
   triggerLED(ledDurationTX);
   rs485.write(frame, 8);
   rs485.flush();
-  delay(15);
+  delayMicroseconds(500); // brief settle after last byte
   setReceiveMode();
-  delay(2); // let transceiver settle into RX mode
+  delayMicroseconds(100); // let transceiver settle into RX mode
   while (rs485.available())
     rs485.read(); // discard TX→RX switching noise
 
@@ -1344,27 +1344,10 @@ void readModbusResponse()
   unsigned long startTime = millis();
   unsigned long lastByteTime = 0;
   const unsigned long RESPONSE_TIMEOUT = 500; // max wait for first byte
-  const unsigned long FRAME_TIMEOUT = 50;     // silence to detect end of frame (must exceed slave turnaround)
+  const unsigned long FRAME_TIMEOUT = 10;     // silence to detect end of frame
 
-  // Wait for first byte with timeout
+  // Collect all bytes until frame silence
   while (millis() - startTime < RESPONSE_TIMEOUT)
-  {
-    if (rs485.available())
-    {
-      buffer[index++] = rs485.read();
-      lastByteTime = millis();
-      break;
-    }
-  }
-
-  if (index == 0)
-  {
-    Serial.println("[MODBUS] No response");
-    return;
-  }
-
-  // Read remaining bytes until frame silence
-  while (millis() - lastByteTime < FRAME_TIMEOUT)
   {
     if (rs485.available())
     {
@@ -1378,6 +1361,37 @@ void readModbusResponse()
         break;
       }
     }
+    else if (index > 0 && millis() - lastByteTime >= FRAME_TIMEOUT)
+    {
+      break; // frame complete
+    }
+  }
+
+  if (index == 0)
+  {
+    Serial.println("[MODBUS] No response");
+    return;
+  }
+
+  // Debug: print raw received bytes
+  Serial.print("[MODBUS] RX Raw (");
+  Serial.print(index);
+  Serial.print(" bytes): ");
+  for (int i = 0; i < index; i++)
+  {
+    if (buffer[i] < 16)
+      Serial.print("0");
+    Serial.print(buffer[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  // Strip leading garbage bytes (0x00 from TX→RX glitch)
+  while (index > 0 && buffer[0] == 0x00)
+  {
+    memmove(buffer, buffer + 1, index - 1);
+    index--;
+    Serial.println("[MODBUS] Stripped leading 0x00");
   }
 
   if (index < 5)
@@ -1391,7 +1405,7 @@ void readModbusResponse()
 
   if (crcReceived != crcCalc)
   {
-    Serial.println("[MODBUS] CRC error");
+    Serial.printf("[MODBUS] CRC error (got: %04X, calc: %04X)\n", crcReceived, crcCalc);
     return;
   }
 
