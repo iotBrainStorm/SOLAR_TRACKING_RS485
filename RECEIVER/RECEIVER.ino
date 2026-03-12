@@ -55,6 +55,8 @@ struct DeviceSettings
   uint32_t maxLuxValue;
   uint32_t minLuxValue;
   uint16_t luxInterval;
+  uint32_t luxUpdateThreshold;
+  uint32_t luxSaveInterval;
 
   uint8_t enableNodeRed; // 0 or 1
   String nodeRedIP;
@@ -162,6 +164,8 @@ void setDefaultSettings()
   settings.maxLuxValue = 100;
   settings.minLuxValue = 1;
   settings.luxInterval = 1;
+  settings.luxUpdateThreshold = 200;
+  settings.luxSaveInterval = 300;
 
   settings.enableNodeRed = 0;
   settings.nodeRedIP = "";
@@ -199,6 +203,8 @@ void loadSettings()
   settings.maxLuxValue = preferences.getULong("luxMax", 100);
   settings.minLuxValue = preferences.getULong("luxMin", 1);
   settings.luxInterval = preferences.getUInt("luxInt", 1);
+  settings.luxUpdateThreshold = preferences.getULong("luxThr", 200);
+  settings.luxSaveInterval = preferences.getULong("luxSave", 300);
 
   settings.enableNodeRed = preferences.getUChar("nrEn", 0);
   settings.nodeRedIP = preferences.getString("nrIP", "");
@@ -229,6 +235,8 @@ void loadSettings()
   Serial.println("Max Lux Value         : " + String(settings.maxLuxValue));
   Serial.println("Min Lux Value         : " + String(settings.minLuxValue));
   Serial.println("Lux Interval (sec)    : " + String(settings.luxInterval));
+  Serial.println("Lux Update Threshold  : " + String(settings.luxUpdateThreshold));
+  Serial.println("Lux Save Interval (s) : " + String(settings.luxSaveInterval));
 
   Serial.println("Node-RED Enabled      : " + String(settings.enableNodeRed));
   Serial.println("Node-RED IP           : " + settings.nodeRedIP);
@@ -265,6 +273,8 @@ void saveSettings()
   preferences.putULong("luxMax", settings.maxLuxValue);
   preferences.putULong("luxMin", settings.minLuxValue);
   preferences.putUInt("luxInt", settings.luxInterval);
+  preferences.putULong("luxThr", settings.luxUpdateThreshold);
+  preferences.putULong("luxSave", settings.luxSaveInterval);
 
   preferences.putUChar("nrEn", settings.enableNodeRed);
   preferences.putString("nrIP", settings.nodeRedIP);
@@ -631,6 +641,10 @@ void setupWebServer()
     }
     if (request->hasParam("luxInterval", true))
       settings.luxInterval = request->getParam("luxInterval", true)->value().toInt();
+    if (request->hasParam("luxUpdateThreshold", true))
+      settings.luxUpdateThreshold = request->getParam("luxUpdateThreshold", true)->value().toInt();
+    if (request->hasParam("luxSaveInterval", true))
+      settings.luxSaveInterval = request->getParam("luxSaveInterval", true)->value().toInt();
 
     // -------- NODE RED --------
     settings.enableNodeRed = request->hasParam("enableNodeRed", true) ? 1 : 0;
@@ -691,6 +705,8 @@ void setupWebServer()
     doc["maxLuxValue"] = settings.maxLuxValue;
     doc["minLuxValue"] = settings.minLuxValue;
     doc["luxInterval"] = settings.luxInterval;
+    doc["luxUpdateThreshold"] = settings.luxUpdateThreshold;
+    doc["luxSaveInterval"] = settings.luxSaveInterval;
 
     doc["enableNodeRed"] = settings.enableNodeRed;
     doc["nodeRedIP"] = settings.nodeRedIP;
@@ -899,8 +915,8 @@ void handleLUX()
   if (settings.luxPercentageMode == 0)
   {
 
-    const uint32_t threshold = 200;       // Min change to update
-    const uint32_t saveInterval = 300000; // 5 min EEPROM safety
+    uint32_t threshold = settings.luxUpdateThreshold;
+    uint32_t saveInterval = settings.luxSaveInterval * 1000UL;
 
     bool updated = false;
 
@@ -1153,7 +1169,7 @@ void displayLCD()
   char ntcStr[20];
   snprintf(ntcStr, sizeof(ntcStr), "SLR: %.2fC", ntcTemp);
   char fmtTemp[10];
-  sprintf(fmtTemp, "SLR: %%.%dfC", settings.tempPrecision);
+  sprintf(fmtTemp, "SPV: %%.%dfC", settings.tempPrecision);
   snprintf(ntcStr, sizeof(ntcStr), fmtTemp, ntcTemp);
   u8g2.drawStr(0, 12, ntcStr);
 
@@ -1182,7 +1198,7 @@ void displayLCD()
     snprintf(diffStr, sizeof(diffStr), "+%ld", luxDiff);
   else
     snprintf(diffStr, sizeof(diffStr), "%ld", luxDiff);
-  u8g2.drawStr(83, 52, diffStr); // Adjust X if needed
+  u8g2.drawStr(85, 52, diffStr); // Adjust X if needed
 
   // Sunlight % PROGRESS BAR
   char sunStr[20];

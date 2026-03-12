@@ -315,6 +315,12 @@
 
           <label>Reading Interval (seconds)</label>
           <input type="number" name="luxInterval" min="1" value="1" />
+
+          <label>Update Threshold (min: 10)</label>
+          <input type="number" name="luxUpdateThreshold" min="10" value="200" />
+
+          <label>Save Interval (seconds, min: 300)</label>
+          <input type="number" name="luxSaveInterval" min="300" value="300" />
         </div>
 
         <!-- Node-RED -->
@@ -473,6 +479,10 @@
               data.minLuxValue;
             document.querySelector("[name=luxInterval]").value =
               data.luxInterval;
+            document.querySelector("[name=luxUpdateThreshold]").value =
+              data.luxUpdateThreshold;
+            document.querySelector("[name=luxSaveInterval]").value =
+              data.luxSaveInterval;
 
             document.querySelector("[name=enableNodeRed]").checked =
               data.enableNodeRed == 1;
