@@ -1506,14 +1506,16 @@ void readModbusResponse()
 
   uint8_t byteCount = buffer[2];
 
-  if (byteCount >= 6)
-  {
-    ntcTemp = ((buffer[3] << 8) | buffer[4]) / 100.0;
-    luxValue = (buffer[5] << 8) | buffer[6];
-  }
   if (byteCount >= 8)
   {
-    luxConnected = ((buffer[7] << 8) | buffer[8]) > 0;
+    ntcTemp = ((buffer[3] << 8) | buffer[4]) / 100.0;
+    uint16_t luxHi = (buffer[5] << 8) | buffer[6];
+    uint16_t luxLo = (buffer[7] << 8) | buffer[8];
+    luxValue = ((uint32_t)luxHi << 16) | luxLo;
+  }
+  if (byteCount >= 10)
+  {
+    luxConnected = ((buffer[9] << 8) | buffer[10]) > 0;
   }
 }
 
@@ -1531,7 +1533,7 @@ void handleModbus()
       while (rs485.available())
         rs485.read();
 
-      sendModbusRequest(settings.modbusDeviceID, 0, 4);
+      sendModbusRequest(settings.modbusDeviceID, 0, 5);
 
       // Block and wait for slave response
       readModbusResponse();

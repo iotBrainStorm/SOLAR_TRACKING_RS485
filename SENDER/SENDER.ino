@@ -250,9 +250,10 @@ uint16_t modbusCRC(uint8_t *buf, int len)
 void updateRegisters()
 {
   holdingRegisters[0] = ntcTemp * 100;
-  holdingRegisters[1] = luxValue;
-  holdingRegisters[2] = luxConnected;
-  holdingRegisters[3] = settings.modbusInterval;
+  holdingRegisters[1] = (luxValue >> 16) & 0xFFFF; // lux high word
+  holdingRegisters[2] = luxValue & 0xFFFF;         // lux low word
+  holdingRegisters[3] = luxConnected;
+  holdingRegisters[4] = settings.modbusInterval;
 }
 
 void handleModbus()
@@ -576,18 +577,24 @@ void handleLUX()
   // ---- Read Sensor ----
   if (luxConnected)
   {
-    luxValue = lightMeter.readLightLevel();
+    float rawLux = lightMeter.readLightLevel();
+
+    // ---- EMA Smoothing (alpha=0.2 for stable output) ----
+    if (!luxInitialized)
+    {
+      luxFiltered = rawLux;
+      luxInitialized = true;
+    }
+    else
+    {
+      luxFiltered = 0.2 * rawLux + 0.8 * luxFiltered;
+    }
+
+    luxValue = (uint32_t)(luxFiltered + 0.5); // round to nearest
   }
   else
   {
     luxValue = 1; // fallback value if sensor missing
-  }
-
-  // ---- First Time Filter Init ----
-  if (!luxInitialized)
-  {
-    luxFiltered = luxValue;
-    luxInitialized = true;
   }
 }
 
@@ -652,8 +659,10 @@ void setup()
   if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
   {
     luxConnected = true;
+    // Lower MTreg to 31 (min) to extend max lux range from ~54612 to ~121557
+    lightMeter.setMTreg(31);
     Serial.println("[SUCCESS] BH1750 detected.");
-    Serial.println("[INFO] Mode: Continuous High Resolution");
+    Serial.println("[INFO] Mode: Continuous High Resolution (MTreg=31, max ~121557 lux)");
     Serial.println("==============================\n");
   }
   else
