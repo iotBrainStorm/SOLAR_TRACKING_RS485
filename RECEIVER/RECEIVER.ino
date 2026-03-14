@@ -21,6 +21,7 @@
 #define TXD2 17
 #define RS485_EN 4
 #define LED_PIN 2
+#define BUZZER 32
 #define STX 0x02
 #define ETX 0x03
 HardwareSerial rs485(1);
@@ -79,6 +80,11 @@ unsigned long ledStartTime = 0;
 unsigned long ledDuration = 50;
 const unsigned long ledDurationRX = 60;  // receive blink
 const unsigned long ledDurationTX = 120; // transmit blink
+
+// -- Buzzer feedback
+bool buzzerState = false;
+unsigned long buzzerStartTime = 0;
+unsigned long buzzerDuration = 100;
 
 // -- LCD Setup
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
@@ -144,6 +150,25 @@ void updateLED()
   {
     digitalWrite(LED_PIN, LOW);
     ledState = false;
+  }
+}
+
+//////////////////////   BLINK FEEDBACK BUZZER   //////////////////////
+
+void triggerBuzzer(unsigned long duration)
+{
+  digitalWrite(BUZZER, HIGH);
+  buzzerState = true;
+  buzzerStartTime = millis();
+  buzzerDuration = duration;
+}
+
+void updateBuzzer()
+{
+  if (buzzerState && millis() - buzzerStartTime >= buzzerDuration)
+  {
+    digitalWrite(BUZZER, LOW);
+    buzzerState = false;
   }
 }
 
@@ -586,11 +611,13 @@ void setupWebServer()
   server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     StaticJsonDocument<256> doc;
-    doc["ntcTemp"] = ntcTemp;
-    doc["ahtTemp"] = ahtTemp;
-    doc["humidity"] = humidity;
+    doc["ntcTemp"] = serialized(String(ntcTemp, (int)settings.tempPrecision));
+    doc["ahtTemp"] = serialized(String(ahtTemp, (int)settings.tempPrecision));
+    doc["humidity"] = serialized(String(humidity, (int)settings.humidityPrecision));
     doc["lux"] = luxValue;
     doc["sunlight"] = sunlightPercentage;
+    doc["tempPrecision"] = settings.tempPrecision;
+    doc["humPrecision"] = settings.humidityPrecision;
 
     String response;
     serializeJson(doc, response);
@@ -682,7 +709,8 @@ void setupWebServer()
     // -------- SAVE TO NVS --------
     saveSettings();
     sendSettingsToSlave();
-    // triggerLED(60);
+    triggerLED(100);
+    triggerBuzzer(100);
 
     Serial.println("Settings Saved Successfully");
 
@@ -748,9 +776,11 @@ void setupWebServer()
     sendSettingsToSlave();
 
     // 5️⃣ Send response to browser
+    triggerLED(100);
+    triggerBuzzer(100);
     request->send(200, "text/plain", "Factory Reset Successful");
 
-    // 5️⃣ Optional: restart device after short delay
+    // 6️⃣ Optional: restart device after short delay
     delay(1000);
     ESP.restart(); });
 
@@ -1211,7 +1241,15 @@ void displayLCD()
 
   // ================= NODE-RED STATUS =================
   char nrStr[25];
-  if (lastNodeRedResponse.length() > 0)
+  if (!settings.enableNodeRed)
+  {
+    snprintf(nrStr, sizeof(nrStr), "NR: Off");
+  }
+  else if (!WiFi.isConnected())
+  {
+    snprintf(nrStr, sizeof(nrStr), "NR: --");
+  }
+  else if (lastNodeRedResponse.length() > 0)
   {
     String responseCodeString = String(httpResponseCode);
     snprintf(nrStr, sizeof(nrStr), "NR: %s", responseCodeString.c_str());
@@ -1547,6 +1585,12 @@ void setup()
   Serial.begin(115200);
   pinMode(RS485_EN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  digitalWrite(BUZZER, HIGH);
+  delay(100);
+  digitalWrite(BUZZER, LOW);
+  delay(100);
 
   u8g2.begin();
 
@@ -1713,4 +1757,5 @@ void loop()
   sendDataToNodeRed();
 
   updateLED();
+  updateBuzzer();
 }

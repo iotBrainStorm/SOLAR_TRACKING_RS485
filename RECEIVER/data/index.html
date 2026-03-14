@@ -239,9 +239,13 @@
             let sunPercent = parseFloat(data.sunlight) || 0;
             let lux = parseFloat(data.lux) || 0;
 
-            setValue("outsideTemp", outside.toFixed(2), "°C");
-            setValue("solarTemp", solar.toFixed(2), "°C");
-            setValue("humidity", hum.toFixed(2), "%");
+            let tPrec =
+              data.tempPrecision !== undefined ? data.tempPrecision : 2;
+            let hPrec = data.humPrecision !== undefined ? data.humPrecision : 2;
+
+            setValue("outsideTemp", outside.toFixed(tPrec), "°C");
+            setValue("solarTemp", solar.toFixed(tPrec), "°C");
+            setValue("humidity", hum.toFixed(hPrec), "%");
             setValue("sunPercent", sunPercent.toFixed(0), "%");
             setValue("luxValue", lux.toFixed(0), "lx");
 
@@ -253,9 +257,9 @@
           })
           .catch(() => {
             // If request fails → show zero values
-            setValue("outsideTemp", "0.00", "°C");
-            setValue("solarTemp", "0.00", "°C");
-            setValue("humidity", "0.00", "%");
+            setValue("outsideTemp", "0", "°C");
+            setValue("solarTemp", "0", "°C");
+            setValue("humidity", "0", "%");
             setValue("sunPercent", "0", "%");
             setValue("luxValue", "0", "lx");
           });
