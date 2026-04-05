@@ -95,6 +95,32 @@
         transform: translateY(-5px);
       }
 
+      .card-sub {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+      }
+
+      .card-sub .sub-icon {
+        font-size: 16px;
+      }
+
+      .card-sub .sub-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #91a2ff;
+      }
+
+      .card-sub .sub-unit {
+        font-size: 12px;
+        opacity: 0.6;
+      }
+
       .icon {
         font-size: 40px;
         margin-bottom: 15px;
@@ -311,6 +337,11 @@
           <div class="value" id="outsideTemp">
             -- <span class="unit">°C</span>
           </div>
+          <div class="card-sub">
+            <span class="sub-icon">💧</span>
+            <span class="sub-value" id="humidity">--</span>
+            <span class="sub-unit">%</span>
+          </div>
         </div>
 
         <div class="card">
@@ -319,12 +350,6 @@
           <div class="value" id="solarTemp">
             -- <span class="unit">°C</span>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="icon">💧</div>
-          <div class="title">Humidity</div>
-          <div class="value" id="humidity">-- <span class="unit">%</span></div>
         </div>
 
         <!-- Sun Map -->
@@ -436,20 +461,6 @@
             </div>
           </div>
         </div>
-
-        <div class="card">
-          <div class="icon">🌞</div>
-          <div class="title">Sunlight</div>
-          <div class="value" id="sunPercent">
-            -- <span class="unit">%</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="icon">💡</div>
-          <div class="title">Lux</div>
-          <div class="value" id="luxValue">-- <span class="unit">lx</span></div>
-        </div>
       </div>
 
       <div class="footer">
@@ -484,15 +495,11 @@
 
             setValue("outsideTemp", outside.toFixed(tPrec), "°C");
             setValue("solarTemp", solar.toFixed(tPrec), "°C");
-            setValue("humidity", hum.toFixed(hPrec), "%");
-            setValue("sunPercent", sunPercent.toFixed(0), "%");
-            setValue("luxValue", lux.toFixed(0), "lx");
+            document.getElementById("humidity").textContent =
+              hum.toFixed(hPrec);
 
             colorOutsideTemp(outside);
             colorSolarTemp(solar);
-            colorHumidity(hum);
-            colorSun(sunPercent);
-            colorLux(lux);
 
             // Sun Map update
             updateSunMap(
@@ -508,9 +515,7 @@
             // If request fails → show zero values
             setValue("outsideTemp", "0", "°C");
             setValue("solarTemp", "0", "°C");
-            setValue("humidity", "0", "%");
-            setValue("sunPercent", "0", "%");
-            setValue("luxValue", "0", "lx");
+            document.getElementById("humidity").textContent = "0";
           });
       }
 
@@ -527,21 +532,6 @@
       function colorSolarTemp(val) {
         let el = document.getElementById("solarTemp");
         el.style.color = "#CF91FF";
-      }
-
-      function colorHumidity(val) {
-        let el = document.getElementById("humidity");
-        el.style.color = "#91A2FF";
-      }
-
-      function colorSun(val) {
-        let el = document.getElementById("sunPercent");
-        el.style.color = "#ffcc00";
-      }
-
-      function colorLux(val) {
-        let el = document.getElementById("luxValue");
-        el.style.color = "#6DD3FC";
       }
 
       // Run immediately
