@@ -617,7 +617,7 @@ void setupWebServer() {
   });
 
   server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<384> doc;
     doc["ntcTemp"] = serialized(String(ntcTemp, (int)settings.tempPrecision));
     doc["ahtTemp"] = serialized(String(ahtTemp, (int)settings.tempPrecision));
     doc["humidity"] = serialized(String(humidity, (int)settings.humidityPrecision));
@@ -625,6 +625,10 @@ void setupWebServer() {
     doc["sunlight"] = sunlightPercentage;
     doc["tempPrecision"] = settings.tempPrecision;
     doc["humPrecision"] = settings.humidityPrecision;
+    doc["sunrise"] = sunriseStr;
+    doc["sunset"] = sunsetStr;
+    doc["sunriseMin"] = sunriseMinutes;
+    doc["sunsetMin"] = sunsetMinutes;
 
     String response;
     serializeJson(doc, response);
