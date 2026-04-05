@@ -221,6 +221,79 @@
         font-size: 13px;
         color: rgba(255, 255, 255, 0.6);
       }
+
+      /* Sun glow pulse animation */
+      @keyframes sunPulse {
+        0%,
+        100% {
+          r: 16;
+          opacity: 0.15;
+        }
+        50% {
+          r: 22;
+          opacity: 0.25;
+        }
+      }
+
+      @keyframes sunPulseOuter {
+        0%,
+        100% {
+          r: 26;
+          opacity: 0.06;
+        }
+        50% {
+          r: 32;
+          opacity: 0.12;
+        }
+      }
+
+      #sunGlow {
+        animation: sunPulse 2s ease-in-out infinite;
+      }
+
+      #sunGlowOuter {
+        animation: sunPulseOuter 2.5s ease-in-out infinite;
+      }
+
+      .sun-glow-off #sunGlow,
+      .sun-glow-off #sunGlowOuter {
+        animation: none;
+      }
+
+      /* Sun stats row */
+      .sun-stats {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 12px;
+        padding: 10px 5px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+      }
+
+      .sun-stat-item {
+        text-align: center;
+        flex: 1;
+      }
+
+      .sun-stat-item .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .sun-stat-item .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.5;
+        margin-top: 2px;
+      }
+
+      .sun-stat-divider {
+        width: 1px;
+        background: rgba(255, 255, 255, 0.15);
+        margin: 2px 0;
+      }
     </style>
   </head>
 
@@ -263,6 +336,12 @@
               viewBox="0 0 300 130"
               preserveAspectRatio="xMidYMid meet"
             >
+              <defs>
+                <radialGradient id="sunGlowGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffcc00" stop-opacity="0.6" />
+                  <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
+                </radialGradient>
+              </defs>
               <!-- Horizon line -->
               <line
                 x1="20"
@@ -273,7 +352,7 @@
                 stroke-width="1"
                 stroke-dasharray="4,4"
               />
-              <!-- Arc path (dashed, below horizon hidden) -->
+              <!-- Arc path (dashed) -->
               <path
                 id="sunArc"
                 d="M 20 120 Q 150 -10 280 120"
@@ -292,15 +371,16 @@
                 stroke-dasharray="0"
                 opacity="0.5"
               />
-              <!-- Sun icon -->
+              <!-- Outer glow -->
               <circle
-                id="sunDot"
+                id="sunGlowOuter"
                 cx="20"
                 cy="120"
-                r="10"
-                fill="#ffcc00"
-                opacity="0.9"
+                r="26"
+                fill="url(#sunGlowGrad)"
+                opacity="0.06"
               />
+              <!-- Inner glow -->
               <circle
                 id="sunGlow"
                 cx="20"
@@ -308,6 +388,15 @@
                 r="16"
                 fill="#ffcc00"
                 opacity="0.15"
+              />
+              <!-- Sun dot -->
+              <circle
+                id="sunDot"
+                cx="20"
+                cy="120"
+                r="8"
+                fill="#ffcc00"
+                opacity="0.9"
               />
             </svg>
           </div>
@@ -322,6 +411,30 @@
             </div>
           </div>
           <div class="sun-status" id="sunStatus"></div>
+
+          <!-- Stats row -->
+          <div class="sun-stats">
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunMapAngle" style="color: #ff9f43">
+                --°
+              </div>
+              <div class="stat-label">Sun Angle</div>
+            </div>
+            <div class="sun-stat-divider"></div>
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunMapPercent" style="color: #ffcc00">
+                --%
+              </div>
+              <div class="stat-label">Sunlight</div>
+            </div>
+            <div class="sun-stat-divider"></div>
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunMapLux" style="color: #6dd3fc">
+                -- lx
+              </div>
+              <div class="stat-label">Lux</div>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -387,6 +500,8 @@
               data.sunset,
               data.sunriseMin,
               data.sunsetMin,
+              sunPercent,
+              lux,
             );
           })
           .catch(() => {
@@ -461,14 +576,30 @@
         window.location.href = "config.html";
       }
 
-      function updateSunMap(sunriseStr, sunsetStr, sunriseMin, sunsetMin) {
+      function updateSunMap(
+        sunriseStr,
+        sunsetStr,
+        sunriseMin,
+        sunsetMin,
+        sunPercent,
+        lux,
+      ) {
         document.getElementById("sunriseTime").textContent =
           sunriseStr || "--:--";
         document.getElementById("sunsetTime").textContent =
           sunsetStr || "--:--";
 
+        var svgEl = document.querySelector(".sun-arc-svg");
+
+        // Update stats
+        document.getElementById("sunMapPercent").textContent =
+          sunPercent != null ? Math.round(sunPercent) + "%" : "--%";
+        document.getElementById("sunMapLux").textContent =
+          lux != null ? Math.round(lux) + " lx" : "-- lx";
+
         if (!sunriseMin || !sunsetMin || sunsetMin <= sunriseMin) {
           document.getElementById("sunStatus").textContent = "No sun data";
+          document.getElementById("sunMapAngle").textContent = "--°";
           return;
         }
 
@@ -480,6 +611,7 @@
         var statusEl = document.getElementById("sunStatus");
         var sunDot = document.getElementById("sunDot");
         var sunGlow = document.getElementById("sunGlow");
+        var sunGlowOuter = document.getElementById("sunGlowOuter");
         var arcActive = document.getElementById("sunArcActive");
 
         if (nowMin < sunriseMin) {
@@ -504,6 +636,17 @@
             "m";
         }
 
+        // Sun elevation angle: 0° at horizon, peaks at ~90° (scaled by arc)
+        // Using sine model: angle = maxAngle * sin(progress * PI)
+        var sunAngle;
+        if (progress <= 0 || progress >= 1) {
+          sunAngle = 0;
+        } else {
+          sunAngle = 90 * Math.sin(progress * Math.PI);
+        }
+        document.getElementById("sunMapAngle").textContent =
+          Math.round(sunAngle) + "°";
+
         progress = Math.max(0, Math.min(1, progress));
 
         // Quadratic bezier: P0(20,120) CP(150,-10) P1(280,120)
@@ -515,6 +658,8 @@
         sunDot.setAttribute("cy", y);
         sunGlow.setAttribute("cx", x);
         sunGlow.setAttribute("cy", y);
+        sunGlowOuter.setAttribute("cx", x);
+        sunGlowOuter.setAttribute("cy", y);
 
         // Partial arc up to current position
         if (progress > 0 && progress < 1) {
@@ -536,16 +681,22 @@
           arcActive.setAttribute("opacity", "0.6");
           sunDot.setAttribute("opacity", "0.95");
           sunGlow.setAttribute("opacity", "0.2");
+          sunGlowOuter.setAttribute("opacity", "0.08");
+          svgEl.classList.remove("sun-glow-off");
         } else if (progress >= 1) {
           arcActive.setAttribute("d", "M 20 120 Q 150 -10 280 120");
           arcActive.setAttribute("opacity", "0.2");
           sunDot.setAttribute("opacity", "0.3");
           sunGlow.setAttribute("opacity", "0.05");
+          sunGlowOuter.setAttribute("opacity", "0");
+          svgEl.classList.add("sun-glow-off");
         } else {
           arcActive.setAttribute("d", "M 0 0");
           arcActive.setAttribute("opacity", "0");
           sunDot.setAttribute("opacity", "0.4");
           sunGlow.setAttribute("opacity", "0.08");
+          sunGlowOuter.setAttribute("opacity", "0");
+          svgEl.classList.add("sun-glow-off");
         }
       }
     </script>
