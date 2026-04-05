@@ -819,7 +819,7 @@ void setupWebServer() {
 
 void checkWiFiAndStartServer() {
   static unsigned long lastCheck = 0;
-  static bool wasConnected = false;
+  static bool wasConnected = (WiFi.status() == WL_CONNECTED);
   static unsigned long lastReconnectAttempt = 0;
 
   if (millis() - lastCheck < 3000)
@@ -829,43 +829,45 @@ void checkWiFiAndStartServer() {
   bool isConnected = (WiFi.status() == WL_CONNECTED);
 
   // ===============================
-  // 🔵 WiFi Just Connected
+  // WiFi Just Connected (or reconnected)
   // ===============================
   if (isConnected && !wasConnected) {
+    Serial.println("\n[WiFi] Connected!");
+    Serial.printf("[WiFi] SSID: %s\n", WiFi.SSID().c_str());
+    Serial.printf("[WiFi] IP  : %s\n", WiFi.localIP().toString().c_str());
 
-    Serial.println("WiFi connected!");
-
-    // Start Web Server
+    // Start Web Server if not already running
     if (!webServerStarted) {
-      Serial.println("Starting WebServer...");
-      setupWebServer();  // must include server.begin()
-      webServerStarted = true;
+      Serial.println("[WiFi] Starting WebServer...");
+      setupWebServer();
     }
 
-    // ===============================
-    // 🔴 WiFi Lost
-    // ===============================
-    if (!isConnected && wasConnected) {
-      Serial.println("WiFi disconnected!");
-      webServerStarted = false;  // allow restart after reconnection
-    }
+    // Re-sync NTP time after reconnection
+    configDateTime();
+    calculateSunriseSunset();
+  }
 
-    // ===============================
-    // 🟡 Attempt Reconnect
-    // ===============================
-    if (!isConnected) {
+  // ===============================
+  // WiFi Lost
+  // ===============================
+  if (!isConnected && wasConnected) {
+    Serial.println("\n[WiFi] Disconnected!");
+    webServerStarted = false;  // allow restart after reconnection
+  }
 
-      if (millis() - lastReconnectAttempt > 20000) {  // every 20 sec
-        lastReconnectAttempt = millis();
-
-        Serial.println("Attempting WiFi reconnection...");
-
-        WiFi.disconnect();
-        delay(200);
-        WiFi.reconnect();
-      }
+  // ===============================
+  // Attempt Reconnect
+  // ===============================
+  if (!isConnected) {
+    if (millis() - lastReconnectAttempt > 15000) {  // every 15 sec
+      lastReconnectAttempt = millis();
+      Serial.println("[WiFi] Attempting reconnection...");
+      WiFi.disconnect(false, false);  // don't erase credentials
+      WiFi.mode(WIFI_STA);
+      WiFi.begin();
     }
   }
+
   wasConnected = isConnected;
 }
 
@@ -1708,6 +1710,18 @@ void setup() {
 
   // --- Sunrise & Sunset Calculation ---
   calculateSunriseSunset();
+
+  // --- Show Sunrise/Sunset on OLED ---
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x12_tf);
+  u8g2.drawStr(0, 12, "Sunrise & Sunset");
+  char sunBuf[28];
+  snprintf(sunBuf, sizeof(sunBuf), "Sunrise : %s", sunriseStr);
+  u8g2.drawStr(0, 32, sunBuf);
+  snprintf(sunBuf, sizeof(sunBuf), "Sunset  : %s", sunsetStr);
+  u8g2.drawStr(0, 48, sunBuf);
+  u8g2.sendBuffer();
+  delay(2000);
 
   // --- Ready ---
   u8g2.clearBuffer();
