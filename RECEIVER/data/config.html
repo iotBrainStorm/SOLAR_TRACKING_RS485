@@ -399,6 +399,36 @@
           </select>
         </div>
 
+        <!-- Location (Sunrise/Sunset) -->
+        <div class="section">
+          <h2>Location Settings (Sunrise/Sunset)</h2>
+
+          <label>Latitude</label>
+          <input
+            type="number"
+            name="latitude"
+            step="0.000001"
+            placeholder="e.g. 22.5726"
+          />
+
+          <label>Longitude</label>
+          <input
+            type="number"
+            name="longitude"
+            step="0.000001"
+            placeholder="e.g. 88.3639"
+          />
+
+          <label>Timezone Offset (hours)</label>
+          <input
+            type="number"
+            name="tzOffset"
+            step="0.5"
+            value="5.5"
+            placeholder="e.g. 5.5 for +5:30"
+          />
+        </div>
+
         <button>Save Configuration</button>
         <button
           type="button"
@@ -508,6 +538,10 @@
             document.querySelector("[name=gmtOffset]").value = data.gmtOffset;
             document.querySelector("[name=clockFormat]").value =
               data.clockFormat;
+
+            document.querySelector("[name=latitude]").value = data.latitude;
+            document.querySelector("[name=longitude]").value = data.longitude;
+            document.querySelector("[name=tzOffset]").value = data.tzOffset;
           });
       });
     </script>

@@ -71,6 +71,10 @@ struct DeviceSettings {
 
   long gmtOffset;       // seconds
   uint8_t clockFormat;  // 12 or 24
+
+  float latitude;
+  float longitude;
+  float tzOffset;  // timezone offset in hours (e.g. 5.5 for +5:30)
 };
 DeviceSettings settings;
 
@@ -96,7 +100,12 @@ Adafruit_AHT10 aht;
 unsigned long lastAHTReadTime = 0;
 
 // -- Sunset and Sunrise setup
-// Dusk2Dawn location(LATITUDE, LONGITUDE, TIMEZONE);
+int sunriseMinutes = -1;
+int sunsetMinutes = -1;
+char sunriseStr[6] = "--:--";
+char sunsetStr[6] = "--:--";
+bool ntpSynced = false;
+int lastCalcDay = -1;
 
 // -- Light sensor (LUX) setup
 BH1750 lightMeter;
@@ -200,6 +209,10 @@ void setDefaultSettings() {
 
   settings.gmtOffset = 19800;
   settings.clockFormat = 24;
+
+  settings.latitude = 0.0;
+  settings.longitude = 0.0;
+  settings.tzOffset = 5.5;
 }
 
 //////////////////////   LOAD SETTINGS   //////////////////////
@@ -239,6 +252,10 @@ void loadSettings() {
   settings.gmtOffset = preferences.getLong("gmt", 19800);
   settings.clockFormat = preferences.getUChar("clkFmt", 24);
 
+  settings.latitude = preferences.getFloat("lat", 0.0);
+  settings.longitude = preferences.getFloat("lon", 0.0);
+  settings.tzOffset = preferences.getFloat("tzOff", 5.5);
+
   preferences.end();
 
   // -------- PRINT LOADED SETTINGS --------
@@ -270,6 +287,10 @@ void loadSettings() {
 
   Serial.println("GMT Offset (sec)      : " + String(settings.gmtOffset));
   Serial.println("Clock Format          : " + String(settings.clockFormat));
+
+  Serial.println("Latitude              : " + String(settings.latitude));
+  Serial.println("Longitude             : " + String(settings.longitude));
+  Serial.println("Time Zone             : " + String(settings.tzOffset));
 
   Serial.println("=======================================\n");
 }
@@ -307,6 +328,10 @@ void saveSettings() {
 
   preferences.putLong("gmt", settings.gmtOffset);
   preferences.putUChar("clkFmt", settings.clockFormat);
+
+  preferences.putFloat("lat", settings.latitude);
+  preferences.putFloat("lon", settings.longitude);
+  preferences.putFloat("tzOff", settings.tzOffset);
 
   preferences.end();
   Serial.println("Settings Saved to NVS");
@@ -687,10 +712,21 @@ void setupWebServer() {
     if (request->hasParam("clockFormat", true))
       settings.clockFormat = request->getParam("clockFormat", true)->value().toInt();
 
+    // -------- LOCATION (Sunrise/Sunset) --------
+    if (request->hasParam("latitude", true))
+      settings.latitude = request->getParam("latitude", true)->value().toFloat();
+
+    if (request->hasParam("longitude", true))
+      settings.longitude = request->getParam("longitude", true)->value().toFloat();
+
+    if (request->hasParam("tzOffset", true))
+      settings.tzOffset = request->getParam("tzOffset", true)->value().toFloat();
+
 
     // -------- SAVE TO NVS --------
     saveSettings();
     sendSettingsToSlave();
+    calculateSunriseSunset();
     triggerLED(100);
     triggerBuzzer(100);
 
@@ -730,6 +766,10 @@ void setupWebServer() {
 
     doc["gmtOffset"] = settings.gmtOffset;
     doc["clockFormat"] = settings.clockFormat;
+
+    doc["latitude"] = serialized(String(settings.latitude, 6));
+    doc["longitude"] = serialized(String(settings.longitude, 6));
+    doc["tzOffset"] = serialized(String(settings.tzOffset, 1));
 
     String response;
     serializeJson(doc, response);
@@ -845,6 +885,44 @@ void drawCenteredStr(int y, const char *str, const uint8_t *font) {
   int16_t strWidth = u8g2.getStrWidth(str);
   int16_t x = (128 - strWidth) / 2;
   u8g2.drawStr(x, y, str);
+}
+
+//////////////////////   SUNRISE & SUNSET CALCULATION   //////////////////////
+
+void calculateSunriseSunset() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("[SUN] Cannot calculate - time not available");
+    return;
+  }
+
+  int tzHours = (int)settings.tzOffset;
+  int tzRemainder = (int)((settings.tzOffset - tzHours) * 60);
+
+  Dusk2Dawn location(settings.latitude, settings.longitude, tzHours);
+
+  int year = timeinfo.tm_year + 1900;
+  int month = timeinfo.tm_mon + 1;
+  int day = timeinfo.tm_mday;
+
+  sunriseMinutes = location.sunrise(year, month, day, false) + tzRemainder;
+  sunsetMinutes = location.sunset(year, month, day, false) + tzRemainder;
+
+  Dusk2Dawn::min2str(sunriseStr, sunriseMinutes);
+  Dusk2Dawn::min2str(sunsetStr, sunsetMinutes);
+
+  lastCalcDay = day;
+
+  Serial.println("\n==============================");
+  Serial.println("  Sunrise & Sunset Calculated");
+  Serial.println("==============================");
+  Serial.printf("Date       : %02d/%02d/%04d\n", day, month, year);
+  Serial.printf("Latitude   : %.6f\n", settings.latitude);
+  Serial.printf("Longitude  : %.6f\n", settings.longitude);
+  Serial.printf("Timezone   : %.1f hrs\n", settings.tzOffset);
+  Serial.printf("Sunrise    : %s\n", sunriseStr);
+  Serial.printf("Sunset     : %s\n", sunsetStr);
+  Serial.println("==============================\n");
 }
 
 //////////////////////   CALCULATE PRECISION   //////////////////////
@@ -1095,6 +1173,11 @@ void serialOutput() {
   Serial.printf("Light Intensity  : %8lu lux\n", luxValue);
   Serial.printf("Filtered Lux     : %8.2f lux\n", luxFiltered);
   Serial.printf("Sunlight Level   : %8u %%\n", sunlightPercentage);
+
+  Serial.println("----------------------------------------");
+
+  Serial.printf("Sunrise          : %8s\n", sunriseStr);
+  Serial.printf("Sunset           : %8s\n", sunsetStr);
 
   Serial.println("----------------------------------------");
 
@@ -1619,6 +1702,9 @@ void setup() {
   configDateTime();
   delay(1000);
 
+  // --- Sunrise & Sunset Calculation ---
+  calculateSunriseSunset();
+
   // --- Ready ---
   u8g2.clearBuffer();
   drawCenteredStr(35, "System Ready!", u8g2_font_t0_14_tr);
@@ -1632,6 +1718,12 @@ void loop() {
   handleNTC();
   handleAHT();
   handleLUX();
+
+  // Recalculate sunrise/sunset when date changes
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo) && timeinfo.tm_mday != lastCalcDay) {
+    calculateSunriseSunset();
+  }
 
   serialOutput();
   displayLCD();
