@@ -25,6 +25,12 @@
 
 ---
 
+## 🎥 Demo
+
+📺 **Watch Full Working Demo:** [Demo 1](https://youtu.be/VbW-eC95sSU), [Demo 2](https://youtu.be/SrXycDGpsag), [Demo 3](https://youtu.be/nSapfp4AQMc)
+
+---
+
 ## 🏗️ System Architecture
 
 ```
@@ -406,12 +412,6 @@ git clone https://github.com/iotBrainStorm/SOLAR_TRACKING_RS485.git
 - 💤 Deep Sleep Power Mode
 - 💾 Data Logging to SD Card
 - 📊 Historical charts on dashboard
-
----
-
-## 🎥 Demo
-
-📺 **Watch Full Working Demo:** [Demo 1](https://youtu.be/VbW-eC95sSU), [Demo 2](https://youtu.be/SrXycDGpsag), [Demo 3](https://youtu.be/nSapfp4AQMc)
 
 ---
 
