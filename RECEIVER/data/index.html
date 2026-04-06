@@ -367,7 +367,7 @@
                   <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
                 </radialGradient>
               </defs>
-              <!-- Horizon line -->
+              <!-- Horizon line (solid) -->
               <line
                 x1="20"
                 y1="120"
@@ -375,12 +375,21 @@
                 y2="120"
                 stroke="rgba(255,255,255,0.2)"
                 stroke-width="1"
-                stroke-dasharray="4,4"
+              />
+              <!-- Solar Noon vertical dotted axis -->
+              <line
+                x1="150"
+                y1="120"
+                x2="150"
+                y2="15"
+                stroke="rgba(255,255,255,0.15)"
+                stroke-width="1"
+                stroke-dasharray="3,4"
               />
               <!-- Arc path (dashed) -->
               <path
                 id="sunArc"
-                d="M 20 120 Q 150 -10 280 120"
+                d="M 20 120 Q 150 -25 280 120"
                 fill="none"
                 stroke="rgba(255,255,255,0.15)"
                 stroke-width="1.5"
@@ -389,7 +398,7 @@
               <!-- Traveled arc (colored) -->
               <path
                 id="sunArcActive"
-                d="M 20 120 Q 150 -10 280 120"
+                d="M 20 120 Q 150 -25 280 120"
                 fill="none"
                 stroke="#ffcc00"
                 stroke-width="2"
@@ -430,7 +439,11 @@
               <span class="sun-label">Sunrise</span>
               <span class="sun-time" id="sunriseTime">--:--</span>
             </div>
-            <div>
+            <div style="text-align: center">
+              <span class="sun-label">Solar Noon</span>
+              <span class="sun-time" id="solarNoonTime">--:--</span>
+            </div>
+            <div style="text-align: right">
               <span class="sun-label">Sunset</span>
               <span class="sun-time" id="sunsetTime">--:--</span>
             </div>
@@ -579,6 +592,21 @@
         document.getElementById("sunsetTime").textContent =
           sunsetStr || "--:--";
 
+        // Calculate and display Solar Noon
+        if (sunriseMin && sunsetMin && sunsetMin > sunriseMin) {
+          var noonMin = Math.round((sunriseMin + sunsetMin) / 2);
+          var noonH = Math.floor(noonMin / 60);
+          var noonM = noonMin % 60;
+          document.getElementById("solarNoonTime").textContent =
+            (noonH < 10 ? "0" : "") +
+            noonH +
+            ":" +
+            (noonM < 10 ? "0" : "") +
+            noonM;
+        } else {
+          document.getElementById("solarNoonTime").textContent = "--:--";
+        }
+
         var svgEl = document.querySelector(".sun-arc-svg");
 
         // Update stats
@@ -639,10 +667,10 @@
 
         progress = Math.max(0, Math.min(1, progress));
 
-        // Quadratic bezier: P0(20,120) CP(150,-10) P1(280,120)
+        // Quadratic bezier: P0(20,120) CP(150,-25) P1(280,120)
         var t = progress;
         var x = (1 - t) * (1 - t) * 20 + 2 * (1 - t) * t * 150 + t * t * 280;
-        var y = (1 - t) * (1 - t) * 120 + 2 * (1 - t) * t * -10 + t * t * 120;
+        var y = (1 - t) * (1 - t) * 120 + 2 * (1 - t) * t * -25 + t * t * 120;
 
         sunDot.setAttribute("cx", x);
         sunDot.setAttribute("cy", y);
@@ -663,7 +691,7 @@
               st * st * 280;
             var sy =
               (1 - st) * (1 - st) * 120 +
-              2 * (1 - st) * st * -10 +
+              2 * (1 - st) * st * -25 +
               st * st * 120;
             pathD += " L " + sx.toFixed(1) + " " + sy.toFixed(1);
           }
@@ -674,7 +702,7 @@
           sunGlowOuter.setAttribute("opacity", "0.08");
           svgEl.classList.remove("sun-glow-off");
         } else if (progress >= 1) {
-          arcActive.setAttribute("d", "M 20 120 Q 150 -10 280 120");
+          arcActive.setAttribute("d", "M 20 120 Q 150 -25 280 120");
           arcActive.setAttribute("opacity", "0.2");
           sunDot.setAttribute("opacity", "0.3");
           sunGlow.setAttribute("opacity", "0.05");
