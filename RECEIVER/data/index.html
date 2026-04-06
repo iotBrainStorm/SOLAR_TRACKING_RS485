@@ -168,28 +168,43 @@
         font-size: 13px;
         opacity: 0.7;
       }
-      /* Floating Setup Button */
+      /* Settings Button (top right) */
       .setup-btn {
         position: fixed;
-        bottom: 25px;
-        right: 25px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
+        top: 18px;
+        right: 20px;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 26px;
-        color: white;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.6);
         cursor: pointer;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-        transition: all 0.3s ease;
+        transition: color 0.3s ease;
         z-index: 1000;
+        box-shadow: none;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
       }
 
       .setup-btn:hover {
-        transform: scale(1.1) rotate(20deg);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        color: #4facfe;
+      }
+
+      .setup-btn:active {
+        color: #00f2fe;
+        box-shadow: none;
+        outline: none;
+      }
+
+      .setup-btn svg {
+        width: 22px;
+        height: 22px;
+        fill: currentColor;
       }
 
       /* Sun Map Card */
@@ -212,7 +227,7 @@
       .sun-arc-container {
         position: relative;
         width: 100%;
-        height: 140px;
+        height: 170px;
         margin: 10px 0 5px;
         overflow: hidden;
       }
@@ -314,6 +329,196 @@
         background: rgba(255, 255, 255, 0.15);
         margin: 2px 0;
       }
+
+      /* Responsive: Tablet */
+      @media (max-width: 768px) {
+        .container {
+          padding: 15px 12px;
+        }
+
+        .header {
+          margin-bottom: 25px;
+        }
+
+        .main-title {
+          font-size: 28px;
+        }
+
+        .subtitle {
+          font-size: 12px;
+          letter-spacing: 1.5px;
+        }
+
+        .dashboard {
+          gap: 16px;
+        }
+
+        .card {
+          flex: 1 1 calc(50% - 10px);
+          max-width: calc(50% - 10px);
+          min-width: 200px;
+          padding: 20px;
+        }
+
+        .icon {
+          font-size: 34px;
+          margin-bottom: 10px;
+        }
+
+        .value {
+          font-size: 30px;
+        }
+
+        .card-sub .sub-value {
+          font-size: 16px;
+        }
+
+        .sun-map-card {
+          flex: 0 0 100%;
+          max-width: 100%;
+          padding: 20px 16px 12px;
+        }
+
+        .sun-arc-container {
+          height: 155px;
+        }
+
+        .sun-times {
+          padding: 0 8px;
+        }
+
+        .sun-times .sun-time {
+          font-size: 15px;
+        }
+
+        .sun-stats {
+          padding: 10px 8px;
+        }
+
+        .sun-stat-item .stat-value {
+          font-size: 17px;
+        }
+
+        .sun-stat-item .stat-label {
+          font-size: 9px;
+          letter-spacing: 0.8px;
+        }
+
+        .setup-btn {
+          top: 14px;
+          right: 14px;
+          width: 38px;
+          height: 38px;
+        }
+
+        .setup-btn svg {
+          width: 20px;
+          height: 20px;
+        }
+
+        .footer {
+          margin-top: 50px;
+          font-size: 11px;
+        }
+      }
+
+      /* Responsive: Mobile */
+      @media (max-width: 480px) {
+        .container {
+          padding: 12px 8px;
+        }
+
+        .header {
+          margin-bottom: 18px;
+        }
+
+        .main-title {
+          font-size: 20px;
+        }
+
+        .subtitle {
+          font-size: 10px;
+          letter-spacing: 1px;
+        }
+
+        .dashboard {
+          gap: 12px;
+        }
+
+        .card {
+          flex: 0 0 100%;
+          max-width: 100%;
+          padding: 16px;
+          border-radius: 14px;
+        }
+
+        .icon {
+          font-size: 28px;
+          margin-bottom: 8px;
+        }
+
+        .title {
+          font-size: 13px;
+          margin-bottom: 8px;
+        }
+
+        .value {
+          font-size: 26px;
+        }
+
+        .unit {
+          font-size: 13px;
+        }
+
+        .sun-map-card {
+          padding: 14px 10px 10px;
+          border-radius: 14px;
+        }
+
+        .sun-arc-container {
+          height: 130px;
+        }
+
+        .sun-times .sun-time {
+          font-size: 14px;
+        }
+
+        .sun-times .sun-label {
+          font-size: 10px;
+        }
+
+        .sun-stats {
+          padding: 8px 3px;
+          gap: 2px;
+        }
+
+        .sun-stat-item .stat-value {
+          font-size: 14px;
+        }
+
+        .sun-stat-item .stat-label {
+          font-size: 8px;
+          letter-spacing: 0.5px;
+        }
+
+        .setup-btn {
+          top: 12px;
+          right: 12px;
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+        }
+
+        .setup-btn svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .footer {
+          margin-top: 35px;
+          font-size: 10px;
+        }
+      }
     </style>
   </head>
 
@@ -352,7 +557,7 @@
           <div class="sun-arc-container">
             <svg
               class="sun-arc-svg"
-              viewBox="0 0 300 130"
+              viewBox="0 0 300 150"
               preserveAspectRatio="xMidYMid meet"
             >
               <defs>
@@ -361,26 +566,118 @@
                   <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
                 </radialGradient>
               </defs>
+              <!-- Azimuth direction label (top left) -->
+              <text
+                id="azimuthLabel"
+                x="5"
+                y="14"
+                fill="rgba(255,255,255,0.5)"
+                font-size="11"
+                font-family="Segoe UI, sans-serif"
+                font-weight="600"
+                letter-spacing="0.5"
+              >
+                --
+              </text>
+              <!-- Mini compass with plus shape (top right) -->
+              <g id="compassGroup" transform="translate(275,20)">
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="18"
+                  fill="rgba(255,255,255,0.04)"
+                  stroke="rgba(255,255,255,0.12)"
+                  stroke-width="0.5"
+                />
+                <!-- Plus crosshair lines -->
+                <line
+                  x1="0"
+                  y1="-18"
+                  x2="0"
+                  y2="18"
+                  stroke="rgba(255,255,255,0.08)"
+                  stroke-width="0.5"
+                />
+                <line
+                  x1="-18"
+                  y1="0"
+                  x2="18"
+                  y2="0"
+                  stroke="rgba(255,255,255,0.08)"
+                  stroke-width="0.5"
+                />
+                <!-- N E S W at plus terminals -->
+                <text
+                  x="0"
+                  y="-11"
+                  text-anchor="middle"
+                  fill="rgba(255,100,100,0.7)"
+                  font-size="6"
+                  font-family="Segoe UI, sans-serif"
+                  font-weight="700"
+                >
+                  N
+                </text>
+                <text
+                  x="0"
+                  y="16"
+                  text-anchor="middle"
+                  fill="rgba(255,255,255,0.3)"
+                  font-size="6"
+                  font-family="Segoe UI, sans-serif"
+                >
+                  S
+                </text>
+                <text
+                  x="12"
+                  y="2.5"
+                  text-anchor="middle"
+                  fill="rgba(255,255,255,0.3)"
+                  font-size="6"
+                  font-family="Segoe UI, sans-serif"
+                >
+                  E
+                </text>
+                <text
+                  x="-12"
+                  y="2.5"
+                  text-anchor="middle"
+                  fill="rgba(255,255,255,0.3)"
+                  font-size="6"
+                  font-family="Segoe UI, sans-serif"
+                >
+                  W
+                </text>
+                <!-- Sun position dot -->
+                <circle
+                  id="compassDot"
+                  cx="0"
+                  cy="0"
+                  r="2"
+                  fill="#ffcc00"
+                  opacity="0.85"
+                />
+              </g>
               <!-- Optimal sunlight zone (light red fill between 45° diagonal axes) -->
               <path
-                d="M 150 120 L 92 62 L 105 56 L 118 51.4 L 131 48.5 L 144 47.5 L 150 47.5 L 156 47.5 L 169 48.5 L 182 51.4 L 195 56 L 208 62 L 150 120 Z"
+                d="M 150 140 L 82 72 L 98 64 L 114 58 L 130 54 L 143 52 L 150 51.5 L 157 52 L 170 54 L 186 58 L 202 64 L 218 72 L 150 140 Z"
                 fill="rgba(255,70,70,0.06)"
               />
               <!-- Horizon line (solid) -->
               <line
-                x1="20"
-                y1="120"
-                x2="280"
-                y2="120"
+                x1="15"
+                y1="140"
+                x2="285"
+                y2="140"
                 stroke="rgba(255,255,255,0.2)"
                 stroke-width="1"
               />
               <!-- Left 45° diagonal dotted axis (from center to arc) -->
               <line
                 x1="150"
-                y1="120"
-                x2="92"
-                y2="62"
+                y1="140"
+                x2="82"
+                y2="72"
                 stroke="rgba(255,120,120,0.25)"
                 stroke-width="1"
                 stroke-dasharray="3,4"
@@ -388,9 +685,9 @@
               <!-- Right 45° diagonal dotted axis (from center to arc) -->
               <line
                 x1="150"
-                y1="120"
-                x2="208"
-                y2="62"
+                y1="140"
+                x2="218"
+                y2="72"
                 stroke="rgba(255,120,120,0.25)"
                 stroke-width="1"
                 stroke-dasharray="3,4"
@@ -398,35 +695,35 @@
               <!-- Left 45° time label (rotated along line direction) -->
               <text
                 id="time45Left"
-                x="121"
-                y="91"
+                x="116"
+                y="106"
                 text-anchor="middle"
                 fill="rgba(255,255,255,0.45)"
                 font-size="8"
                 font-family="Segoe UI, sans-serif"
-                transform="rotate(45, 121, 91)"
+                transform="rotate(45, 116, 106)"
               >
                 --:--
               </text>
               <!-- Right 45° time label (rotated along line direction) -->
               <text
                 id="time45Right"
-                x="179"
-                y="91"
+                x="184"
+                y="106"
                 text-anchor="middle"
                 fill="rgba(255,255,255,0.45)"
                 font-size="8"
                 font-family="Segoe UI, sans-serif"
-                transform="rotate(-45, 179, 91)"
+                transform="rotate(-45, 184, 106)"
               >
                 --:--
               </text>
               <!-- Solar Noon vertical dotted axis -->
               <line
                 x1="150"
-                y1="120"
+                y1="140"
                 x2="150"
-                y2="15"
+                y2="10"
                 stroke="rgba(255,255,255,0.15)"
                 stroke-width="1"
                 stroke-dasharray="3,4"
@@ -434,7 +731,7 @@
               <!-- Arc path (dashed) -->
               <path
                 id="sunArc"
-                d="M 20 120 Q 150 -25 280 120"
+                d="M 15 140 Q 150 -40 285 140"
                 fill="none"
                 stroke="rgba(255,255,255,0.15)"
                 stroke-width="1.5"
@@ -443,7 +740,7 @@
               <!-- Traveled arc (colored) -->
               <path
                 id="sunArcActive"
-                d="M 20 120 Q 150 -25 280 120"
+                d="M 15 140 Q 150 -40 285 140"
                 fill="none"
                 stroke="#ffcc00"
                 stroke-width="2"
@@ -453,8 +750,8 @@
               <!-- Outer glow -->
               <circle
                 id="sunGlowOuter"
-                cx="20"
-                cy="120"
+                cx="15"
+                cy="140"
                 r="26"
                 fill="url(#sunGlowGrad)"
                 opacity="0.06"
@@ -462,8 +759,8 @@
               <!-- Inner glow -->
               <circle
                 id="sunGlow"
-                cx="20"
-                cy="120"
+                cx="15"
+                cy="140"
                 r="16"
                 fill="#ffcc00"
                 opacity="0.15"
@@ -471,8 +768,8 @@
               <!-- Sun dot -->
               <circle
                 id="sunDot"
-                cx="20"
-                cy="120"
+                cx="15"
+                cy="140"
                 r="8"
                 fill="#ffcc00"
                 opacity="0.9"
@@ -637,7 +934,7 @@
       }
 
       // --- Real astronomical sun position calculation ---
-      function calcSunElevation(lat, lon, tz, dateObj) {
+      function calcSunPosition(lat, lon, tz, dateObj) {
         var yr = dateObj.getFullYear();
         var start = new Date(yr, 0, 0);
         var diff = dateObj - start;
@@ -693,7 +990,25 @@
         cosZenith = Math.max(-1, Math.min(1, cosZenith));
         var zenith = Math.acos(cosZenith);
         var elevation = 90.0 - (zenith * 180.0) / Math.PI;
-        return elevation;
+
+        // Azimuth calculation
+        var azimuth =
+          (Math.atan2(
+            Math.sin(haRad),
+            Math.cos(haRad) * Math.sin(latRad) -
+              Math.tan(decl) * Math.cos(latRad),
+          ) *
+            180.0) /
+          Math.PI;
+        azimuth = azimuth + 180.0; // Convert to compass bearing (0=N)
+
+        return { elevation: elevation, azimuth: azimuth };
+      }
+
+      function azimuthToDir(az) {
+        var dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        var idx = Math.round(az / 45) % 8;
+        return dirs[idx];
       }
 
       // Find the time (in minutes from midnight) when sun elevation crosses a target angle
@@ -724,7 +1039,7 @@
         for (var i = 0; i < 20; i++) {
           var midMin = Math.round((startMin + endMin) / 2);
           var d = new Date(yr, mo, dy, Math.floor(midMin / 60), midMin % 60, 0);
-          var elev = calcSunElevation(lat, lon, tz, d);
+          var elev = calcSunPosition(lat, lon, tz, d).elevation;
           if (elev < targetAngle) {
             if (direction === "rising") startMin = midMin;
             else endMin = midMin;
@@ -774,7 +1089,7 @@
             noonMin % 60,
             0,
           );
-          var maxElev = calcSunElevation(lat, lon, tz, noonDate);
+          var maxElev = calcSunPosition(lat, lon, tz, noonDate).elevation;
 
           if (maxElev >= 45) {
             var left45 = findAngleCrossingTime(
@@ -848,18 +1163,37 @@
             Math.floor(minsLeft / 60) + "h " + (minsLeft % 60) + "m";
         }
 
-        // Real sun elevation angle from astronomical formula
-        var sunAngle = calcSunElevation(lat, lon, tz, now);
+        // Real sun position from astronomical formula
+        var sunPos = calcSunPosition(lat, lon, tz, now);
+        var sunAngle = sunPos.elevation;
+        var sunAzimuth = sunPos.azimuth;
         if (sunAngle < 0) sunAngle = 0;
         document.getElementById("sunMapAngle").textContent =
           Math.round(sunAngle) + "°";
 
+        // Update azimuth label (top left)
+        var dirStr = azimuthToDir(sunAzimuth);
+        document.getElementById("azimuthLabel").textContent =
+          dirStr + " " + Math.round(sunAzimuth) + "°";
+
+        // Update compass dot (top right)
+        var azRad = (sunAzimuth * Math.PI) / 180.0;
+        var cR = 8;
+        var cdx = cR * Math.sin(azRad);
+        var cdy = -cR * Math.cos(azRad);
+        document
+          .getElementById("compassDot")
+          .setAttribute("cx", cdx.toFixed(1));
+        document
+          .getElementById("compassDot")
+          .setAttribute("cy", cdy.toFixed(1));
+
         progress = Math.max(0, Math.min(1, progress));
 
-        // Quadratic bezier: P0(20,120) CP(150,-25) P1(280,120)
+        // Quadratic bezier: P0(15,140) CP(150,-40) P1(285,140)
         var t = progress;
-        var x = (1 - t) * (1 - t) * 20 + 2 * (1 - t) * t * 150 + t * t * 280;
-        var y = (1 - t) * (1 - t) * 120 + 2 * (1 - t) * t * -25 + t * t * 120;
+        var x = (1 - t) * (1 - t) * 15 + 2 * (1 - t) * t * 150 + t * t * 285;
+        var y = (1 - t) * (1 - t) * 140 + 2 * (1 - t) * t * -40 + t * t * 140;
 
         sunDot.setAttribute("cx", x);
         sunDot.setAttribute("cy", y);
@@ -870,18 +1204,18 @@
 
         // Partial arc up to current position
         if (progress > 0 && progress < 1) {
-          var pathD = "M 20 120";
+          var pathD = "M 15 140";
           var steps = Math.round(t * 50);
           for (var i = 1; i <= steps; i++) {
             var st = i / 50;
             var sx =
-              (1 - st) * (1 - st) * 20 +
+              (1 - st) * (1 - st) * 15 +
               2 * (1 - st) * st * 150 +
-              st * st * 280;
+              st * st * 285;
             var sy =
-              (1 - st) * (1 - st) * 120 +
-              2 * (1 - st) * st * -25 +
-              st * st * 120;
+              (1 - st) * (1 - st) * 140 +
+              2 * (1 - st) * st * -40 +
+              st * st * 140;
             pathD += " L " + sx.toFixed(1) + " " + sy.toFixed(1);
           }
           arcActive.setAttribute("d", pathD);
@@ -891,7 +1225,7 @@
           sunGlowOuter.setAttribute("opacity", "0.08");
           svgEl.classList.remove("sun-glow-off");
         } else if (progress >= 1) {
-          arcActive.setAttribute("d", "M 20 120 Q 150 -25 280 120");
+          arcActive.setAttribute("d", "M 15 140 Q 150 -40 285 140");
           arcActive.setAttribute("opacity", "0.2");
           sunDot.setAttribute("opacity", "0.3");
           sunGlow.setAttribute("opacity", "0.05");
@@ -907,6 +1241,12 @@
         }
       }
     </script>
-    <div class="setup-btn" onclick="openSetup()">⚙️</div>
+    <div class="setup-btn" onclick="openSetup()">
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"
+        />
+      </svg>
+    </div>
   </body>
 </html>

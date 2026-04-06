@@ -83,9 +83,19 @@
 ### 🌐 Web Interface
 
 - **Real-time Dashboard** — all sensor values, WiFi strength, Node-RED status
+- **Interactive Sun Map** — real-time sun arc with:
+  - NOAA astronomical formula for accurate sun elevation & azimuth angles
+  - 45° optimal zone with binary-search crossing times
+  - Mini compass SVG showing real sun position (N/E/S/W)
+  - Azimuth direction label (e.g., `SE 117°`)
+  - Sunrise, Solar Noon, Sunset times
+  - Sun stats: Elevation, Sunlight %, LUX, Remaining time
 - **Configuration Portal** — adjust all settings from any browser
+- **GPS Auto-detect** — one-tap location fetch from device GPS (mobile-friendly)
+- **Timezone Dropdown** — 40+ timezone options with country names
 - **Save Configuration** — saves to both master & slave NVS simultaneously
 - **Factory Reset** — resets both modules to default settings
+- **Responsive Design** — optimized for desktop, tablet, and mobile screens
 - Fully **async** non-blocking web server
 
 ### 🔗 Node-RED Integration
@@ -264,6 +274,9 @@
 | Node-RED Interval | 1+ sec      | 10      | Data push frequency                         |
 | GMT Offset        | Seconds     | 19800   | Timezone (IST default)                      |
 | Clock Format      | 12/24       | 24      | Display time format                         |
+| Latitude          | Decimal °   | 0.0     | Location latitude (GPS auto-detect support) |
+| Longitude         | Decimal °   | 0.0     | Location longitude                          |
+| Timezone Offset   | Hours       | 5.5     | UTC offset (dropdown with country names)    |
 
 ---
 
@@ -319,6 +332,22 @@ SOLAR_TRACKING_RS485/
 | `BH1750`            | Light intensity sensor   |
 | `Preferences`       | NVS settings storage     |
 | `HardwareSerial`    | RS485 UART communication |
+| `Dusk2Dawn`         | Sunrise/sunset times     |
+
+---
+
+## 🌞 Sun Map — How It Works
+
+The dashboard features an interactive Sun Map that uses the **NOAA Solar Position Algorithm** to calculate real-time sun elevation and azimuth angles based on your configured latitude, longitude, and timezone.
+
+### Key Calculations
+
+- **Solar Declination** — Earth's axial tilt relative to the sun
+- **Equation of Time** — correction for Earth's elliptical orbit
+- **Hour Angle** — sun's angular position relative to solar noon
+- **Elevation Angle** — sun's height above the horizon (0° to ~90°)
+- **Azimuth Angle** — compass bearing of the sun (0°=N, 90°=E, 180°=S, 270°=W)
+- **45° Crossing Times** — found via binary search for optimal solar panel angle
 
 ---
 

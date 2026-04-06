@@ -327,6 +327,39 @@
         display: none;
       }
 
+      /* GPS Button */
+      .gps-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border: 1px solid rgba(79, 172, 254, 0.3);
+        border-radius: 8px;
+        background: rgba(79, 172, 254, 0.08);
+        color: #4facfe;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-bottom: 14px;
+      }
+
+      .gps-btn:hover {
+        background: rgba(79, 172, 254, 0.15);
+        border-color: #4facfe;
+      }
+
+      .gps-btn.loading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      .gps-btn svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+
       /* ====== MOBILE ====== */
       .mobile-header {
         display: none;
@@ -735,6 +768,19 @@
 
           <div class="sub-section">
             <div class="sub-section-title">Coordinates</div>
+            <button
+              type="button"
+              class="gps-btn"
+              id="gpsBtn"
+              onclick="fetchGPS()"
+            >
+              <svg viewBox="0 0 24 24">
+                <path
+                  d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"
+                />
+              </svg>
+              Auto-detect Location
+            </button>
             <div class="form-row">
               <div class="form-group">
                 <label>Latitude</label>
@@ -760,14 +806,65 @@
           <div class="sub-section">
             <div class="sub-section-title">Timezone</div>
             <div class="form-group">
-              <label>Timezone Offset (hours)</label>
-              <input
-                type="number"
-                name="tzOffset"
-                step="0.5"
-                value="5.5"
-                placeholder="e.g. 5.5 for +5:30"
-              />
+              <label>Timezone</label>
+              <select name="tzOffset">
+                <option value="-12">UTC-12:00 – Baker Island</option>
+                <option value="-11">UTC-11:00 – American Samoa</option>
+                <option value="-10">UTC-10:00 – Hawaii, USA</option>
+                <option value="-9.5">UTC-09:30 – Marquesas Islands</option>
+                <option value="-9">UTC-09:00 – Alaska, USA</option>
+                <option value="-8">UTC-08:00 – US/Canada Pacific</option>
+                <option value="-7">UTC-07:00 – US/Canada Mountain</option>
+                <option value="-6">
+                  UTC-06:00 – US/Canada Central, Mexico
+                </option>
+                <option value="-5">
+                  UTC-05:00 – US/Canada Eastern, Colombia
+                </option>
+                <option value="-4">
+                  UTC-04:00 – Atlantic, Venezuela, Bolivia
+                </option>
+                <option value="-3.5">UTC-03:30 – Newfoundland, Canada</option>
+                <option value="-3">UTC-03:00 – Brazil, Argentina</option>
+                <option value="-2">UTC-02:00 – South Georgia Island</option>
+                <option value="-1">UTC-01:00 – Azores, Cape Verde</option>
+                <option value="0">UTC±00:00 – UK, Iceland, Ghana</option>
+                <option value="1">UTC+01:00 – Germany, France, Nigeria</option>
+                <option value="2">
+                  UTC+02:00 – Egypt, South Africa, Finland
+                </option>
+                <option value="3">
+                  UTC+03:00 – Saudi Arabia, Russia (Moscow)
+                </option>
+                <option value="3.5">UTC+03:30 – Iran</option>
+                <option value="4">UTC+04:00 – UAE, Oman, Georgia</option>
+                <option value="4.5">UTC+04:30 – Afghanistan</option>
+                <option value="5">UTC+05:00 – Pakistan, Uzbekistan</option>
+                <option value="5.5">UTC+05:30 – India, Sri Lanka</option>
+                <option value="5.75">UTC+05:45 – Nepal</option>
+                <option value="6">UTC+06:00 – Bangladesh, Kazakhstan</option>
+                <option value="6.5">UTC+06:30 – Myanmar</option>
+                <option value="7">
+                  UTC+07:00 – Thailand, Vietnam, Indonesia
+                </option>
+                <option value="8">
+                  UTC+08:00 – China, Singapore, Malaysia
+                </option>
+                <option value="8.75">UTC+08:45 – Australia (Eucla)</option>
+                <option value="9">UTC+09:00 – Japan, South Korea</option>
+                <option value="9.5">
+                  UTC+09:30 – Australia (Darwin, Adelaide)
+                </option>
+                <option value="10">
+                  UTC+10:00 – Australia (Sydney), Papua
+                </option>
+                <option value="10.5">UTC+10:30 – Lord Howe Island</option>
+                <option value="11">UTC+11:00 – Solomon Islands, Vanuatu</option>
+                <option value="12">UTC+12:00 – New Zealand, Fiji</option>
+                <option value="12.75">UTC+12:45 – Chatham Islands</option>
+                <option value="13">UTC+13:00 – Tonga, Samoa</option>
+                <option value="14">UTC+14:00 – Line Islands</option>
+              </select>
             </div>
           </div>
         </div>
@@ -924,6 +1021,63 @@
             })
             .catch(function () {
               alert("Reset failed!");
+            });
+        }
+      }
+
+      function fetchGPS() {
+        var btn = document.getElementById("gpsBtn");
+        var svgIcon =
+          '<svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>';
+
+        function resetBtn() {
+          btn.classList.remove("loading");
+          btn.innerHTML = svgIcon + " Auto-detect Location";
+        }
+
+        function setCoords(lat, lon) {
+          document.querySelector("[name=latitude]").value =
+            parseFloat(lat).toFixed(6);
+          document.querySelector("[name=longitude]").value =
+            parseFloat(lon).toFixed(6);
+          resetBtn();
+        }
+
+        // Try native Geolocation API first (requires HTTPS or localhost)
+        if (navigator.geolocation && window.isSecureContext) {
+          btn.classList.add("loading");
+          btn.innerHTML = svgIcon + " Locating...";
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              setCoords(pos.coords.latitude, pos.coords.longitude);
+            },
+            function (err) {
+              alert("GPS error: " + err.message);
+              resetBtn();
+            },
+            { enableHighAccuracy: true, timeout: 10000 },
+          );
+        } else {
+          // Fallback: IP-based geolocation (works over HTTP)
+          btn.classList.add("loading");
+          btn.innerHTML = svgIcon + " Locating...";
+          fetch("https://ipapi.co/json/")
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (data) {
+              if (data.latitude && data.longitude) {
+                setCoords(data.latitude, data.longitude);
+              } else {
+                alert("Could not detect location from IP");
+                resetBtn();
+              }
+            })
+            .catch(function () {
+              alert(
+                "Location detection failed. Please enter coordinates manually.",
+              );
+              resetBtn();
             });
         }
       }
