@@ -411,7 +411,9 @@ git clone https://github.com/iotBrainStorm/SOLAR_TRACKING_RS485.git
 
 ## 🎥 Demo
 
-📺 **Watch Full Working Demo:** [YouTube](https://youtu.be/VbW-eC95sSU)
+📺 **Watch Full Working Demo:** [Demo 1](https://youtu.be/VbW-eC95sSU)
+📺 **Watch Full Working Demo:** [Demo 2](https://youtu.be/SrXycDGpsag)
+📺 **Watch Full Working Demo:** [Demo 3](https://youtu.be/nSapfp4AQMc)
 
 ---
 
