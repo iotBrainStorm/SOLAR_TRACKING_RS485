@@ -19,6 +19,7 @@
 <p align="center">
   <img src="display.png" alt="OLED Display Output" width="280" style="margin:10px; border-radius:12px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"/>
   <img src="dashboard.png" alt="Web Dashboard" width="280" style="margin:10px; border-radius:12px;"/>
+  <img src="sunmap.png" width="280" style="margin:10px; border-radius:12px;"/>
   <img src="config.png" alt="Configuration Page" width="280" style="margin:10px; border-radius:12px;"/>
 </p>
 
@@ -410,7 +411,7 @@ git clone https://github.com/iotBrainStorm/SOLAR_TRACKING_RS485.git
 
 ## 🎥 Demo
 
-📺 **Watch Full Working Demo:** [YouTube](https://youtu.be/oVlurzfXVxU)
+📺 **Watch Full Working Demo:** [YouTube](https://youtu.be/VbW-eC95sSU)
 
 ---
 
