@@ -367,6 +367,11 @@
                   <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
                 </radialGradient>
               </defs>
+              <!-- Optimal sunlight zone (light red fill between 45° diagonal axes) -->
+              <path
+                d="M 150 120 L 92 62 L 105 56 L 118 51.4 L 131 48.5 L 144 47.5 L 150 47.5 L 156 47.5 L 169 48.5 L 182 51.4 L 195 56 L 208 62 L 150 120 Z"
+                fill="rgba(255,70,70,0.06)"
+              />
               <!-- Horizon line (solid) -->
               <line
                 x1="20"
@@ -376,6 +381,52 @@
                 stroke="rgba(255,255,255,0.2)"
                 stroke-width="1"
               />
+              <!-- Left 45° diagonal dotted axis (from center to arc) -->
+              <line
+                x1="150"
+                y1="120"
+                x2="92"
+                y2="62"
+                stroke="rgba(255,120,120,0.25)"
+                stroke-width="1"
+                stroke-dasharray="3,4"
+              />
+              <!-- Right 45° diagonal dotted axis (from center to arc) -->
+              <line
+                x1="150"
+                y1="120"
+                x2="208"
+                y2="62"
+                stroke="rgba(255,120,120,0.25)"
+                stroke-width="1"
+                stroke-dasharray="3,4"
+              />
+              <!-- Left 45° time label (rotated parallel to line) -->
+              <text
+                id="time45Left"
+                x="121"
+                y="91"
+                text-anchor="middle"
+                fill="rgba(255,160,160,0.55)"
+                font-size="8"
+                font-family="Segoe UI, sans-serif"
+                transform="rotate(-45, 121, 91)"
+              >
+                --:--
+              </text>
+              <!-- Right 45° time label (rotated parallel to line) -->
+              <text
+                id="time45Right"
+                x="179"
+                y="91"
+                text-anchor="middle"
+                fill="rgba(255,160,160,0.55)"
+                font-size="8"
+                font-family="Segoe UI, sans-serif"
+                transform="rotate(45, 179, 91)"
+              >
+                --:--
+              </text>
               <!-- Solar Noon vertical dotted axis -->
               <line
                 x1="150"
@@ -592,8 +643,9 @@
         document.getElementById("sunsetTime").textContent =
           sunsetStr || "--:--";
 
-        // Calculate and display Solar Noon
+        // Calculate and display Solar Noon + 45° times
         if (sunriseMin && sunsetMin && sunsetMin > sunriseMin) {
+          var td = sunsetMin - sunriseMin;
           var noonMin = Math.round((sunriseMin + sunsetMin) / 2);
           var noonH = Math.floor(noonMin / 60);
           var noonM = noonMin % 60;
@@ -603,8 +655,22 @@
             ":" +
             (noonM < 10 ? "0" : "") +
             noonM;
+
+          // 45° times (25% and 75% of day)
+          var left45 = Math.round(sunriseMin + td * 0.25);
+          var right45 = Math.round(sunriseMin + td * 0.75);
+          var lH = Math.floor(left45 / 60),
+            lM = left45 % 60;
+          var rH = Math.floor(right45 / 60),
+            rM = right45 % 60;
+          document.getElementById("time45Left").textContent =
+            (lH < 10 ? "0" : "") + lH + ":" + (lM < 10 ? "0" : "") + lM;
+          document.getElementById("time45Right").textContent =
+            (rH < 10 ? "0" : "") + rH + ":" + (rM < 10 ? "0" : "") + rM;
         } else {
           document.getElementById("solarNoonTime").textContent = "--:--";
+          document.getElementById("time45Left").textContent = "--:--";
+          document.getElementById("time45Right").textContent = "--:--";
         }
 
         var svgEl = document.querySelector(".sun-arc-svg");
