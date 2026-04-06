@@ -242,12 +242,6 @@
         font-weight: 600;
       }
 
-      .sun-status {
-        margin-top: 8px;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.6);
-      }
-
       /* Sun glow pulse animation */
       @keyframes sunPulse {
         0%,
@@ -401,29 +395,29 @@
                 stroke-width="1"
                 stroke-dasharray="3,4"
               />
-              <!-- Left 45° time label (rotated parallel to line) -->
+              <!-- Left 45° time label (rotated along line direction) -->
               <text
                 id="time45Left"
                 x="121"
                 y="91"
                 text-anchor="middle"
-                fill="rgba(255,160,160,0.55)"
+                fill="rgba(255,255,255,0.45)"
                 font-size="8"
                 font-family="Segoe UI, sans-serif"
-                transform="rotate(-45, 121, 91)"
+                transform="rotate(45, 121, 91)"
               >
                 --:--
               </text>
-              <!-- Right 45° time label (rotated parallel to line) -->
+              <!-- Right 45° time label (rotated along line direction) -->
               <text
                 id="time45Right"
                 x="179"
                 y="91"
                 text-anchor="middle"
-                fill="rgba(255,160,160,0.55)"
+                fill="rgba(255,255,255,0.45)"
                 font-size="8"
                 font-family="Segoe UI, sans-serif"
-                transform="rotate(45, 179, 91)"
+                transform="rotate(-45, 179, 91)"
               >
                 --:--
               </text>
@@ -499,8 +493,6 @@
               <span class="sun-time" id="sunsetTime">--:--</span>
             </div>
           </div>
-          <div class="sun-status" id="sunStatus"></div>
-
           <!-- Stats row -->
           <div class="sun-stats">
             <div class="sun-stat-item">
@@ -522,6 +514,13 @@
                 -- lx
               </div>
               <div class="stat-label">Lux</div>
+            </div>
+            <div class="sun-stat-divider"></div>
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunRemaining" style="color: #a29bfe">
+                --
+              </div>
+              <div class="stat-label">Remaining</div>
             </div>
           </div>
         </div>
@@ -566,6 +565,10 @@
             colorSolarTemp(solar);
 
             // Sun Map update
+            var lat = parseFloat(data.latitude) || 0;
+            var lon = parseFloat(data.longitude) || 0;
+            var tz = parseFloat(data.tzOffset) || 5.5;
+
             updateSunMap(
               data.sunrise,
               data.sunset,
@@ -573,6 +576,9 @@
               data.sunsetMin,
               sunPercent,
               lux,
+              lat,
+              lon,
+              tz,
             );
           })
           .catch(() => {
@@ -630,6 +636,112 @@
         window.location.href = "config.html";
       }
 
+      // --- Real astronomical sun position calculation ---
+      function calcSunElevation(lat, lon, tz, dateObj) {
+        var yr = dateObj.getFullYear();
+        var start = new Date(yr, 0, 0);
+        var diff = dateObj - start;
+        var oneDay = 86400000;
+        var dayOfYear = Math.floor(diff / oneDay);
+        var hour =
+          dateObj.getHours() +
+          dateObj.getMinutes() / 60.0 +
+          dateObj.getSeconds() / 3600.0;
+
+        var gamma =
+          ((2.0 * Math.PI) / 365.0) * (dayOfYear - 1 + (hour - 12) / 24.0);
+
+        // Equation of time (minutes)
+        var eqTime =
+          229.18 *
+          (0.000075 +
+            0.001868 * Math.cos(gamma) -
+            0.032077 * Math.sin(gamma) -
+            0.014615 * Math.cos(2 * gamma) -
+            0.040849 * Math.sin(2 * gamma));
+
+        // Solar declination (radians)
+        var decl =
+          0.006918 -
+          0.399912 * Math.cos(gamma) +
+          0.070257 * Math.sin(gamma) -
+          0.006758 * Math.cos(2 * gamma) +
+          0.000907 * Math.sin(2 * gamma) -
+          0.002697 * Math.cos(3 * gamma) +
+          0.00148 * Math.sin(3 * gamma);
+
+        // Time offset (minutes)
+        var timeOffset = eqTime + 4 * lon - 60 * tz;
+
+        // True solar time (minutes)
+        var tst =
+          dateObj.getHours() * 60 +
+          dateObj.getMinutes() +
+          dateObj.getSeconds() / 60.0 +
+          timeOffset;
+
+        // Hour angle (degrees)
+        var ha = tst / 4.0 - 180.0;
+
+        var haRad = (ha * Math.PI) / 180.0;
+        var latRad = (lat * Math.PI) / 180.0;
+
+        // Solar zenith angle
+        var cosZenith =
+          Math.sin(latRad) * Math.sin(decl) +
+          Math.cos(latRad) * Math.cos(decl) * Math.cos(haRad);
+        cosZenith = Math.max(-1, Math.min(1, cosZenith));
+        var zenith = Math.acos(cosZenith);
+        var elevation = 90.0 - (zenith * 180.0) / Math.PI;
+        return elevation;
+      }
+
+      // Find the time (in minutes from midnight) when sun elevation crosses a target angle
+      // direction: 'rising' for morning, 'setting' for afternoon
+      function findAngleCrossingTime(
+        lat,
+        lon,
+        tz,
+        targetAngle,
+        sunriseMin,
+        sunsetMin,
+        direction,
+      ) {
+        var today = new Date();
+        var yr = today.getFullYear();
+        var mo = today.getMonth();
+        var dy = today.getDate();
+        var startMin, endMin;
+        var noonMin = Math.round((sunriseMin + sunsetMin) / 2);
+        if (direction === "rising") {
+          startMin = sunriseMin;
+          endMin = noonMin;
+        } else {
+          startMin = noonMin;
+          endMin = sunsetMin;
+        }
+        // Binary search for crossing time
+        for (var i = 0; i < 20; i++) {
+          var midMin = Math.round((startMin + endMin) / 2);
+          var d = new Date(yr, mo, dy, Math.floor(midMin / 60), midMin % 60, 0);
+          var elev = calcSunElevation(lat, lon, tz, d);
+          if (elev < targetAngle) {
+            if (direction === "rising") startMin = midMin;
+            else endMin = midMin;
+          } else {
+            if (direction === "rising") endMin = midMin;
+            else startMin = midMin;
+          }
+        }
+        return Math.round((startMin + endMin) / 2);
+      }
+
+      function formatMin(m) {
+        var h = Math.floor(m / 60);
+        var mm = m % 60;
+        return (h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm;
+      }
+
       function updateSunMap(
         sunriseStr,
         sunsetStr,
@@ -637,36 +749,60 @@
         sunsetMin,
         sunPercent,
         lux,
+        lat,
+        lon,
+        tz,
       ) {
         document.getElementById("sunriseTime").textContent =
           sunriseStr || "--:--";
         document.getElementById("sunsetTime").textContent =
           sunsetStr || "--:--";
 
-        // Calculate and display Solar Noon + 45° times
+        // Calculate and display Solar Noon + 45° times using real formula
         if (sunriseMin && sunsetMin && sunsetMin > sunriseMin) {
-          var td = sunsetMin - sunriseMin;
           var noonMin = Math.round((sunriseMin + sunsetMin) / 2);
-          var noonH = Math.floor(noonMin / 60);
-          var noonM = noonMin % 60;
           document.getElementById("solarNoonTime").textContent =
-            (noonH < 10 ? "0" : "") +
-            noonH +
-            ":" +
-            (noonM < 10 ? "0" : "") +
-            noonM;
+            formatMin(noonMin);
 
-          // 45° times (25% and 75% of day)
-          var left45 = Math.round(sunriseMin + td * 0.25);
-          var right45 = Math.round(sunriseMin + td * 0.75);
-          var lH = Math.floor(left45 / 60),
-            lM = left45 % 60;
-          var rH = Math.floor(right45 / 60),
-            rM = right45 % 60;
-          document.getElementById("time45Left").textContent =
-            (lH < 10 ? "0" : "") + lH + ":" + (lM < 10 ? "0" : "") + lM;
-          document.getElementById("time45Right").textContent =
-            (rH < 10 ? "0" : "") + rH + ":" + (rM < 10 ? "0" : "") + rM;
+          // Check if sun ever reaches 45° today
+          var today = new Date();
+          var noonDate = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            Math.floor(noonMin / 60),
+            noonMin % 60,
+            0,
+          );
+          var maxElev = calcSunElevation(lat, lon, tz, noonDate);
+
+          if (maxElev >= 45) {
+            var left45 = findAngleCrossingTime(
+              lat,
+              lon,
+              tz,
+              45,
+              sunriseMin,
+              sunsetMin,
+              "rising",
+            );
+            var right45 = findAngleCrossingTime(
+              lat,
+              lon,
+              tz,
+              45,
+              sunriseMin,
+              sunsetMin,
+              "setting",
+            );
+            document.getElementById("time45Left").textContent =
+              formatMin(left45);
+            document.getElementById("time45Right").textContent =
+              formatMin(right45);
+          } else {
+            document.getElementById("time45Left").textContent = "--:--";
+            document.getElementById("time45Right").textContent = "--:--";
+          }
         } else {
           document.getElementById("solarNoonTime").textContent = "--:--";
           document.getElementById("time45Left").textContent = "--:--";
@@ -682,7 +818,7 @@
           lux != null ? Math.round(lux) + " lx" : "-- lx";
 
         if (!sunriseMin || !sunsetMin || sunsetMin <= sunriseMin) {
-          document.getElementById("sunStatus").textContent = "No sun data";
+          document.getElementById("sunRemaining").textContent = "--";
           document.getElementById("sunMapAngle").textContent = "--°";
           return;
         }
@@ -692,42 +828,29 @@
         var totalDay = sunsetMin - sunriseMin;
         var progress = (nowMin - sunriseMin) / totalDay;
 
-        var statusEl = document.getElementById("sunStatus");
         var sunDot = document.getElementById("sunDot");
         var sunGlow = document.getElementById("sunGlow");
         var sunGlowOuter = document.getElementById("sunGlowOuter");
         var arcActive = document.getElementById("sunArcActive");
+        var remainEl = document.getElementById("sunRemaining");
 
         if (nowMin < sunriseMin) {
           var minsLeft = sunriseMin - nowMin;
-          statusEl.textContent =
-            "Sunrise in " +
-            Math.floor(minsLeft / 60) +
-            "h " +
-            (minsLeft % 60) +
-            "m";
+          remainEl.textContent =
+            Math.floor(minsLeft / 60) + "h " + (minsLeft % 60) + "m";
           progress = 0;
         } else if (nowMin > sunsetMin) {
-          statusEl.textContent = "Sun has set";
+          remainEl.textContent = "Set";
           progress = 1;
         } else {
           var minsLeft = sunsetMin - nowMin;
-          statusEl.textContent =
-            "Sunset in " +
-            Math.floor(minsLeft / 60) +
-            "h " +
-            (minsLeft % 60) +
-            "m";
+          remainEl.textContent =
+            Math.floor(minsLeft / 60) + "h " + (minsLeft % 60) + "m";
         }
 
-        // Sun elevation angle: 0° at horizon, peaks at ~90° (scaled by arc)
-        // Using sine model: angle = maxAngle * sin(progress * PI)
-        var sunAngle;
-        if (progress <= 0 || progress >= 1) {
-          sunAngle = 0;
-        } else {
-          sunAngle = 90 * Math.sin(progress * Math.PI);
-        }
+        // Real sun elevation angle from astronomical formula
+        var sunAngle = calcSunElevation(lat, lon, tz, now);
+        if (sunAngle < 0) sunAngle = 0;
         document.getElementById("sunMapAngle").textContent =
           Math.round(sunAngle) + "°";
 

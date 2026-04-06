@@ -629,6 +629,9 @@ void setupWebServer() {
     doc["sunset"] = sunsetStr;
     doc["sunriseMin"] = sunriseMinutes;
     doc["sunsetMin"] = sunsetMinutes;
+    doc["latitude"] = serialized(String(settings.latitude, 4));
+    doc["longitude"] = serialized(String(settings.longitude, 4));
+    doc["tzOffset"] = serialized(String(settings.tzOffset, 2));
 
     String response;
     serializeJson(doc, response);
