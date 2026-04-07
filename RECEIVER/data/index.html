@@ -580,11 +580,11 @@
                 --
               </text>
               <!-- Mini compass with plus shape (top right) -->
-              <g id="compassGroup" transform="translate(275,20)">
+              <g id="compassGroup" transform="translate(272,26)">
                 <circle
                   cx="0"
                   cy="0"
-                  r="18"
+                  r="24"
                   fill="rgba(255,255,255,0.04)"
                   stroke="rgba(255,255,255,0.12)"
                   stroke-width="0.5"
@@ -592,16 +592,16 @@
                 <!-- Plus crosshair lines -->
                 <line
                   x1="0"
-                  y1="-18"
+                  y1="-24"
                   x2="0"
-                  y2="18"
+                  y2="24"
                   stroke="rgba(255,255,255,0.08)"
                   stroke-width="0.5"
                 />
                 <line
-                  x1="-18"
+                  x1="-24"
                   y1="0"
-                  x2="18"
+                  x2="24"
                   y2="0"
                   stroke="rgba(255,255,255,0.08)"
                   stroke-width="0.5"
@@ -609,10 +609,10 @@
                 <!-- N E S W at plus terminals -->
                 <text
                   x="0"
-                  y="-11"
+                  y="-14"
                   text-anchor="middle"
                   fill="rgba(255,100,100,0.7)"
-                  font-size="6"
+                  font-size="7"
                   font-family="Segoe UI, sans-serif"
                   font-weight="700"
                 >
@@ -620,30 +620,30 @@
                 </text>
                 <text
                   x="0"
-                  y="16"
+                  y="20"
                   text-anchor="middle"
                   fill="rgba(255,255,255,0.3)"
-                  font-size="6"
+                  font-size="7"
                   font-family="Segoe UI, sans-serif"
                 >
                   S
                 </text>
                 <text
-                  x="12"
-                  y="2.5"
+                  x="16"
+                  y="3"
                   text-anchor="middle"
                   fill="rgba(255,255,255,0.3)"
-                  font-size="6"
+                  font-size="7"
                   font-family="Segoe UI, sans-serif"
                 >
                   E
                 </text>
                 <text
-                  x="-12"
-                  y="2.5"
+                  x="-16"
+                  y="3"
                   text-anchor="middle"
                   fill="rgba(255,255,255,0.3)"
-                  font-size="6"
+                  font-size="7"
                   font-family="Segoe UI, sans-serif"
                 >
                   W
@@ -653,7 +653,7 @@
                   id="compassDot"
                   cx="0"
                   cy="0"
-                  r="2"
+                  r="2.5"
                   fill="#ffcc00"
                   opacity="0.85"
                 />
@@ -1178,7 +1178,7 @@
 
         // Update compass dot (top right)
         var azRad = (sunAzimuth * Math.PI) / 180.0;
-        var cR = 8;
+        var cR = 11;
         var cdx = cR * Math.sin(azRad);
         var cdy = -cR * Math.cos(azRad);
         document
