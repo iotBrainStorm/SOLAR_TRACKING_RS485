@@ -870,6 +870,14 @@
     </div>
 
     <script>
+      var selectedTZ = 5.5; // default; updated from sensor data
+
+      function getTimeInTZ(tzOffsetHours) {
+        var now = new Date();
+        var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+        return new Date(utcMs + tzOffsetHours * 3600000);
+      }
+
       function random(min, max, decimals = 1) {
         return (Math.random() * (max - min) + min).toFixed(decimals);
       }
@@ -903,6 +911,7 @@
             var lat = parseFloat(data.latitude) || 0;
             var lon = parseFloat(data.longitude) || 0;
             var tz = parseFloat(data.tzOffset) || 5.5;
+            selectedTZ = tz;
 
             updateSunMap(
               data.sunrise,
@@ -946,22 +955,55 @@
       setInterval(updateDashboard, 2000);
 
       function updateDateTime() {
-        const now = new Date();
+        const now = getTimeInTZ(selectedTZ);
 
-        const options = {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false, // change to true if you want 12H format
-        };
+        const yr = now.getFullYear();
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        const mon = months[now.getMonth()];
+        const day = now.getDate();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
 
-        document.getElementById("dateTime").innerText = now.toLocaleString(
-          "en-IN",
-          options,
-        );
+        // Format timezone label
+        const tzH = Math.floor(Math.abs(selectedTZ));
+        const tzM = Math.round((Math.abs(selectedTZ) - tzH) * 60);
+        const tzSign = selectedTZ >= 0 ? "+" : "-";
+        const tzLabel =
+          "UTC" +
+          tzSign +
+          String(tzH).padStart(2, "0") +
+          ":" +
+          String(tzM).padStart(2, "0");
+
+        document.getElementById("dateTime").innerText =
+          day +
+          " " +
+          mon +
+          " " +
+          yr +
+          ", " +
+          hh +
+          ":" +
+          mm +
+          ":" +
+          ss +
+          " (" +
+          tzLabel +
+          ")";
       }
 
       updateDateTime();
@@ -1176,7 +1218,7 @@
           return;
         }
 
-        var now = new Date();
+        var now = getTimeInTZ(tz);
         var nowMin = now.getHours() * 60 + now.getMinutes();
         var totalDay = sunsetMin - sunriseMin;
         var progress = (nowMin - sunriseMin) / totalDay;
