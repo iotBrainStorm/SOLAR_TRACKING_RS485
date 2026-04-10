@@ -115,10 +115,10 @@ RECEIVER (Master)          SENDER (Slave)
 ```
 RECEIVER (Master)          SENDER (Slave)
      |                          |
-  User clicks Save/Reset       |
-  Saves to own NVS             |
+  User clicks Save/Reset        |
+  Saves to own NVS              |
      |                          |
-     |--- Modbus 0x10 -------->|
+     |--- Modbus 0x10 --------> |
      |    (9 registers)    Saves to NVS
      |                          |
      |<--- Confirmation --------|
