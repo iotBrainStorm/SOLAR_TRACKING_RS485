@@ -1045,24 +1045,7 @@
           resetBtn();
         }
 
-        // Try native Geolocation API first (requires HTTPS or localhost)
-        if (navigator.geolocation && window.isSecureContext) {
-          btn.classList.add("loading");
-          btn.innerHTML = svgIcon + " Locating...";
-          navigator.geolocation.getCurrentPosition(
-            function (pos) {
-              setCoords(pos.coords.latitude, pos.coords.longitude);
-            },
-            function (err) {
-              alert("GPS error: " + err.message);
-              resetBtn();
-            },
-            { enableHighAccuracy: true, timeout: 10000 },
-          );
-        } else {
-          // Fallback: IP-based geolocation (works over HTTP)
-          btn.classList.add("loading");
-          btn.innerHTML = svgIcon + " Locating...";
+        function ipFallback() {
           fetch("https://ipapi.co/json/")
             .then(function (r) {
               return r.json();
@@ -1081,6 +1064,26 @@
               );
               resetBtn();
             });
+        }
+
+        btn.classList.add("loading");
+        btn.innerHTML = svgIcon + " Locating...";
+
+        // Try GPS first, fall back to IP-based geolocation
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              setCoords(pos.coords.latitude, pos.coords.longitude);
+            },
+            function () {
+              // GPS failed or denied — fall back to IP geolocation
+              ipFallback();
+            },
+            { enableHighAccuracy: true, timeout: 10000 },
+          );
+        } else {
+          // Geolocation API not available — use IP geolocation
+          ipFallback();
         }
       }
     </script>
