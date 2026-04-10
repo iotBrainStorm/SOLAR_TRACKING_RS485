@@ -34,7 +34,7 @@ Industrial-grade solar monitoring with real-time sensor data, OLED display, and 
 ```
 SENDER (Slave ESP32)        RECEIVER (Master ESP32)
   - NTC Thermistor             - AHT10 Temp/Humidity
-  - BH1750 LUX                - OLED Display
+  - BH1750 LUX                 - OLED Display
   - LED Feedback               - WiFi + Web UI
                                - Node-RED Link
         |                      - LED Feedback
