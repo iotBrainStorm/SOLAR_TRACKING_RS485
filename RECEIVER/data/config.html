@@ -783,6 +783,22 @@
               </svg>
               Auto-detect Location
             </button>
+            <div
+              style="
+                padding: 10px 14px;
+                margin-bottom: 14px;
+                border-radius: 8px;
+                background: rgba(255, 170, 0, 0.08);
+                border: 1px solid rgba(255, 170, 0, 0.25);
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.6);
+                line-height: 1.5;
+              "
+            >
+              &#9888; It is recommended to set your location manually for
+              accurate sun information. Auto-detection may not be accurate, so
+              you should verify your auto-detected latitude and longitude.
+            </div>
             <div class="form-row">
               <div class="form-group">
                 <label>Latitude</label>
@@ -1045,45 +1061,79 @@
           resetBtn();
         }
 
-        function ipFallback() {
-          fetch("https://ipapi.co/json/")
+        var ipServices = [
+          {
+            url: "https://ipapi.co/json/",
+            lat: function (d) {
+              return d.latitude;
+            },
+            lon: function (d) {
+              return d.longitude;
+            },
+          },
+          {
+            url: "https://ip-api.com/json/?fields=lat,lon",
+            lat: function (d) {
+              return d.lat;
+            },
+            lon: function (d) {
+              return d.lon;
+            },
+          },
+          {
+            url: "https://ipwho.is/",
+            lat: function (d) {
+              return d.latitude;
+            },
+            lon: function (d) {
+              return d.longitude;
+            },
+          },
+        ];
+
+        function tryIpService(index) {
+          if (index >= ipServices.length) {
+            alert(
+              "Location detection failed. Please enter coordinates manually.",
+            );
+            resetBtn();
+            return;
+          }
+          var svc = ipServices[index];
+          fetch(svc.url)
             .then(function (r) {
               return r.json();
             })
             .then(function (data) {
-              if (data.latitude && data.longitude) {
-                setCoords(data.latitude, data.longitude);
+              var lat = svc.lat(data);
+              var lon = svc.lon(data);
+              if (lat && lon) {
+                setCoords(lat, lon);
               } else {
-                alert("Could not detect location from IP");
-                resetBtn();
+                tryIpService(index + 1);
               }
             })
             .catch(function () {
-              alert(
-                "Location detection failed. Please enter coordinates manually.",
-              );
-              resetBtn();
+              tryIpService(index + 1);
             });
         }
 
         btn.classList.add("loading");
         btn.innerHTML = svgIcon + " Locating...";
 
-        // Try GPS first, fall back to IP-based geolocation
+        // Try device GPS first, then cascade through IP services
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             function (pos) {
               setCoords(pos.coords.latitude, pos.coords.longitude);
             },
             function () {
-              // GPS failed or denied — fall back to IP geolocation
-              ipFallback();
+              tryIpService(0);
             },
-            { enableHighAccuracy: true, timeout: 10000 },
+            { enableHighAccuracy: true, timeout: 8000 },
           );
         } else {
-          // Geolocation API not available — use IP geolocation
-          ipFallback();
+          tryIpService(0);
         }
       }
     </script>
