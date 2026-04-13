@@ -330,6 +330,21 @@
         margin: 2px 0;
       }
 
+      .lux-arrow {
+        font-size: 0.65em;
+        margin-left: 3px;
+        vertical-align: middle;
+        transition: opacity 0.3s ease;
+      }
+
+      .lux-arrow.up {
+        color: #2ecc71;
+      }
+
+      .lux-arrow.down {
+        color: #fc513e;
+      }
+
       /* Responsive: Tablet */
       @media (max-width: 768px) {
         .container {
@@ -846,7 +861,7 @@
             <div class="sun-stat-divider"></div>
             <div class="sun-stat-item">
               <div class="stat-value" id="sunMapLux" style="color: #6dd3fc">
-                -- lx
+                -- lx <span id="luxArrow" class="lux-arrow"></span>
               </div>
               <div class="stat-label">Lux</div>
             </div>
@@ -871,6 +886,7 @@
 
     <script>
       var selectedTZ = 5.5; // default; updated from sensor data
+      var prevLux = null; // track previous lux for trend arrow
 
       function getTimeInTZ(tzOffsetHours) {
         var now = new Date();
@@ -1209,8 +1225,25 @@
         // Update stats
         document.getElementById("sunMapPercent").textContent =
           sunPercent != null ? Math.round(sunPercent) + "%" : "--%";
-        document.getElementById("sunMapLux").textContent =
-          lux != null ? Math.round(lux) + " lx" : "-- lx";
+        var luxText = lux != null ? Math.round(lux) + " lx" : "-- lx";
+        var luxArrowEl = document.getElementById("luxArrow");
+        var arrowHtml = "";
+        if (lux != null && prevLux != null) {
+          if (lux > prevLux) {
+            arrowHtml =
+              '<span id="luxArrow" class="lux-arrow up">&#9650;</span>';
+          } else if (lux < prevLux) {
+            arrowHtml =
+              '<span id="luxArrow" class="lux-arrow down">&#9660;</span>';
+          } else {
+            arrowHtml = '<span id="luxArrow" class="lux-arrow"></span>';
+          }
+        } else {
+          arrowHtml = '<span id="luxArrow" class="lux-arrow"></span>';
+        }
+        document.getElementById("sunMapLux").innerHTML =
+          luxText + " " + arrowHtml;
+        prevLux = lux;
 
         if (!sunriseMin || !sunsetMin || sunsetMin <= sunriseMin) {
           document.getElementById("sunRemaining").textContent = "--";
