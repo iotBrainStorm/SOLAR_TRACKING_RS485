@@ -9,6 +9,7 @@
 #include <ArduinoJson.h>    // make json format
 #include <Preferences.h>    // To store users' settings
 #include <BH1750.h>         // For LUX measurement of sunlight
+#include <esp_task_wdt.h>   // Hardware watchdog timer
 
 #define RXD2 20
 #define TXD2 21
@@ -55,6 +56,8 @@ float luxFiltered = 0; // EMA filtered value
 bool luxInitialized = false;
 float previousLux = 0;
 long luxDiff = 0;
+uint8_t luxFailCount = 0;
+const uint8_t LUX_FAIL_LIMIT = 5; // max consecutive BH1750 failures before re-init
 
 // -- Sensor Values Storage
 float ntcTemp = 0.0;
@@ -565,6 +568,51 @@ void handleNTC()
 //--------------------------------
 // LUX value calculation
 //--------------------------------
+// ---- I2C Bus Recovery ----
+void recoverI2CBus()
+{
+  Serial.println("[I2C] Attempting bus recovery...");
+  Wire.end();
+  delay(10);
+
+  // Manually clock SCL to release stuck SDA
+  pinMode(SCL, OUTPUT);
+  for (int i = 0; i < 16; i++)
+  {
+    digitalWrite(SCL, HIGH);
+    delayMicroseconds(50);
+    digitalWrite(SCL, LOW);
+    delayMicroseconds(50);
+  }
+  digitalWrite(SCL, HIGH);
+  delay(5);
+
+  Wire.begin();
+  Wire.setTimeOut(1000); // re-apply timeout after recovery
+  Serial.println("[I2C] Bus recovery done");
+}
+
+// ---- Re-initialize BH1750 ----
+void reinitBH1750()
+{
+  Serial.println("[BH1750] Re-initializing sensor...");
+  recoverI2CBus();
+  delay(50);
+
+  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
+  {
+    lightMeter.setMTreg(31);
+    luxConnected = true;
+    luxFailCount = 0;
+    Serial.println("[BH1750] Re-init successful");
+  }
+  else
+  {
+    luxConnected = false;
+    Serial.println("[BH1750] Re-init FAILED - sensor may be damaged by heat");
+  }
+}
+
 void handleLUX()
 {
   unsigned long currentMillis = millis();
@@ -578,6 +626,21 @@ void handleLUX()
   if (luxConnected)
   {
     float rawLux = lightMeter.readLightLevel();
+
+    // ---- Detect read failure (negative = error, NaN = bus hang) ----
+    if (rawLux < 0 || isnan(rawLux))
+    {
+      luxFailCount++;
+      Serial.printf("[BH1750] Read failed (%d/%d)\n", luxFailCount, LUX_FAIL_LIMIT);
+
+      if (luxFailCount >= LUX_FAIL_LIMIT)
+      {
+        reinitBH1750();
+      }
+      return; // skip this reading
+    }
+
+    luxFailCount = 0; // reset on successful read
 
     // ---- EMA Smoothing (alpha=0.2 for stable output) ----
     if (!luxInitialized)
@@ -595,6 +658,14 @@ void handleLUX()
   else
   {
     luxValue = 1; // fallback value if sensor missing
+
+    // Periodically try to re-init disconnected sensor
+    static unsigned long lastReInitAttempt = 0;
+    if (currentMillis - lastReInitAttempt > 30000UL) // every 30s
+    {
+      lastReInitAttempt = currentMillis;
+      reinitBH1750();
+    }
   }
 }
 
@@ -655,7 +726,8 @@ void setup()
   Serial.println("==============================");
   Serial.println("[INFO] Starting BH1750...");
 
-  Wire.begin(); // SDA, SCL default for ESP32
+  Wire.begin();          // SDA, SCL default for ESP32
+  Wire.setTimeOut(1000); // 1 second I2C timeout to prevent bus hang
   if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
   {
     luxConnected = true;
@@ -678,6 +750,16 @@ void setup()
   rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
   rs485.setTimeout(2);
   lastValidPacket = millis();
+
+  // --- Hardware Watchdog (10s timeout) ---
+  // If loop() hangs (e.g., I2C bus stuck), ESP32 auto-resets
+  esp_task_wdt_config_t wdt_config = {
+      .timeout_ms = 10000,
+      .idle_core_mask = 0,
+      .trigger_panic = true};
+  esp_task_wdt_reconfigure(&wdt_config);
+  esp_task_wdt_add(NULL); // add current task (loopTask)
+  Serial.println("[WDT] Hardware watchdog enabled (10s)");
 }
 
 //--------------------------------
@@ -685,6 +767,8 @@ void setup()
 //--------------------------------
 void loop()
 {
+  esp_task_wdt_reset(); // feed watchdog every loop iteration
+
   handleNTC();
   handleLUX();
   handleModbus();

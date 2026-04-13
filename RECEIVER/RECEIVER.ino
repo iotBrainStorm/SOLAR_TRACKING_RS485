@@ -30,7 +30,7 @@ unsigned long lastModbusPoll = 0;
 unsigned long lastValidModbus = 0;
 uint8_t modbusFailCount = 0;
 const uint8_t MODBUS_FAIL_LIMIT = 10;
-const uint32_t MODBUS_WATCHDOG = 30000;  // 30s no-response recovery
+bool sensorDataStale = false;
 
 // -- NTC Setup
 #define FIXED_RESISTOR 10000.0  // 10k fixed resistor
@@ -160,6 +160,18 @@ void triggerLED(unsigned long duration) {
 }
 
 void updateLED() {
+  // Fast blink pattern when transmitter is not responding
+  if (sensorDataStale) {
+    static unsigned long lastStaleToggle = 0;
+    if (millis() - lastStaleToggle >= 100) {  // 100ms on/off = rapid blink
+      lastStaleToggle = millis();
+      ledState = !ledState;
+      digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+    }
+    return;
+  }
+
+  // Normal single-blink for TX/RX feedback
   if (ledState && millis() - ledStartTime >= ledDuration) {
     digitalWrite(LED_PIN, LOW);
     ledState = false;
@@ -649,6 +661,7 @@ void setupWebServer() {
     doc["latitude"] = serialized(String(settings.latitude, 4));
     doc["longitude"] = serialized(String(settings.longitude, 4));
     doc["tzOffset"] = serialized(String(settings.tzOffset, 2));
+    doc["sensorStale"] = sensorDataStale;
 
     String response;
     serializeJson(doc, response);
@@ -1215,6 +1228,7 @@ void serialOutput() {
   Serial.printf("Light Intensity  : %8lu lux\n", luxValue);
   Serial.printf("Filtered Lux     : %8.2f lux\n", luxFiltered);
   Serial.printf("Sunlight Level   : %8u %%\n", sunlightPercentage);
+  Serial.printf("Sensor Stale     : %s\n", sensorDataStale ? "YES" : "No");
 
   Serial.println("----------------------------------------");
 
@@ -1570,6 +1584,7 @@ void readModbusResponse() {
   triggerLED(ledDurationRX);
   modbusFailCount = 0;
   lastValidModbus = millis();
+  sensorDataStale = false;
 
   uint8_t byteCount = buffer[2];
 
@@ -1587,9 +1602,19 @@ void readModbusResponse() {
 void handleModbus() {
   if (settings.enableRS485) {
 
+    // Dynamic timeouts based on modbusInterval (min 15s stale, min 30s watchdog)
+    uint32_t staleTimeout = max((uint32_t)15000, (uint32_t)(settings.modbusInterval * 3000UL));
+    uint32_t watchdogTimeout = max((uint32_t)30000, (uint32_t)(settings.modbusInterval * 6000UL));
+
+    // Mark data stale if no valid response for too long
+    if (lastValidModbus > 0 && millis() - lastValidModbus > staleTimeout && !sensorDataStale) {
+      sensorDataStale = true;
+      Serial.println("[RS485] Sensor data is STALE - transmitter not responding");
+    }
+
     // Bus watchdog: reset UART if no valid response for too long
-    if (lastValidModbus > 0 && millis() - lastValidModbus > MODBUS_WATCHDOG) {
-      Serial.println("[RS485] No valid response for 30s → resetting bus");
+    if (lastValidModbus > 0 && millis() - lastValidModbus > watchdogTimeout) {
+      Serial.printf("[RS485] No valid response for %lums → resetting bus\n", watchdogTimeout);
       resetRS485UART();
       lastValidModbus = millis();
       lastModbusPoll = millis();  // delay next poll after reset
