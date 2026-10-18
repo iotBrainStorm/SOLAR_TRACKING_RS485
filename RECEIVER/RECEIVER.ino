@@ -1282,9 +1282,7 @@ void displayLCD() {
   // Draw divider lines first
   u8g2.drawHLine(0, 0, 128);
 
-  u8g2.drawVLine(0, 0, 40);
-  u8g2.drawVLine(53, 0, 40);
-  u8g2.drawVLine(127, 0, 40);
+  u8g2.drawVLine(50, 0, 40);
 
   u8g2.drawHLine(0, 40, 128);
 
@@ -1299,13 +1297,13 @@ void displayLCD() {
       strftime(timeStr, sizeof(timeStr), "%H:%M %b%e", &timeinfo);
     }
   }
-  u8g2.drawStr(56, 12, timeStr);
+  u8g2.drawStr(53, 12, timeStr);
 
   // ================= SUNRISE & SUNSET (Row 2 Right) =================
   // Displays in 24-hour format: "HH:MM HH:MM"
   char sunRiseSetStr[16];
   snprintf(sunRiseSetStr, sizeof(sunRiseSetStr), "%s %s", sunriseStr, sunsetStr);
-  u8g2.drawStr(56, 24, sunRiseSetStr);
+  u8g2.drawStr(53, 24, sunRiseSetStr);
 
   // ================= SOLAR NOON & REMAINING TIME (Row 3 Right) =================
   // Displays: "HH:MM 11h25m"
@@ -1336,7 +1334,7 @@ void displayLCD() {
 
     snprintf(noonRemStr, sizeof(noonRemStr), "%02d:%02d %dh%02dm", noonH, noonM, remH, remM);
   }
-  u8g2.drawStr(56, 36, noonRemStr);
+  u8g2.drawStr(53, 36, noonRemStr);
 
   // ================= SENSOR VALUES (Left Column) =================
 
@@ -1344,18 +1342,18 @@ void displayLCD() {
   char fmtTemp[10];
   sprintf(fmtTemp, "S: %%.%df", settings.tempPrecision);  // solar temperature
   snprintf(ntcStr, sizeof(ntcStr), fmtTemp, ntcTemp);
-  u8g2.drawStr(3, 12, ntcStr);
+  u8g2.drawStr(0, 12, ntcStr);
 
   char ahtStr[20];
   sprintf(fmtTemp, "R: %%.%df", settings.tempPrecision);  // room temperature
   snprintf(ahtStr, sizeof(ahtStr), fmtTemp, ahtTemp);
-  u8g2.drawStr(3, 24, ahtStr);
+  u8g2.drawStr(0, 24, ahtStr);
 
   char humStr[20];
   char fmtHum[10];
   sprintf(fmtHum, "H: %%.%df", settings.humidityPrecision);  // room humidity
   snprintf(humStr, sizeof(humStr), fmtHum, humidity);
-  u8g2.drawStr(3, 36, humStr);
+  u8g2.drawStr(0, 36, humStr);
 
   // Lux
   char luxStr[20];
