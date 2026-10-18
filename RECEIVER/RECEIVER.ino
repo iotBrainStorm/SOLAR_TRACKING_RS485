@@ -615,6 +615,13 @@ void setupWebServer() {
   if (webServerStarted)
     return;  // Already started
 
+  // Skip web server initialization if any required .gz file is missing
+  if (!SPIFFS.exists("/index.html.gz") || !SPIFFS.exists("/config.html.gz") || !SPIFFS.exists("/dashboard.svg.gz") || !SPIFFS.exists("/settings.svg.gz")) {
+    Serial.println("[ERROR] Required .gz files not found in SPIFFS!");
+    Serial.println("[INFO] Skipping Web Server initialization.");
+    return;  // Exits immediately; webServerStarted remains false
+  }
+
   // Serve index.html.gz
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/index.html.gz", "text/html");
@@ -1765,15 +1772,25 @@ void setup() {
 
     setupWebServer();
 
-    Serial.println("[SUCCESS] Web Server Started!");
-    Serial.printf("SSID       : %s\n", WiFi.SSID().c_str());
-    Serial.printf("Server IP  : %s\n", WiFi.localIP().toString().c_str());
-    Serial.println("==============================\n");
-    u8g2.clearBuffer();
-    u8g2.drawStr(0, 12, "Server Started!");
-    u8g2.drawStr(0, 24, "IP Address:");
-    u8g2.drawStr(0, 36, WiFi.localIP().toString().c_str());
-    u8g2.sendBuffer();
+    if (webServerStarted) {
+      Serial.println("[SUCCESS] Web Server Started!");
+      Serial.printf("SSID       : %s\n", WiFi.SSID().c_str());
+      Serial.printf("Server IP  : %s\n", WiFi.localIP().toString().c_str());
+      Serial.println("==============================\n");
+      u8g2.clearBuffer();
+      u8g2.drawStr(0, 12, "Server Started!");
+      u8g2.drawStr(0, 24, "IP Address:");
+      u8g2.drawStr(0, 36, WiFi.localIP().toString().c_str());
+      u8g2.sendBuffer();
+    } else {
+      Serial.println("[WARNING] Web Server Skipped (Missing .gz files)");
+      Serial.println("==============================\n");
+      u8g2.clearBuffer();
+      u8g2.drawStr(0, 12, "Server Skipped!");
+      u8g2.drawStr(0, 24, "Missing .gz files");
+      u8g2.drawStr(0, 36, "in SPIFFS!");
+      u8g2.sendBuffer();
+    }
     delay(2000);
   } else {
     Serial.println("\n==============================");
