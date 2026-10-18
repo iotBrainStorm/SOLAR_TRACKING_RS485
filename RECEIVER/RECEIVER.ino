@@ -821,32 +821,55 @@ void setupWebServer() {
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
     Serial.println("\n===== FACTORY RESET REQUEST RECEIVED =====");
 
-    // 1️⃣ Clear old preferences
+    // 1️. Clear old preferences
     preferences.begin("device", false);
     preferences.clear();
     preferences.end();
 
     Serial.println("NVS Cleared");
 
-    // 2️⃣ Load default values into RAM
+    // 2️. Load default values into RAM
     setDefaultSettings();
 
-    // 3️⃣ Save default values back to NVS
+    // 3️. Save default values back to NVS
     saveSettings();
 
     Serial.println("Default Settings Applied & Saved");
 
-    // 4️⃣ Send default settings to slave
+    // 4️. Send default settings to slave
     sendSettingsToSlave();
 
-    // 5️⃣ Send response to browser
+    // 5️. Send response to browser
     triggerLED(100);
     triggerBuzzer(100);
     request->send(200, "text/plain", "Factory Reset Successful");
 
-    // 6️⃣ Optional: restart device after short delay
+    // 6️. Optional: restart device after short delay
     delay(1000);
     ESP.restart();
+  });
+
+  server.on("/reset-lux", HTTP_POST, [](AsyncWebServerRequest *request) {
+    Serial.println("\n===== LUX RESET REQUEST RECEIVED =====");
+
+    // 1. Set requested LUX parameters
+    settings.luxPercentageMode = 0;     // Auto
+    settings.maxLuxValue = 1;           // Max LUX = 1
+    settings.minLuxValue = 1;           // Min LUX = 1
+    settings.luxInterval = 1;           // Reading Interval = 1s
+    settings.luxUpdateThreshold = 200;  // Update Threshold = 200
+    settings.luxSaveInterval = 300;     // Save Interval = 300s
+
+    // 2. Save to NVS and sync with slave
+    saveSettings();
+    sendSettingsToSlave();
+
+    // 3. Hardware feedback & response
+    triggerLED(100);
+    triggerBuzzer(100);
+
+    Serial.println("[LUX] Settings Reset & Saved to NVS");
+    request->send(200, "text/plain", "LUX Settings Reset Successfully!");
   });
 
   server.begin();
@@ -1253,53 +1276,86 @@ void serialOutput() {
 void displayLCD() {
 
   u8g2.clearBuffer();
+
   u8g2.setFont(u8g2_font_6x12_tf);
 
-  // ================= TIME =================
+  // Draw divider lines first
+  u8g2.drawHLine(0, 0, 128);
+
+  u8g2.drawVLine(0, 0, 40);
+  u8g2.drawVLine(53, 0, 40);
+  u8g2.drawVLine(127, 0, 40);
+
+  u8g2.drawHLine(0, 40, 128);
+
+  // ================= TIME (Row 1 Right) =================
   struct tm timeinfo;
   bool hasTime = getLocalTime(&timeinfo);
-  char timeStr[6] = "--:--";
+  char timeStr[16] = "--:-- -----";
   if (hasTime) {
     if (settings.clockFormat == 12) {
-      strftime(timeStr, sizeof(timeStr), "%I:%M", &timeinfo);
+      strftime(timeStr, sizeof(timeStr), "%I:%M %b%e", &timeinfo);
     } else {
-      strftime(timeStr, sizeof(timeStr), "%H:%M", &timeinfo);
+      strftime(timeStr, sizeof(timeStr), "%H:%M %b%e", &timeinfo);
     }
   }
-  u8g2.drawStr(77, 12, timeStr);
+  u8g2.drawStr(56, 12, timeStr);
 
-  // ================= WIFI RSSI =================
-  int rssi = WiFi.isConnected() ? WiFi.RSSI() : -99;  // e.g., -40 strong, -90 weak
-  char wifiStr[15];
-  if (WiFi.isConnected()) {
-    snprintf(wifiStr, sizeof(wifiStr), "W:%ddBm", rssi);
-  } else {
-    snprintf(wifiStr, sizeof(wifiStr), "W:Disc");
+  // ================= SUNRISE & SUNSET (Row 2 Right) =================
+  // Displays in 24-hour format: "HH:MM HH:MM"
+  char sunRiseSetStr[16];
+  snprintf(sunRiseSetStr, sizeof(sunRiseSetStr), "%s %s", sunriseStr, sunsetStr);
+  u8g2.drawStr(56, 24, sunRiseSetStr);
+
+  // ================= SOLAR NOON & REMAINING TIME (Row 3 Right) =================
+  // Displays: "HH:MM 11h25m"
+  char noonRemStr[16] = "--:-- --h--m";
+  if (sunriseMinutes >= 0 && sunsetMinutes > sunriseMinutes) {
+    // 1. Solar Noon = midpoint between sunrise and sunset
+    int noonMin = (sunriseMinutes + sunsetMinutes) / 2;
+    int noonH = noonMin / 60;
+    int noonM = noonMin % 60;
+
+    // 2. Remaining Daylight Time
+    int remMin = 0;
+    if (hasTime) {
+      int nowMin = timeinfo.tm_hour * 60 + timeinfo.tm_min;
+      if (nowMin < sunriseMinutes) {
+        // Before sunrise: show full day length
+        remMin = sunsetMinutes - sunriseMinutes;
+      } else if (nowMin < sunsetMinutes) {
+        // Daytime: countdown remaining minutes until sunset
+        remMin = sunsetMinutes - nowMin;
+      } else {
+        // After sunset: 0h00m remaining
+        remMin = 0;
+      }
+    }
+    int remH = remMin / 60;
+    int remM = remMin % 60;
+
+    snprintf(noonRemStr, sizeof(noonRemStr), "%02d:%02d %dh%02dm", noonH, noonM, remH, remM);
   }
-  u8g2.drawStr(77, 24, wifiStr);
+  u8g2.drawStr(56, 36, noonRemStr);
 
-  // ================= SENSOR VALUES =================
+  // ================= SENSOR VALUES (Left Column) =================
 
   char ntcStr[20];
-  snprintf(ntcStr, sizeof(ntcStr), "SLR: %.2fC", ntcTemp);
   char fmtTemp[10];
-  sprintf(fmtTemp, "S: %%.%dfC", settings.tempPrecision);  // solar temperature
+  sprintf(fmtTemp, "S: %%.%df", settings.tempPrecision);  // solar temperature
   snprintf(ntcStr, sizeof(ntcStr), fmtTemp, ntcTemp);
-  u8g2.drawStr(0, 12, ntcStr);
+  u8g2.drawStr(3, 12, ntcStr);
 
   char ahtStr[20];
-  sprintf(fmtTemp, "R: %%.%dfC", settings.tempPrecision);  // room temperature
+  sprintf(fmtTemp, "R: %%.%df", settings.tempPrecision);  // room temperature
   snprintf(ahtStr, sizeof(ahtStr), fmtTemp, ahtTemp);
-  u8g2.drawStr(0, 24, ahtStr);
+  u8g2.drawStr(3, 24, ahtStr);
 
   char humStr[20];
   char fmtHum[10];
-  sprintf(fmtHum, "H: %%.%df%%%%", settings.humidityPrecision);  // room humidity
+  sprintf(fmtHum, "H: %%.%df", settings.humidityPrecision);  // room humidity
   snprintf(humStr, sizeof(humStr), fmtHum, humidity);
-  u8g2.drawStr(0, 36, humStr);
-
-  // Divider line
-  u8g2.drawHLine(0, 40, 128);
+  u8g2.drawStr(3, 36, humStr);
 
   // Lux
   char luxStr[20];
@@ -1312,7 +1368,7 @@ void displayLCD() {
     snprintf(diffStr, sizeof(diffStr), "+%ld", luxDiff);
   else
     snprintf(diffStr, sizeof(diffStr), "%ld", luxDiff);
-  u8g2.drawStr(85, 52, diffStr);  // Adjust X if needed
+  u8g2.drawStr(85, 52, diffStr);
 
   // Sunlight % PROGRESS BAR
   char sunStr[20];
@@ -1322,20 +1378,6 @@ void displayLCD() {
   barWidth = constrain(barWidth, 0, 60);  // Prevent overflow
   u8g2.drawFrame(64, 56, 64, 8);          // Frame
   u8g2.drawBox(66, 58, barWidth, 4);      // Fill
-
-  // ================= NODE-RED STATUS =================
-  char nrStr[25];
-  if (!settings.enableNodeRed) {
-    snprintf(nrStr, sizeof(nrStr), "NR: Off");
-  } else if (!WiFi.isConnected()) {
-    snprintf(nrStr, sizeof(nrStr), "NR: --");
-  } else if (lastNodeRedResponse.length() > 0) {
-    String responseCodeString = String(httpResponseCode);
-    snprintf(nrStr, sizeof(nrStr), "NR: %s", responseCodeString.c_str());
-  } else {
-    snprintf(nrStr, sizeof(nrStr), "NR: --");
-  }
-  u8g2.drawStr(77, 36, nrStr);
 
   u8g2.sendBuffer();
 }

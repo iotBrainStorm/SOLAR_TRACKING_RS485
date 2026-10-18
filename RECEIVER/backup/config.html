@@ -137,8 +137,14 @@
       .main {
         margin-left: 240px;
         flex: 1;
-        padding: 30px 40px;
+        padding: 30px 40px 20px;
         min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #configForm {
+        flex: 1;
       }
 
       .page-header {
@@ -434,10 +440,29 @@
         }
       }
 
+      .btn-lux-reset {
+        padding: 9px 18px;
+        border: 1px solid rgba(255, 71, 87, 0.4);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        background: rgba(255, 71, 87, 0.1);
+        color: #ff4757;
+        transition: 0.2s;
+      }
+
+      .btn-lux-reset:hover {
+        background: #ff4757;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+      }
+
       .footer {
         text-align: center;
-        margin-top: 60px;
-        padding: 15px 10px;
+        margin-top: auto;
+        padding: 30px 10px 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
         font-size: 12px;
         color: rgba(255, 255, 255, 0.25);
       }
@@ -581,7 +606,7 @@
           <div class="sub-section">
             <div class="sub-section-title">Mode</div>
             <div class="form-group">
-              <label>Percentage Mode</label>
+              <label>Calculate Mode</label>
               <select id="luxMode" name="luxMode" onchange="toggleLuxMode()">
                 <option value="0">Auto</option>
                 <option value="1">Manual</option>
@@ -595,7 +620,7 @@
                   <input
                     type="number"
                     name="maxLuxValue"
-                    min="100"
+                    min="1"
                     placeholder="e.g. 100000"
                   />
                 </div>
@@ -637,6 +662,22 @@
                 min="300"
                 value="300"
               />
+            </div>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-section-title">Reset LUX</div>
+            <div class="toggle-row" style="margin-bottom: 0">
+              <span class="toggle-label"
+                >Reset LUX calibration and intervals to default</span
+              >
+              <button
+                type="button"
+                class="btn-lux-reset"
+                onclick="confirmLuxReset()"
+              >
+                Reset LUX
+              </button>
             </div>
           </div>
         </div>
@@ -1039,6 +1080,28 @@
             })
             .catch(function () {
               alert("Reset failed!");
+            });
+        }
+      }
+
+      function confirmLuxReset() {
+        if (confirm("Do you want to reset LUX settings?")) {
+          fetch("/reset-lux", { method: "POST" })
+            .then(function (r) {
+              return r.text();
+            })
+            .then(function (msg) {
+              document.querySelector("[name=luxMode]").value = "0";
+              toggleLuxMode();
+              document.querySelector("[name=maxLuxValue]").value = 1;
+              document.querySelector("[name=minLuxValue]").value = 1;
+              document.querySelector("[name=luxInterval]").value = 1;
+              document.querySelector("[name=luxUpdateThreshold]").value = 200;
+              document.querySelector("[name=luxSaveInterval]").value = 300;
+              alert(msg);
+            })
+            .catch(function () {
+              alert("LUX reset failed!");
             });
         }
       }
