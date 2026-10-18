@@ -935,6 +935,9 @@
     </div>
 
     <script>
+      var isPollingLux = false;
+      var isSavingOrResetting = false;
+
       function showPanel(name, el) {
         document.querySelectorAll(".panel").forEach(function (p) {
           p.classList.remove("active");
@@ -975,20 +978,30 @@
       }
 
       setInterval(function () {
-        fetch("/sensor.json")
+        if (isPollingLux || isSavingOrResetting) return;
+        isPollingLux = true;
+
+        var controller = new AbortController();
+        var tId = setTimeout(function () {
+          controller.abort();
+        }, 1800);
+
+        fetch("/sensor.json", { signal: controller.signal, cache: "no-store" })
           .then(function (r) {
             return r.json();
           })
           .then(function (data) {
             document.getElementById("luxValue").innerText = data.lux + " LUX";
           })
-          .catch(function () {
-            document.getElementById("luxValue").innerText = "0 LUX";
+          .catch(function () {})
+          .finally(function () {
+            clearTimeout(tId);
+            isPollingLux = false;
           });
       }, 2000);
 
       window.addEventListener("load", function () {
-        fetch("/settings.json")
+        fetch("/settings.json", { cache: "no-store" })
           .then(function (r) {
             return r.json();
           })
@@ -1046,13 +1059,20 @@
 
             document.querySelector("[name=latitude]").value = data.latitude;
             document.querySelector("[name=longitude]").value = data.longitude;
-            document.querySelector("[name=tzOffset]").value = data.tzOffset;
+
+            // Normalize float string so "5.00" -> "5", "5.50" -> "5.5", "5.75" -> "5.75"
+            var tzVal = parseFloat(data.tzOffset);
+            if (!isNaN(tzVal)) {
+              document.querySelector("[name=tzOffset]").value =
+                tzVal.toString();
+            }
           });
       });
 
       function submitForm() {
         if (!confirm("Do you want to save configuration?")) return;
 
+        isSavingOrResetting = true;
         var form = document.getElementById("configForm");
         var formData = new FormData(form);
 
@@ -1061,6 +1081,7 @@
           body: formData,
         })
           .then(function (r) {
+            if (!r.ok) throw new Error("Save failed");
             return r.text();
           })
           .then(function (data) {
@@ -1068,17 +1089,24 @@
           })
           .catch(function () {
             alert("Error saving settings!");
+          })
+          .finally(function () {
+            isSavingOrResetting = false;
           });
       }
 
       function confirmReset() {
         if (confirm("Do you want to reset to default settings?")) {
+          isSavingOrResetting = true;
           fetch("/reset", { method: "POST" })
             .then(function () {
-              alert("Device reset to default successfully!");
-              location.reload();
+              alert("Device reset to default successfully! Rebooting...");
+              setTimeout(function () {
+                location.reload();
+              }, 2000);
             })
             .catch(function () {
+              isSavingOrResetting = false;
               alert("Reset failed!");
             });
         }
@@ -1086,6 +1114,7 @@
 
       function confirmLuxReset() {
         if (confirm("Do you want to reset LUX settings?")) {
+          isSavingOrResetting = true;
           fetch("/reset-lux", { method: "POST" })
             .then(function (r) {
               return r.text();
@@ -1102,6 +1131,9 @@
             })
             .catch(function () {
               alert("LUX reset failed!");
+            })
+            .finally(function () {
+              isSavingOrResetting = false;
             });
         }
       }
@@ -1126,6 +1158,15 @@
 
         var ipServices = [
           {
+            url: "https://ipwho.is/",
+            lat: function (d) {
+              return d.latitude;
+            },
+            lon: function (d) {
+              return d.longitude;
+            },
+          },
+          {
             url: "https://ipapi.co/json/",
             lat: function (d) {
               return d.latitude;
@@ -1135,21 +1176,12 @@
             },
           },
           {
-            url: "https://ip-api.com/json/?fields=lat,lon",
+            url: "http://ip-api.com/json/?fields=lat,lon",
             lat: function (d) {
               return d.lat;
             },
             lon: function (d) {
               return d.lon;
-            },
-          },
-          {
-            url: "https://ipwho.is/",
-            lat: function (d) {
-              return d.latitude;
-            },
-            lon: function (d) {
-              return d.longitude;
             },
           },
         ];
@@ -1170,7 +1202,7 @@
             .then(function (data) {
               var lat = svc.lat(data);
               var lon = svc.lon(data);
-              if (lat && lon) {
+              if (lat !== undefined && lon !== undefined) {
                 setCoords(lat, lon);
               } else {
                 tryIpService(index + 1);
@@ -1184,7 +1216,6 @@
         btn.classList.add("loading");
         btn.innerHTML = svgIcon + " Locating...";
 
-        // Try device GPS first, then cascade through IP services
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             function (pos) {
@@ -1193,7 +1224,7 @@
             function () {
               tryIpService(0);
             },
-            { enableHighAccuracy: true, timeout: 8000 },
+            { enableHighAccuracy: true, timeout: 6000 },
           );
         } else {
           tryIpService(0);

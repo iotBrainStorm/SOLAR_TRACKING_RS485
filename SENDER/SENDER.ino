@@ -1,63 +1,43 @@
-
 #include <Arduino.h>
-#include <math.h>           // To calculate NTC
-#include <Wire.h>           // I2C communication
-#include <SPI.h>            // For I2C communication
-#include <EEPROM.h>         // Settings storage
-#include <SPIFFS.h>         // File system
-#include <HardwareSerial.h> // Serial communication
-#include <ArduinoJson.h>    // make json format
-#include <Preferences.h>    // To store users' settings
-#include <BH1750.h>         // For LUX measurement of sunlight
-#include <esp_task_wdt.h>   // Hardware watchdog timer
+#include <math.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <HardwareSerial.h>
+#include <Preferences.h>
+#include <BH1750.h>
+#include <esp_task_wdt.h>
 
 #define RXD2 20
 #define TXD2 21
 #define RS485_EN 4
 #define LED_PIN 2
 
-#define STX 0x02
-#define ETX 0x03
-
 // -- Modbus setup
 HardwareSerial rs485(1);
-unsigned long lastModbusSend = 0;
-String rs485Buffer = "";
-bool receivingPacket = false;
 uint16_t holdingRegisters[10];
 
 // -------- RS485 Protection --------
 unsigned long lastByteTime = 0;
 unsigned long lastValidPacket = 0;
-const uint16_t BUS_TIMEOUT = 5;      // ms frame silence timeout (3.5 char times at 115200)
-const uint32_t BUS_WATCHDOG = 30000; // 30s recovery
+const uint32_t BUS_WATCHDOG = 30000;  // 30s recovery
 uint8_t crcErrorCount = 0;
 const uint8_t CRC_LIMIT = 5;
 
 // -- NTC Setup
-#define NTC_PIN 0              // ADC pin
-#define FIXED_RESISTOR 10000.0 // 10k fixed resistor
-#define R0 10000.0             // NTC resistance at 25°C
-#define BETA 3435.0            // 3950 (common value)
-#define T0 298.15              // 25°C in Kelvin
-#define OFFSET 0.0             // Adjust later (+ or -)
-#define ADC_RESOLUTION 4095.0  // 12 bits (1111 1111 1111)
-#define VREF 3.3               // Maximum sensing voltage of ESP32
+#define NTC_PIN 0
+#define FIXED_RESISTOR 10000.0f
+#define T0 298.15f
+#define VREF 3.3f
 unsigned long lastNTCReadTime = 0;
-float ntcSampleSum = 0;
-uint8_t ntcSampleCount = 0;
 
 // -- Light sensor (LUX) setup
 BH1750 lightMeter;
 bool luxConnected = false;
 unsigned long lastLuxReadTime = 0;
-unsigned long lastLuxSaveTime = 0;
-float luxFiltered = 0; // EMA filtered value
+float luxFiltered = 0;
 bool luxInitialized = false;
-float previousLux = 0;
-long luxDiff = 0;
 uint8_t luxFailCount = 0;
-const uint8_t LUX_FAIL_LIMIT = 5; // max consecutive BH1750 failures before re-init
+const uint8_t LUX_FAIL_LIMIT = 5;
 
 // -- Sensor Values Storage
 float ntcTemp = 0.0;
@@ -66,106 +46,82 @@ uint32_t luxValue = 0;
 // -- Serial Output
 unsigned long lastSerialPrint = 0;
 
-// -- Feedback LED controll
+// -- Feedback LED control
 bool ledState = false;
 unsigned long ledStartTime = 0;
 unsigned long ledDuration = 100;
-const unsigned long ledDurationRX = 60;  // receive blink
-const unsigned long ledDurationTX = 120; // transmit blink
+const unsigned long ledDurationRX = 60;
+const unsigned long ledDurationTX = 120;
 
 //--------------------------------
 // Global variables for user's settings
 //--------------------------------
 Preferences preferences;
-struct DeviceSettings
-{
-  float ntcResistance;  // 10K in general
-  float betaConstant;   // 3435 in general
-  float ntcOffset;      // To fix error
-  uint16_t ntcInterval; // Reading interval for NTC sensor
-
-  uint16_t luxInterval; // Reading interval for BH1750 sensor
-
-  uint8_t enableRS485;     // 0 = disabled, 1 = enabled
-  uint8_t modbusDeviceID;  // 1–247
-  uint32_t modbusBaudRate; // 9600, 19200, 38400 etc
-  uint16_t modbusInterval; // seconds (share interval)
+struct DeviceSettings {
+  float ntcResistance;
+  float betaConstant;
+  float ntcOffset;
+  uint16_t ntcInterval;
+  uint16_t luxInterval;
+  uint8_t enableRS485;
+  uint8_t modbusDeviceID;
+  uint32_t modbusBaudRate;
+  uint16_t modbusInterval;
 };
 DeviceSettings settings;
 
-//--------------------------------
-// Default user's settings
-//--------------------------------
-void setDefaultSettings()
-{
-  settings.ntcResistance = 10000.0;
-  settings.betaConstant = 3435.0;
-  settings.ntcOffset = 0.0;
+void sanitizeSettings() {
+  if (settings.ntcResistance <= 0) settings.ntcResistance = 10000.0f;
+  if (settings.betaConstant <= 0) settings.betaConstant = 3435.0f;
+  if (settings.ntcInterval < 1) settings.ntcInterval = 1;
+  if (settings.luxInterval < 1) settings.luxInterval = 1;
+  if (settings.modbusDeviceID < 1 || settings.modbusDeviceID > 247) settings.modbusDeviceID = 1;
+  if (settings.modbusBaudRate == 0) settings.modbusBaudRate = 115200;
+  if (settings.modbusInterval < 1) settings.modbusInterval = 1;
+  settings.enableRS485 = 1;
+}
+
+void setDefaultSettings() {
+  settings.ntcResistance = 10000.0f;
+  settings.betaConstant = 3435.0f;
+  settings.ntcOffset = 0.0f;
   settings.ntcInterval = 1;
-
   settings.luxInterval = 1;
-
   settings.enableRS485 = 1;
   settings.modbusDeviceID = 1;
   settings.modbusBaudRate = 115200;
   settings.modbusInterval = 2;
 }
 
-//--------------------------------
-// Loading user's settings
-//--------------------------------
-void loadSettings()
-{
-
+void loadSettings() {
   Serial.println("\n========== LOADING SETTINGS ==========");
+  preferences.begin("device", true);
 
-  preferences.begin("device", true); // read-only
-
-  settings.ntcResistance = preferences.getFloat("ntcR", 10000.0);
-  settings.betaConstant = preferences.getFloat("beta", 3435.0);
-  settings.ntcOffset = preferences.getFloat("ntcOff", 0.0);
+  settings.ntcResistance = preferences.getFloat("ntcR", 10000.0f);
+  settings.betaConstant = preferences.getFloat("beta", 3435.0f);
+  settings.ntcOffset = preferences.getFloat("ntcOff", 0.0f);
   settings.ntcInterval = preferences.getUInt("ntcInt", 1);
-
   settings.luxInterval = preferences.getUInt("luxInt", 1);
-
-  settings.enableRS485 = preferences.getUChar("rsEn", 1);
+  settings.enableRS485 = 1;
   settings.modbusDeviceID = preferences.getUChar("rsID", 1);
   settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
   settings.modbusInterval = preferences.getUInt("rsInt", 2);
 
   preferences.end();
-
-  // -------- PRINT LOADED SETTINGS --------
-  Serial.println("NTC Resistance        : " + String(settings.ntcResistance));
-  Serial.println("Beta Constant         : " + String(settings.betaConstant));
-  Serial.println("NTC Offset            : " + String(settings.ntcOffset));
-  Serial.println("NTC Interval (sec)    : " + String(settings.ntcInterval));
-
-  Serial.println("Lux Interval (sec)    : " + String(settings.luxInterval));
-
-  Serial.println("RS485 Enabled         : " + String(settings.enableRS485));
-  Serial.println("Modbus Device ID      : " + String(settings.modbusDeviceID));
-  Serial.println("Modbus Baud Rate      : " + String(settings.modbusBaudRate));
-  Serial.println("Modbus Interval (sec) : " + String(settings.modbusInterval));
-
+  sanitizeSettings();
   Serial.println("=======================================\n");
 }
 
-//--------------------------------
-// Save user's settings
-//--------------------------------
-void saveSettings()
-{
-  preferences.begin("device", false); // write mode
+void saveSettings() {
+  sanitizeSettings();
+  preferences.begin("device", false);
 
   preferences.putFloat("ntcR", settings.ntcResistance);
   preferences.putFloat("beta", settings.betaConstant);
   preferences.putFloat("ntcOff", settings.ntcOffset);
   preferences.putUInt("ntcInt", settings.ntcInterval);
-
   preferences.putUInt("luxInt", settings.luxInterval);
-
-  preferences.putUChar("rsEn", settings.enableRS485);
+  preferences.putUChar("rsEn", 1);
   preferences.putUChar("rsID", settings.modbusDeviceID);
   preferences.putULong("rsBaud", settings.modbusBaudRate);
   preferences.putUInt("rsInt", settings.modbusInterval);
@@ -174,327 +130,218 @@ void saveSettings()
   Serial.println("Settings Saved to NVS");
 }
 
-void triggerLED(unsigned long duration)
-{
+void triggerLED(unsigned long duration) {
   digitalWrite(LED_PIN, HIGH);
   ledState = true;
   ledStartTime = millis();
   ledDuration = duration;
 }
 
-void updateLED()
-{
-  if (ledState && millis() - ledStartTime >= ledDuration)
-  {
+void updateLED() {
+  if (ledState && millis() - ledStartTime >= ledDuration) {
     digitalWrite(LED_PIN, LOW);
     ledState = false;
   }
 }
 
-void printHex(uint8_t *data, uint8_t len)
-{
-  for (uint8_t i = 0; i < len; i++)
-  {
-    if (data[i] < 16)
-      Serial.print("0");
-    Serial.print(data[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();
-}
-
 // ------------ RS485 Control ------------
-void setTransmitMode()
-{
+void setTransmitMode() {
   digitalWrite(RS485_EN, HIGH);
 }
-void setReceiveMode()
-{
+void setReceiveMode() {
   digitalWrite(RS485_EN, LOW);
 }
 
-void resetRS485UART()
-{
-  Serial.println("[RS485] Resetting UART...");
-
+void resetRS485UART() {
+  Serial.println("[RS485] Resetting UART peripheral...");
   rs485.flush();
-
   while (rs485.available())
     rs485.read();
-
   setReceiveMode();
-
-  Serial.println("[RS485] UART buffer cleared");
+  delay(5);
+  rs485.end();
+  delay(10);
+  rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
+  rs485.setTimeout(2);
+  setReceiveMode();
+  Serial.println("[RS485] UART reset complete");
 }
 
-uint16_t modbusCRC(uint8_t *buf, int len)
-{
+uint16_t modbusCRC(uint8_t *buf, int len) {
   uint16_t crc = 0xFFFF;
-
-  for (int pos = 0; pos < len; pos++)
-  {
+  for (int pos = 0; pos < len; pos++) {
     crc ^= (uint16_t)buf[pos];
-
-    for (int i = 0; i < 8; i++)
-    {
-
-      if (crc & 0x0001)
-      {
+    for (int i = 0; i < 8; i++) {
+      if (crc & 0x0001) {
         crc >>= 1;
         crc ^= 0xA001;
-      }
-      else
+      } else {
         crc >>= 1;
+      }
     }
   }
   return crc;
 }
 
-void updateRegisters()
-{
-  holdingRegisters[0] = ntcTemp * 100;
-  holdingRegisters[1] = (luxValue >> 16) & 0xFFFF; // lux high word
-  holdingRegisters[2] = luxValue & 0xFFFF;         // lux low word
-  holdingRegisters[3] = luxConnected;
+void updateRegisters() {
+  int16_t scaledTemp = (int16_t)round(ntcTemp * 100.0f);
+  holdingRegisters[0] = (uint16_t)scaledTemp;
+  holdingRegisters[1] = (luxValue >> 16) & 0xFFFF;  // lux high word
+  holdingRegisters[2] = luxValue & 0xFFFF;          // lux low word
+  holdingRegisters[3] = luxConnected ? 1 : 0;
   holdingRegisters[4] = settings.modbusInterval;
 }
 
-void handleModbus()
-{
-
+void handleModbus() {
   if (!settings.enableRS485)
     return;
 
   static uint8_t buffer[64];
   static uint8_t index = 0;
 
-  while (rs485.available())
-  {
-    if (index < sizeof(buffer))
-    {
+  while (rs485.available()) {
+    if (index < sizeof(buffer)) {
       buffer[index++] = rs485.read();
-    }
-    else
-    {
-      Serial.println("[RS485] Buffer overflow → reset");
+    } else {
       index = 0;
     }
     lastByteTime = millis();
   }
 
-  if (index > 0 && millis() - lastByteTime > BUS_TIMEOUT)
-  {
+  uint32_t busTimeout = max(5UL, 40000UL / settings.modbusBaudRate + 2);
 
-    // ---- Strip leading garbage 0x00 bytes (TX→RX transceiver glitch) ----
-    while (index > 0 && buffer[0] == 0x00)
-    {
-      Serial.println("[MODBUS] Removing garbage byte");
-      memmove(buffer, buffer + 1, index - 1);
-      index--;
+  if (index > 0 && millis() - lastByteTime > busTimeout) {
+    // Locate valid start of frame [modbusDeviceID][0x03 or 0x10] to strip any leading noise bytes
+    int startIdx = -1;
+    for (int i = 0; i <= (int)index - 8; i++) {
+      if (buffer[i] == settings.modbusDeviceID && (buffer[i + 1] == 0x03 || buffer[i + 1] == 0x10)) {
+        startIdx = i;
+        break;
+      }
     }
 
-    // ---- Minimum Modbus frame check ----
-    if (index < 8)
-    {
-      Serial.println("[MODBUS] Packet too short");
+    if (startIdx < 0) {
       index = 0;
       return;
     }
 
-    Serial.println("\n----- MODBUS REQUEST RECEIVED -----");
-    Serial.print("Raw Packet: ");
-    printHex(buffer, index);
+    uint8_t *pkt = &buffer[startIdx];
+    uint8_t pktLen = index - startIdx;
+    uint8_t function = pkt[1];
 
-    uint16_t receivedCRC =
-        buffer[index - 2] | (buffer[index - 1] << 8);
+    uint8_t expectedLen = 8;
+    if (function == 0x10) {
+      expectedLen = 9 + pkt[6];  // 9 + 18 = 27 bytes
+    }
 
-    uint16_t calcCRC =
-        modbusCRC(buffer, index - 2);
+    if (pktLen < expectedLen) {
+      index = 0;
+      return;
+    }
 
-    if (receivedCRC != calcCRC)
-    {
+    uint16_t receivedCRC = pkt[expectedLen - 2] | (pkt[expectedLen - 1] << 8);
+    uint16_t calcCRC = modbusCRC(pkt, expectedLen - 2);
 
+    if (receivedCRC != calcCRC) {
       Serial.println("[MODBUS] CRC ERROR");
-
       crcErrorCount++;
-
-      Serial.print("CRC Error Count: ");
-      Serial.println(crcErrorCount);
-
-      if (crcErrorCount >= CRC_LIMIT)
-      {
-
-        Serial.println("[RS485] Too many CRC errors → resetting bus");
-
+      if (crcErrorCount >= CRC_LIMIT) {
         resetRS485UART();
         crcErrorCount = 0;
       }
-
       index = 0;
       return;
     }
 
-    Serial.println("✔ CRC OK");
     triggerLED(ledDurationRX);
     crcErrorCount = 0;
     lastValidPacket = millis();
 
-    uint8_t deviceID = buffer[0];
-    uint8_t function = buffer[1];
+    uint8_t deviceID = pkt[0];
 
-    Serial.print("Device ID : ");
-    Serial.println(deviceID);
+    // ---- Function 0x03: Read Holding Registers ----
+    if (function == 0x03) {
+      uint16_t startReg = (pkt[2] << 8) | pkt[3];
+      uint16_t regCount = (pkt[4] << 8) | pkt[5];
 
-    Serial.print("Function  : ");
-    Serial.println(function, HEX);
-
-    if (deviceID != settings.modbusDeviceID)
-    {
-      Serial.println("⚠ Not my device ID - Ignored");
-      index = 0;
-      return;
-    }
-
-    if (function == 0x03)
-    {
-
-      uint16_t startReg =
-          (buffer[2] << 8) | buffer[3];
-
-      uint16_t regCount =
-          (buffer[4] << 8) | buffer[5];
-
-      Serial.print("Start Register : ");
-      Serial.println(startReg);
-
-      Serial.print("Register Count : ");
-      Serial.println(regCount);
-
-      if (regCount > 10)
-      {
-        Serial.println("[MODBUS] Register request too large");
+      if (regCount == 0 || regCount > 10 || (startReg + regCount) > 10) {
         index = 0;
         return;
       }
 
       updateRegisters();
 
-      uint8_t response[64];
-
+      uint8_t response[32];
       response[0] = deviceID;
       response[1] = 0x03;
       response[2] = regCount * 2;
 
-      Serial.println("\nSending Register Values:");
-
-      for (uint16_t i = 0; i < regCount && (startReg + i) < 10; i++)
-      {
-
-        uint16_t value =
-            holdingRegisters[startReg + i];
-
-        Serial.print("Reg ");
-        Serial.print(startReg + i);
-        Serial.print(" = ");
-        Serial.println(value);
-
+      for (uint16_t i = 0; i < regCount; i++) {
+        uint16_t value = holdingRegisters[startReg + i];
         response[3 + i * 2] = value >> 8;
         response[4 + i * 2] = value & 0xFF;
       }
 
-      uint16_t crc =
-          modbusCRC(response, 3 + regCount * 2);
-
+      uint16_t crc = modbusCRC(response, 3 + regCount * 2);
       response[3 + regCount * 2] = crc & 0xFF;
       response[4 + regCount * 2] = crc >> 8;
 
-      Serial.println("\n----- MODBUS RESPONSE -----");
-      Serial.print("Response Packet: ");
-      printHex(response, 5 + regCount * 2);
-
       while (rs485.available())
-        rs485.read(); // clear buffer
+        rs485.read();
       delayMicroseconds(200);
 
       setTransmitMode();
-      triggerLED(ledDurationTX); // TX blink
+      triggerLED(ledDurationTX);
       delayMicroseconds(200);
       rs485.write(response, 5 + regCount * 2);
       rs485.flush();
       delayMicroseconds(500);
       setReceiveMode();
-
-      Serial.println("✔ Response Sent Successfully");
     }
 
-    // ---- Function 0x10: Write Multiple Registers (receive settings from master) ----
-    else if (function == 0x10)
-    {
-      uint16_t startReg = (buffer[2] << 8) | buffer[3];
-      uint16_t regCount = (buffer[4] << 8) | buffer[5];
-      uint8_t byteCount = buffer[6];
+    // ---- Function 0x10: Write Multiple Registers (Settings from Master) ----
+    else if (function == 0x10) {
+      uint16_t regCount = (pkt[4] << 8) | pkt[5];
+      uint8_t byteCount = pkt[6];
 
-      Serial.println("\n----- MODBUS WRITE REGISTERS -----");
-      Serial.print("Start Register : ");
-      Serial.println(startReg);
-      Serial.print("Register Count : ");
-      Serial.println(regCount);
-      Serial.print("Byte Count     : ");
-      Serial.println(byteCount);
-
-      if (regCount != 9 || byteCount != 18)
-      {
-        Serial.println("[MODBUS] Unexpected register/byte count for settings");
+      if (regCount != 9 || byteCount != 18) {
         index = 0;
         return;
       }
 
-      // Parse 9 registers from data starting at buffer[7]
+      uint32_t oldBaudRate = settings.modbusBaudRate;
+
       int di = 7;
-      settings.ntcResistance = (float)((buffer[di] << 8) | buffer[di + 1]);
+      settings.ntcResistance = (float)((pkt[di] << 8) | pkt[di + 1]);
       di += 2;
-      settings.betaConstant = (float)((buffer[di] << 8) | buffer[di + 1]);
+      settings.betaConstant = (float)((pkt[di] << 8) | pkt[di + 1]);
       di += 2;
-      settings.ntcOffset = (int16_t)((buffer[di] << 8) | buffer[di + 1]) / 100.0;
+      settings.ntcOffset = (int16_t)((pkt[di] << 8) | pkt[di + 1]) / 100.0f;
       di += 2;
-      settings.ntcInterval = (buffer[di] << 8) | buffer[di + 1];
+      settings.ntcInterval = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
-      settings.luxInterval = (buffer[di] << 8) | buffer[di + 1];
+      settings.luxInterval = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
-      settings.modbusDeviceID = (buffer[di] << 8) | buffer[di + 1];
+      settings.modbusDeviceID = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
-      uint16_t baudHi = (buffer[di] << 8) | buffer[di + 1];
+      uint16_t baudHi = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
-      uint16_t baudLo = (buffer[di] << 8) | buffer[di + 1];
+      uint16_t baudLo = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
       settings.modbusBaudRate = ((uint32_t)baudHi << 16) | baudLo;
-      settings.modbusInterval = (buffer[di] << 8) | buffer[di + 1];
-
-      // Always keep RS485 enabled on slave
+      settings.modbusInterval = (pkt[di] << 8) | pkt[di + 1];
       settings.enableRS485 = 1;
 
-      // Save to NVS
       saveSettings();
 
-      Serial.println("\n----- UPDATED SETTINGS -----");
-      Serial.printf("NTC Resistance  : %.0f\n", settings.ntcResistance);
-      Serial.printf("Beta Constant   : %.0f\n", settings.betaConstant);
-      Serial.printf("NTC Offset      : %.2f\n", settings.ntcOffset);
-      Serial.printf("NTC Interval    : %u sec\n", settings.ntcInterval);
-      Serial.printf("Lux Interval    : %u sec\n", settings.luxInterval);
-      Serial.printf("Device ID       : %u\n", settings.modbusDeviceID);
-      Serial.printf("Baud Rate       : %lu\n", settings.modbusBaudRate);
-      Serial.printf("Modbus Interval : %u sec\n", settings.modbusInterval);
-      Serial.println("✔ Settings saved to NVS");
-
-      // Send standard Modbus 0x10 response (echo first 6 bytes of request + CRC)
+      // Echo confirmation using the deviceID that received the request
       uint8_t response[8];
       response[0] = deviceID;
       response[1] = 0x10;
-      response[2] = buffer[2]; // start reg high
-      response[3] = buffer[3]; // start reg low
-      response[4] = buffer[4]; // reg count high
-      response[5] = buffer[5]; // reg count low
+      response[2] = pkt[2];
+      response[3] = pkt[3];
+      response[4] = pkt[4];
+      response[5] = pkt[5];
 
       uint16_t crc = modbusCRC(response, 6);
       response[6] = crc & 0xFF;
@@ -505,14 +352,19 @@ void handleModbus()
       delayMicroseconds(200);
 
       setTransmitMode();
-      triggerLED(1000); // 1 second LED to confirm save
+      triggerLED(1000);
       delayMicroseconds(200);
       rs485.write(response, 8);
       rs485.flush();
       delayMicroseconds(500);
       setReceiveMode();
 
-      Serial.println("✔ Settings confirmation sent to master");
+      // If baud rate changed, switch UART after sending confirmation
+      if (settings.modbusBaudRate != oldBaudRate) {
+        delay(10);
+        rs485.updateBaudRate(settings.modbusBaudRate);
+        Serial.printf("[RS485] Switched baud rate to %lu\n", settings.modbusBaudRate);
+      }
     }
 
     index = 0;
@@ -520,178 +372,149 @@ void handleModbus()
 }
 
 //--------------------------------
-// Read averaged voltage
+// Read averaged voltage & calculate NTC safely
 //--------------------------------
-float readNTCVoltage()
-{
+float readNTCVoltage() {
   uint32_t sum = 0;
-  for (int i = 0; i < 50; i++)
-  {
+  for (int i = 0; i < 50; i++) {
     sum += analogReadMilliVolts(NTC_PIN);
   }
-  float avgMilliVolt = sum / 50.0;
-  return avgMilliVolt / 1000.0; // convert to volts
+  return (sum / 50.0f) / 1000.0f;
 }
 
-//--------------------------------
-// Calculate temperature
-//--------------------------------
-void calculateNTCFromADC()
-{
+void calculateNTCFromADC() {
   float voltage = readNTCVoltage();
 
-  if (voltage <= 0.001)
-  {
-    ntcTemp = 0.0;
+  // Guard against open/shorted thermistor or invalid parameters (prevents NaN / log(0) crash)
+  if (voltage <= 0.05f || voltage >= (VREF - 0.05f) || settings.ntcResistance <= 0.0f || settings.betaConstant <= 0.0f) {
+    ntcTemp = 0.0f;
     return;
   }
 
   float rNTC = FIXED_RESISTOR * (VREF - voltage) / voltage;
-  float tempK = 1.0 / ((1.0 / T0) + (1.0 / settings.betaConstant) * log(rNTC / settings.ntcResistance));
-  ntcTemp = tempK - 273.15;
-  ntcTemp += settings.ntcOffset;
+  if (rNTC <= 0.0f) {
+    ntcTemp = 0.0f;
+    return;
+  }
+
+  float tempK = 1.0f / ((1.0f / T0) + (1.0f / settings.betaConstant) * logf(rNTC / settings.ntcResistance));
+  float calcC = (tempK - 273.15f) + settings.ntcOffset;
+
+  if (!isnan(calcC) && !isinf(calcC)) {
+    ntcTemp = constrain(calcC, -50.0f, 200.0f);
+  }
 }
 
-//--------------------------------
-// Handle NTC according to user
-//--------------------------------
-void handleNTC()
-{
+void handleNTC() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL)
-  {
+  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
     lastNTCReadTime = currentMillis;
     calculateNTCFromADC();
   }
 }
 
 //--------------------------------
-// LUX value calculation
+// I2C Bus Recovery & BH1750 Fallback
 //--------------------------------
-// ---- I2C Bus Recovery ----
-void recoverI2CBus()
-{
+void recoverI2CBus() {
   Serial.println("[I2C] Attempting bus recovery...");
   Wire.end();
-  delay(10);
-
-  // Manually clock SCL to release stuck SDA
-  pinMode(SCL, OUTPUT);
-  for (int i = 0; i < 16; i++)
-  {
-    digitalWrite(SCL, HIGH);
-    delayMicroseconds(50);
-    digitalWrite(SCL, LOW);
-    delayMicroseconds(50);
-  }
-  digitalWrite(SCL, HIGH);
   delay(5);
 
+  pinMode(SDA, INPUT_PULLUP);
+  pinMode(SCL, OUTPUT);
+  for (int i = 0; i < 16; i++) {
+    digitalWrite(SCL, LOW);
+    delayMicroseconds(10);
+    digitalWrite(SCL, HIGH);
+    delayMicroseconds(10);
+  }
+
+  // Generate STOP condition
+  pinMode(SDA, OUTPUT);
+  digitalWrite(SDA, LOW);
+  delayMicroseconds(10);
+  digitalWrite(SCL, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(SDA, HIGH);
+  delayMicroseconds(10);
+
   Wire.begin();
-  Wire.setTimeOut(1000); // re-apply timeout after recovery
+  Wire.setTimeOut(100);  // Fast 100ms timeout so Modbus polling is never blocked
   Serial.println("[I2C] Bus recovery done");
 }
 
-// ---- Re-initialize BH1750 ----
-void reinitBH1750()
-{
+void reinitBH1750() {
   Serial.println("[BH1750] Re-initializing sensor...");
   recoverI2CBus();
-  delay(50);
+  delay(20);
 
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
-  {
+  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
     lightMeter.setMTreg(31);
     luxConnected = true;
     luxFailCount = 0;
     Serial.println("[BH1750] Re-init successful");
-  }
-  else
-  {
+  } else {
     luxConnected = false;
-    Serial.println("[BH1750] Re-init FAILED - sensor may be damaged by heat");
+    Serial.println("[BH1750] Re-init FAILED");
   }
 }
 
-void handleLUX()
-{
+void handleLUX() {
   unsigned long currentMillis = millis();
 
-  // ---- Interval Control ----
   if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL)
     return;
   lastLuxReadTime = currentMillis;
 
-  // ---- Read Sensor ----
-  if (luxConnected)
-  {
+  if (luxConnected) {
     float rawLux = lightMeter.readLightLevel();
 
-    // ---- Detect read failure (negative = error, NaN = bus hang) ----
-    if (rawLux < 0 || isnan(rawLux))
-    {
+    if (rawLux < 0 || isnan(rawLux) || isinf(rawLux)) {
       luxFailCount++;
-      Serial.printf("[BH1750] Read failed (%d/%d)\n", luxFailCount, LUX_FAIL_LIMIT);
-
-      if (luxFailCount >= LUX_FAIL_LIMIT)
-      {
+      Serial.printf("[BH1750] Read failed (%u/%u)\n", luxFailCount, LUX_FAIL_LIMIT);
+      if (luxFailCount >= LUX_FAIL_LIMIT) {
         reinitBH1750();
       }
-      return; // skip this reading
+      return;
     }
 
-    luxFailCount = 0; // reset on successful read
+    luxFailCount = 0;
 
-    // ---- EMA Smoothing (alpha=0.2 for stable output) ----
-    if (!luxInitialized)
-    {
+    if (!luxInitialized) {
       luxFiltered = rawLux;
       luxInitialized = true;
-    }
-    else
-    {
-      luxFiltered = 0.2 * rawLux + 0.8 * luxFiltered;
+    } else {
+      luxFiltered = 0.2f * rawLux + 0.8f * luxFiltered;
     }
 
-    luxValue = (uint32_t)(luxFiltered + 0.5); // round to nearest
-  }
-  else
-  {
-    luxValue = 1; // fallback value if sensor missing
+    luxValue = (uint32_t)(luxFiltered + 0.5f);
+  } else {
+    luxValue = 1;
 
-    // Periodically try to re-init disconnected sensor
     static unsigned long lastReInitAttempt = 0;
-    if (currentMillis - lastReInitAttempt > 30000UL) // every 30s
-    {
+    if (currentMillis - lastReInitAttempt > 30000UL) {
       lastReInitAttempt = currentMillis;
       reinitBH1750();
     }
   }
 }
 
-//--------------------------------
-// Serial output control
-//--------------------------------
-void serialOutput()
-{
+void serialOutput() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastSerialPrint < 1000)
+  if (currentMillis - lastSerialPrint < 2000)
     return;
   lastSerialPrint = currentMillis;
 
   Serial.println("\n========================================");
   Serial.println("           Sensor Data Report");
   Serial.println("========================================");
-  Serial.printf("NTC Temperature  : %8.2f °C\n", ntcTemp);
-  Serial.printf("Light Intensity  : %8lu lux\n", luxValue);
+  Serial.printf("NTC Temperature  : %.2f °C\n", ntcTemp);
+  Serial.printf("Light Intensity  : %lu lux\n", luxValue);
   Serial.println("========================================\n");
 }
 
-//--------------------------------
-// Setup function
-//--------------------------------
-void setup()
-{
+void setup() {
   Serial.begin(115200);
 
   pinMode(RS485_EN, OUTPUT);
@@ -699,75 +522,41 @@ void setup()
   pinMode(NTC_PIN, INPUT);
 
   analogReadResolution(12);
-  analogSetAttenuation(ADC_11db); // Full 0–3.3V range
+  analogSetAttenuation(ADC_11db);
 
   digitalWrite(LED_PIN, LOW);
-
-  delay(2000);
-
-  // --- Storage Init ---
-  Serial.println("\n==============================");
-  Serial.println("Settings Initialization");
-  Serial.println("==============================");
-  Serial.println("[INFO] Initializing EEPROM...");
   delay(1000);
 
-  EEPROM.begin(512);
   loadSettings();
 
-  Serial.println("[SUCCESS] EEPROM Initialized.");
-  Serial.printf("[INFO] EEPROM Size: %d bytes\n", 512);
-  Serial.println("==============================\n");
-  delay(1000);
-
-  // --- LUX Sensor Init ---
-  Serial.println("\n==============================");
-  Serial.println("BH1750 Initialization");
-  Serial.println("==============================");
-  Serial.println("[INFO] Starting BH1750...");
-
-  Wire.begin();          // SDA, SCL default for ESP32
-  Wire.setTimeOut(1000); // 1 second I2C timeout to prevent bus hang
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
-  {
+  Wire.begin();
+  Wire.setTimeOut(100);  // 100ms I2C timeout prevents blocking Modbus
+  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
     luxConnected = true;
-    // Lower MTreg to 31 (min) to extend max lux range from ~54612 to ~121557
     lightMeter.setMTreg(31);
     Serial.println("[SUCCESS] BH1750 detected.");
-    Serial.println("[INFO] Mode: Continuous High Resolution (MTreg=31, max ~121557 lux)");
-    Serial.println("==============================\n");
-  }
-  else
-  {
+  } else {
     luxConnected = false;
     Serial.println("[ERROR] BH1750 not detected!");
-    Serial.println("[INFO] Check SDA/SCL wiring.");
-    Serial.println("==============================\n");
   }
-  delay(1000);
 
   setReceiveMode();
   rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
   rs485.setTimeout(2);
   lastValidPacket = millis();
 
-  // --- Hardware Watchdog (10s timeout) ---
-  // If loop() hangs (e.g., I2C bus stuck), ESP32 auto-resets
   esp_task_wdt_config_t wdt_config = {
-      .timeout_ms = 10000,
-      .idle_core_mask = 0,
-      .trigger_panic = true};
+    .timeout_ms = 10000,
+    .idle_core_mask = 0,
+    .trigger_panic = true
+  };
   esp_task_wdt_reconfigure(&wdt_config);
-  esp_task_wdt_add(NULL); // add current task (loopTask)
+  esp_task_wdt_add(NULL);
   Serial.println("[WDT] Hardware watchdog enabled (10s)");
 }
 
-//--------------------------------
-// Loop function
-//--------------------------------
-void loop()
-{
-  esp_task_wdt_reset(); // feed watchdog every loop iteration
+void loop() {
+  esp_task_wdt_reset();
 
   handleNTC();
   handleLUX();
@@ -775,13 +564,9 @@ void loop()
   serialOutput();
   updateLED();
 
-  // ---- RS485 watchdog ----
-  if (settings.enableRS485 && millis() - lastValidPacket > BUS_WATCHDOG)
-  {
-    Serial.println("[RS485] No communication for 30s → recovering bus");
-
+  if (settings.enableRS485 && millis() - lastValidPacket > BUS_WATCHDOG) {
+    Serial.println("[RS485] No communication for 30s -> recovering bus");
     resetRS485UART();
-
     lastValidPacket = millis();
   }
 }
