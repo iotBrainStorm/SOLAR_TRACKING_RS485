@@ -1167,12 +1167,14 @@ void sendDataToNodeRed() {
 
   // Check enabled
   if (!settings.enableNodeRed) {
+    nodeRedConnected = false;
     Serial.println(F("[Node-RED] Disabled in settings"));
     return;
   }
 
   // Check WiFi
   if (WiFi.status() != WL_CONNECTED) {
+    nodeRedConnected = false;
     Serial.println(F("[Node-RED] WiFi not connected"));
     return;
   }
@@ -1213,7 +1215,7 @@ void sendDataToNodeRed() {
   Serial.print(F("[Node-RED] HTTP Response code: "));
   Serial.println(httpResponseCode);
 
-  if (httpResponseCode > 0) {
+  if (httpResponseCode == 200) {
     String response = http.getString();
     Serial.print(F("[Node-RED] Response body: "));
     Serial.println(response);
@@ -1365,8 +1367,8 @@ void displayLCD() {
   if (luxDiff > 0)
     snprintf(diffStr, sizeof(diffStr), "+%ld", luxDiff);
   else
-    snprintf(diffStr, sizeof(diffStr), "-%ld", luxDiff);
-  u8g2.drawStr(80, 52, diffStr);
+    snprintf(diffStr, sizeof(diffStr), "%ld", luxDiff);
+  u8g2.drawStr(76, 52, diffStr);
 
   // ================= WIFI SIGNAL BARS (Row 4) =================
   if (WiFi.status() == WL_CONNECTED) {
@@ -1383,6 +1385,11 @@ void displayLCD() {
     for (int i = 0; i < activeBars; i++) {
       uint8_t barHeight = i + 1;  // 1px, 2px, 3px ... up to 8px
       u8g2.drawVLine(baseX + i, baseY - barHeight + 1, barHeight);
+    }
+
+    // 2x2 dot above hypotenuse when Node-RED is ON and HTTP status is 200
+    if (settings.enableNodeRed && nodeRedConnected && httpResponseCode == 200) {
+      u8g2.drawBox(baseX, baseY - 7, 2, 2);  // Draws at x=120..121, y=45..46
     }
   }
 
