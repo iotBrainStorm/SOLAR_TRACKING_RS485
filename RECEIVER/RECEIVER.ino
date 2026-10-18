@@ -615,34 +615,32 @@ void setupWebServer() {
   if (webServerStarted)
     return;  // Already started
 
+  // Serve index.html.gz
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // Serial.println("Root Requested");
-    request->send(SPIFFS, "/index.html", "text/html");
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/index.html.gz", "text/html");
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
   });
 
+  // Serve config.html.gz
   server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/config.html", "text/html");
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/config.html.gz", "text/html");
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
   });
 
-  // // For gz compression
-  // server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-  //   AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/index.html.gz", "text/html");
-  //   response->addHeader("Content-Encoding", "gzip");
-  //   request->send(response);
-  // });
-
-  // server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-  //   AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/config.html.gz", "text/html");
-  //   response->addHeader("Content-Encoding", "gzip");
-  //   request->send(response);
-  // });
-
+  // Serve dashboard.svg.gz
   server.on("/dashboard.svg", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/dashboard.svg", "image/svg+xml");
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/dashboard.svg.gz", "image/svg+xml");
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
   });
 
+  // Serve settings.svg.gz
   server.on("/settings.svg", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/settings.svg", "image/svg+xml");
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/settings.svg.gz", "image/svg+xml");
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
   });
 
   server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -1278,18 +1276,18 @@ void displayLCD() {
   char ntcStr[20];
   snprintf(ntcStr, sizeof(ntcStr), "SLR: %.2fC", ntcTemp);
   char fmtTemp[10];
-  sprintf(fmtTemp, "SPV: %%.%dfC", settings.tempPrecision);
+  sprintf(fmtTemp, "S: %%.%dfC", settings.tempPrecision);  // solar temperature
   snprintf(ntcStr, sizeof(ntcStr), fmtTemp, ntcTemp);
   u8g2.drawStr(0, 12, ntcStr);
 
   char ahtStr[20];
-  sprintf(fmtTemp, "SRR: %%.%dfC", settings.tempPrecision);
+  sprintf(fmtTemp, "R: %%.%dfC", settings.tempPrecision);  // room temperature
   snprintf(ahtStr, sizeof(ahtStr), fmtTemp, ahtTemp);
   u8g2.drawStr(0, 24, ahtStr);
 
   char humStr[20];
   char fmtHum[10];
-  sprintf(fmtHum, "HUM: %%.%df%%%%", settings.humidityPrecision);
+  sprintf(fmtHum, "H: %%.%df%%%%", settings.humidityPrecision);  // room humidity
   snprintf(humStr, sizeof(humStr), fmtHum, humidity);
   u8g2.drawStr(0, 36, humStr);
 
