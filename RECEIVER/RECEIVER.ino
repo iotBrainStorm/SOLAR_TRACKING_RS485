@@ -1357,7 +1357,7 @@ void displayLCD() {
 
   // Lux
   char luxStr[20];
-  snprintf(luxStr, sizeof(luxStr), "LUX: %lu", luxValue);
+  snprintf(luxStr, sizeof(luxStr), "LX: %lu", luxValue);
   u8g2.drawStr(0, 52, luxStr);
 
   // Difference string
@@ -1365,8 +1365,26 @@ void displayLCD() {
   if (luxDiff > 0)
     snprintf(diffStr, sizeof(diffStr), "+%ld", luxDiff);
   else
-    snprintf(diffStr, sizeof(diffStr), "%ld", luxDiff);
-  u8g2.drawStr(85, 52, diffStr);
+    snprintf(diffStr, sizeof(diffStr), "-%ld", luxDiff);
+  u8g2.drawStr(80, 52, diffStr);
+
+  // ================= WIFI SIGNAL BARS (Row 4) =================
+  if (WiFi.status() == WL_CONNECTED) {
+    // Convert RSSI (-100 to -50 dBm) to percentage (0 to 100%)
+    int rssi = WiFi.RSSI();
+    int wifiSignal = constrain(2 * (rssi + 100), 0, 100);
+
+    // Map 1-100% into 1-8 bars (0% = 0 bars)
+    int activeBars = (wifiSignal * 8 + 99) / 100;
+
+    const uint8_t baseX = 120;  // Uses x = 120 to 127 (8px total width)
+    const uint8_t baseY = 52;   // Bottom-aligned with LUX text baseline (y = 52)
+
+    for (int i = 0; i < activeBars; i++) {
+      uint8_t barHeight = i + 1;  // 1px, 2px, 3px ... up to 8px
+      u8g2.drawVLine(baseX + i, baseY - barHeight + 1, barHeight);
+    }
+  }
 
   // Sunlight % PROGRESS BAR
   char sunStr[20];
