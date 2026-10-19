@@ -6,11 +6,20 @@
 #include <Preferences.h>
 #include <BH1750.h>
 #include <esp_task_wdt.h>
+#include <Ticker.h>
 
 #define RXD2 20
 #define TXD2 21
 #define RS485_EN 4
 #define LED_PIN 2
+
+// -- Safe Sensor Status LED Pins (ESP32-C3)
+#define NTC_LED_PIN 6
+#define LUX_LED_PIN 7
+const uint32_t SENSOR_LED_BLINK_MS = 40;  // 40ms crisp, non-blocking flash
+
+Ticker ntcLedTicker;
+Ticker luxLedTicker;
 
 // -- Modbus setup
 HardwareSerial rs485(1);
@@ -46,7 +55,7 @@ uint32_t luxValue = 0;
 // -- Serial Output
 unsigned long lastSerialPrint = 0;
 
-// -- Feedback LED control
+// -- Feedback LED control (Modbus)
 bool ledState = false;
 unsigned long ledStartTime = 0;
 unsigned long ledDuration = 100;
@@ -69,6 +78,27 @@ struct DeviceSettings {
   uint16_t modbusInterval;
 };
 DeviceSettings settings;
+
+//--------------------------------
+// Non-Blocking Sensor LED Callbacks (Ticker)
+//--------------------------------
+void turnOffNtcLED() {
+  digitalWrite(NTC_LED_PIN, LOW);
+}
+
+void turnOffLuxLED() {
+  digitalWrite(LUX_LED_PIN, LOW);
+}
+
+void blinkNtcLED() {
+  digitalWrite(NTC_LED_PIN, HIGH);
+  ntcLedTicker.once_ms(SENSOR_LED_BLINK_MS, turnOffNtcLED);
+}
+
+void blinkLuxLED() {
+  digitalWrite(LUX_LED_PIN, HIGH);
+  luxLedTicker.once_ms(SENSOR_LED_BLINK_MS, turnOffLuxLED);
+}
 
 void sanitizeSettings() {
   if (settings.ntcResistance <= 0) settings.ntcResistance = 10000.0f;
@@ -402,6 +432,7 @@ void calculateNTCFromADC() {
 
   if (!isnan(calcC) && !isinf(calcC)) {
     ntcTemp = constrain(calcC, -50.0f, 200.0f);
+    blinkNtcLED();  // Blink NTC LED only on a valid temperature read
   }
 }
 
@@ -489,6 +520,7 @@ void handleLUX() {
     }
 
     luxValue = (uint32_t)(luxFiltered + 0.5f);
+    blinkLuxLED();  // Blink LUX LED only on a valid BH1750 read
   } else {
     luxValue = 1;
 
@@ -519,12 +551,17 @@ void setup() {
 
   pinMode(RS485_EN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(NTC_LED_PIN, OUTPUT);
+  pinMode(LUX_LED_PIN, OUTPUT);
   pinMode(NTC_PIN, INPUT);
+
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(NTC_LED_PIN, LOW);
+  digitalWrite(LUX_LED_PIN, LOW);
 
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
-  digitalWrite(LED_PIN, LOW);
   delay(1000);
 
   loadSettings();
