@@ -1275,7 +1275,7 @@ void displayLCD() {
 
   // ================= ROW 4: LUX, DIFF & WIFI BARS =================
   char luxStr[16];
-  snprintf(luxStr, sizeof(luxStr), "LX:%lu", luxValue);
+  snprintf(luxStr, sizeof(luxStr), "LX: %lu", luxValue);
   u8g2.drawStr(0, 52, luxStr);
 
   char diffStr[12];
