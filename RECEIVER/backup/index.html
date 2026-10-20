@@ -711,9 +711,10 @@
                   opacity="0.85"
                 />
               </g>
-              <!-- Optimal sunlight zone (light red fill between 45° diagonal axes) -->
+              <!-- Optimal sunlight zone (exact Bezier match between 45° diagonal axes) -->
               <path
-                d="M 150 140 L 82 72 L 98 64 L 114 58 L 130 54 L 143 52 L 150 51.5 L 157 52 L 170 54 L 186 58 L 202 64 L 218 72 L 150 140 Z"
+                id="optimalZonePath"
+                d="M 150 140 L 82.5 72.5 Q 150 27.5 217.5 72.5 Z"
                 fill="rgba(255,70,70,0.06)"
               />
               <!-- Horizon line (solid) -->
@@ -725,22 +726,24 @@
                 stroke="rgba(255,255,255,0.2)"
                 stroke-width="1"
               />
-              <!-- Left 45° diagonal dotted axis (from center to arc) -->
+              <!-- Left 45° diagonal dotted axis (from center to t=0.25 on arc) -->
               <line
+                id="line45Left"
                 x1="150"
                 y1="140"
-                x2="82"
-                y2="72"
+                x2="82.5"
+                y2="72.5"
                 stroke="rgba(255,120,120,0.25)"
                 stroke-width="1"
                 stroke-dasharray="3,4"
               />
-              <!-- Right 45° diagonal dotted axis (from center to arc) -->
+              <!-- Right 45° diagonal dotted axis (from center to t=0.75 on arc) -->
               <line
+                id="line45Right"
                 x1="150"
                 y1="140"
-                x2="218"
-                y2="72"
+                x2="217.5"
+                y2="72.5"
                 stroke="rgba(255,120,120,0.25)"
                 stroke-width="1"
                 stroke-dasharray="3,4"
@@ -1033,18 +1036,23 @@
       }
 
       function calcSunPosition(lat, lon, tz, dateObj) {
+        // Use UTC date diff to avoid any local DST/timezone skew on dayOfYear
         var yr = dateObj.getFullYear();
-        var start = new Date(yr, 0, 0);
-        var diff = dateObj - start;
-        var oneDay = 86400000;
-        var dayOfYear = Math.floor(diff / oneDay);
+        var utcToday = Date.UTC(yr, dateObj.getMonth(), dateObj.getDate());
+        var utcYearStart = Date.UTC(yr, 0, 0);
+        var dayOfYear = Math.floor((utcToday - utcYearStart) / 86400000);
+
+        var isLeap = (yr % 4 === 0 && yr % 100 !== 0) || yr % 400 === 0;
+        var daysInYear = isLeap ? 366.0 : 365.0;
+
         var hour =
           dateObj.getHours() +
           dateObj.getMinutes() / 60.0 +
           dateObj.getSeconds() / 3600.0;
 
         var gamma =
-          ((2.0 * Math.PI) / 365.0) * (dayOfYear - 1 + (hour - 12) / 24.0);
+          ((2.0 * Math.PI) / daysInYear) *
+          (dayOfYear - 1 + (hour - 12.0) / 24.0);
 
         var eqTime =
           229.18 *
@@ -1063,10 +1071,10 @@
           0.002697 * Math.cos(3 * gamma) +
           0.00148 * Math.sin(3 * gamma);
 
-        var timeOffset = eqTime + 4 * lon - 60 * tz;
+        var timeOffset = eqTime + 4.0 * lon - 60.0 * tz;
 
         var tst =
-          dateObj.getHours() * 60 +
+          dateObj.getHours() * 60.0 +
           dateObj.getMinutes() +
           dateObj.getSeconds() / 60.0 +
           timeOffset;
@@ -1089,15 +1097,17 @@
               Math.tan(decl) * Math.cos(latRad),
           ) *
             180.0) /
-          Math.PI;
-        azimuth = azimuth + 180.0;
+            Math.PI +
+          180.0;
+        azimuth = ((azimuth % 360.0) + 360.0) % 360.0;
 
         return { elevation: elevation, azimuth: azimuth };
       }
 
       function azimuthToDir(az) {
         var dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-        var idx = Math.round(az / 45) % 8;
+        var normAz = ((az % 360) + 360) % 360;
+        var idx = Math.round(normAz / 45) % 8;
         return dirs[idx];
       }
 
@@ -1108,24 +1118,29 @@
         targetAngle,
         sunriseMin,
         sunsetMin,
+        noonMin,
         direction,
       ) {
         var today = getTimeInTZ(tz);
         var yr = today.getFullYear();
         var mo = today.getMonth();
         var dy = today.getDate();
-        var startMin, endMin;
-        var noonMin = Math.round((sunriseMin + sunsetMin) / 2);
-        if (direction === "rising") {
-          startMin = sunriseMin;
-          endMin = noonMin;
-        } else {
-          startMin = noonMin;
-          endMin = sunsetMin;
-        }
-        for (var i = 0; i < 20; i++) {
-          var midMin = Math.round((startMin + endMin) / 2);
-          var d = new Date(yr, mo, dy, Math.floor(midMin / 60), midMin % 60, 0);
+
+        var startMin = direction === "rising" ? sunriseMin : noonMin;
+        var endMin = direction === "rising" ? noonMin : sunsetMin;
+
+        // Floating-point binary search prevents Math.round boundary lock
+        for (var i = 0; i < 16; i++) {
+          var midMin = (startMin + endMin) / 2.0;
+          var totalSec = Math.round(midMin * 60);
+          var d = new Date(
+            yr,
+            mo,
+            dy,
+            Math.floor(totalSec / 3600),
+            Math.floor((totalSec % 3600) / 60),
+            totalSec % 60,
+          );
           var elev = calcSunPosition(lat, lon, tz, d).elevation;
           if (elev < targetAngle) {
             if (direction === "rising") startMin = midMin;
@@ -1135,12 +1150,13 @@
             else startMin = midMin;
           }
         }
-        return Math.round((startMin + endMin) / 2);
+        return Math.round((startMin + endMin) / 2.0);
       }
 
       function formatMin(m) {
-        var h = Math.floor(m / 60);
-        var mm = m % 60;
+        var total = ((Math.round(m) % 1440) + 1440) % 1440;
+        var h = Math.floor(total / 60);
+        var mm = total % 60;
         return (h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm;
       }
 
@@ -1166,8 +1182,17 @@
           sunriseMin >= 0 &&
           sunsetMin > sunriseMin;
 
+        var noonMin = -1;
+        var left45 = -1;
+        var right45 = -1;
+        var hasOptimalZone = false;
+
+        var optPath = document.getElementById("optimalZonePath");
+        var line45L = document.getElementById("line45Left");
+        var line45R = document.getElementById("line45Right");
+
         if (validSunTimes) {
-          var noonMin = Math.round((sunriseMin + sunsetMin) / 2);
+          noonMin = Math.round((sunriseMin + sunsetMin) / 2);
           document.getElementById("solarNoonTime").textContent =
             formatMin(noonMin);
 
@@ -1183,31 +1208,40 @@
           var maxElev = calcSunPosition(lat, lon, tz, noonDate).elevation;
 
           if (maxElev >= 45) {
-            var left45 = findAngleCrossingTime(
+            hasOptimalZone = true;
+            left45 = findAngleCrossingTime(
               lat,
               lon,
               tz,
               45,
               sunriseMin,
               sunsetMin,
+              noonMin,
               "rising",
             );
-            var right45 = findAngleCrossingTime(
+            right45 = findAngleCrossingTime(
               lat,
               lon,
               tz,
               45,
               sunriseMin,
               sunsetMin,
+              noonMin,
               "setting",
             );
             document.getElementById("time45Left").textContent =
               formatMin(left45);
             document.getElementById("time45Right").textContent =
               formatMin(right45);
+            if (optPath) optPath.style.display = "";
+            if (line45L) line45L.style.display = "";
+            if (line45R) line45R.style.display = "";
           } else {
             document.getElementById("time45Left").textContent = "--:--";
             document.getElementById("time45Right").textContent = "--:--";
+            if (optPath) optPath.style.display = "none";
+            if (line45L) line45L.style.display = "none";
+            if (line45R) line45R.style.display = "none";
           }
         } else {
           document.getElementById("solarNoonTime").textContent = "--:--";
@@ -1241,9 +1275,10 @@
         }
 
         var now = getTimeInTZ(tz);
-        var nowMin = now.getHours() * 60 + now.getMinutes();
+        var nowMin =
+          now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60.0;
         var totalDay = sunsetMin - sunriseMin;
-        var progress = (nowMin - sunriseMin) / totalDay;
+        var progress = 0;
 
         var sunDot = document.getElementById("sunDot");
         var sunGlow = document.getElementById("sunGlow");
@@ -1252,17 +1287,39 @@
         var remainEl = document.getElementById("sunRemaining");
 
         if (nowMin < sunriseMin) {
-          var minsLeft = sunriseMin - nowMin;
+          var totalMins = sunsetMin - sunriseMin;
           remainEl.textContent =
-            Math.floor(minsLeft / 60) + "h " + (minsLeft % 60) + "m";
+            Math.floor(totalMins / 60) + "h " + (totalMins % 60) + "m";
           progress = 0;
-        } else if (nowMin > sunsetMin) {
+        } else if (nowMin >= sunsetMin) {
           remainEl.textContent = "Set";
           progress = 1;
         } else {
-          var minsLeft = sunsetMin - nowMin;
+          var minsLeft = Math.ceil(sunsetMin - nowMin);
           remainEl.textContent =
             Math.floor(minsLeft / 60) + "h " + (minsLeft % 60) + "m";
+
+          // Piecewise progress so live Sun Dot aligns with the 45° lines & Solar Noon
+          if (
+            hasOptimalZone &&
+            left45 > sunriseMin &&
+            right45 < sunsetMin &&
+            right45 > left45
+          ) {
+            if (nowMin <= left45) {
+              progress = 0.25 * ((nowMin - sunriseMin) / (left45 - sunriseMin));
+            } else if (nowMin <= noonMin) {
+              progress = 0.25 + 0.25 * ((nowMin - left45) / (noonMin - left45));
+            } else if (nowMin <= right45) {
+              progress =
+                0.5 + 0.25 * ((nowMin - noonMin) / (right45 - noonMin));
+            } else {
+              progress =
+                0.75 + 0.25 * ((nowMin - right45) / (sunsetMin - right45));
+            }
+          } else {
+            progress = (nowMin - sunriseMin) / totalDay;
+          }
         }
 
         var sunPos = calcSunPosition(lat, lon, tz, now);
@@ -1279,12 +1336,13 @@
         var cR = 11;
         var cdx = cR * Math.sin(azRad);
         var cdy = -cR * Math.cos(azRad);
-        document
-          .getElementById("compassDot")
-          .setAttribute("cx", cdx.toFixed(1));
-        document
-          .getElementById("compassDot")
-          .setAttribute("cy", cdy.toFixed(1));
+        var compassDot = document.getElementById("compassDot");
+        compassDot.setAttribute("cx", cdx.toFixed(1));
+        compassDot.setAttribute("cy", cdy.toFixed(1));
+        compassDot.setAttribute(
+          "opacity",
+          nowMin >= sunriseMin && nowMin < sunsetMin ? "0.9" : "0.25",
+        );
 
         progress = Math.max(0, Math.min(1, progress));
 
@@ -1292,18 +1350,18 @@
         var x = (1 - t) * (1 - t) * 15 + 2 * (1 - t) * t * 150 + t * t * 285;
         var y = (1 - t) * (1 - t) * 140 + 2 * (1 - t) * t * -40 + t * t * 140;
 
-        sunDot.setAttribute("cx", x);
-        sunDot.setAttribute("cy", y);
-        sunGlow.setAttribute("cx", x);
-        sunGlow.setAttribute("cy", y);
-        sunGlowOuter.setAttribute("cx", x);
-        sunGlowOuter.setAttribute("cy", y);
+        sunDot.setAttribute("cx", x.toFixed(1));
+        sunDot.setAttribute("cy", y.toFixed(1));
+        sunGlow.setAttribute("cx", x.toFixed(1));
+        sunGlow.setAttribute("cy", y.toFixed(1));
+        sunGlowOuter.setAttribute("cx", x.toFixed(1));
+        sunGlowOuter.setAttribute("cy", y.toFixed(1));
 
         if (progress > 0 && progress < 1) {
           var pathD = "M 15 140";
-          var steps = Math.round(t * 50);
+          var steps = Math.max(1, Math.round(t * 50));
           for (var i = 1; i <= steps; i++) {
-            var st = i / 50;
+            var st = (t * i) / steps;
             var sx =
               (1 - st) * (1 - st) * 15 +
               2 * (1 - st) * st * 150 +

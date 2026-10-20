@@ -1067,6 +1067,30 @@
           });
       });
 
+      document
+        .querySelector("[name=tzOffset]")
+        .addEventListener("change", function () {
+          var tz = parseFloat(this.value);
+          if (!isNaN(tz)) {
+            document.querySelector("[name=gmtOffset]").value = Math.round(
+              tz * 3600,
+            );
+          }
+        });
+
+      document
+        .querySelector("[name=gmtOffset]")
+        .addEventListener("input", function () {
+          var gmt = parseFloat(this.value);
+          if (!isNaN(gmt)) {
+            var tzHours = (gmt / 3600).toString();
+            var tzSelect = document.querySelector("[name=tzOffset]");
+            if (tzSelect.querySelector('option[value="' + tzHours + '"]')) {
+              tzSelect.value = tzHours;
+            }
+          }
+        });
+
       function submitForm() {
         if (!confirm("Do you want to save configuration?")) return;
 

@@ -229,9 +229,9 @@ void setDefaultSettings() {
   settings.gmtOffset = 19800;
   settings.clockFormat = 24;
 
-  settings.latitude = 0.0;
-  settings.longitude = 0.0;
-  settings.tzOffset = 5.5;
+  settings.latitude = 22.5726f;
+  settings.longitude = 88.3639f;
+  settings.tzOffset = 5.5f;
 }
 
 //////////////////////   SANITIZE SETTINGS   //////////////////////
@@ -289,9 +289,9 @@ void loadSettings() {
   settings.gmtOffset = preferences.getLong("gmt", 19800);
   settings.clockFormat = preferences.getUChar("clkFmt", 24);
 
-  settings.latitude = preferences.getFloat("lat", 0.0);
-  settings.longitude = preferences.getFloat("lon", 0.0);
-  settings.tzOffset = preferences.getFloat("tzOff", 5.5);
+  settings.latitude = preferences.getFloat("lat", 22.5726f);
+  settings.longitude = preferences.getFloat("lon", 88.3639f);
+  settings.tzOffset = preferences.getFloat("tzOff", 5.5f);
 
   preferences.end();
 
@@ -720,8 +720,10 @@ void setupWebServer() {
       settings.latitude = request->getParam("latitude", true)->value().toFloat();
     if (request->hasParam("longitude", true))
       settings.longitude = request->getParam("longitude", true)->value().toFloat();
-    if (request->hasParam("tzOffset", true))
+    if (request->hasParam("tzOffset", true)) {
       settings.tzOffset = request->getParam("tzOffset", true)->value().toFloat();
+      settings.gmtOffset = (long)round(settings.tzOffset * 3600.0f);
+    }
 
     sanitizeSettings();
     pendingSaveAndSync = true;  // Handled safely in loop()
