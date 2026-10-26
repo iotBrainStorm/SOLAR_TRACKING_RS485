@@ -83,7 +83,7 @@
         flex: 0 0 300px;
         max-width: 300px;
         background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 20px;
         padding: 25px;
         text-align: center;
@@ -92,7 +92,7 @@
       }
 
       .card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-2px);
       }
 
       .card-sub {
@@ -104,6 +104,7 @@
         padding: 8px 12px;
         background: rgba(255, 255, 255, 0.08);
         border-radius: 8px;
+        contain: layout paint; /* Isolates humidity text repaints */
       }
 
       .card-sub .sub-icon {
@@ -154,6 +155,7 @@
         font-size: 36px;
         font-weight: bold;
         letter-spacing: 1px;
+        contain: layout paint; /* Isolates temperature text repaints */
       }
 
       .unit {
@@ -212,7 +214,7 @@
         flex: 0 0 100%;
         max-width: 630px;
         background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 20px;
         padding: 25px 25px 15px;
         text-align: center;
@@ -221,7 +223,7 @@
       }
 
       .sun-map-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-2px);
       }
 
       .sun-arc-container {
@@ -925,8 +927,12 @@
 
             setValue("outsideTemp", outside.toFixed(tPrec), "°C");
             setValue("solarTemp", solar.toFixed(tPrec), "°C");
-            document.getElementById("humidity").textContent =
-              hum.toFixed(hPrec);
+
+            var humEl = document.getElementById("humidity");
+            var humStr = hum.toFixed(hPrec);
+            if (humEl.textContent !== humStr) {
+              humEl.textContent = humStr;
+            }
 
             colorOutsideTemp(outside);
             colorSolarTemp(solar);
@@ -960,18 +966,25 @@
       }
 
       function setValue(id, value, unit) {
-        document.getElementById(id).innerHTML =
-          value + ' <span class="unit">' + unit + "</span>";
+        var el = document.getElementById(id);
+        var newHtml = value + ' <span class="unit">' + unit + "</span>";
+        if (el.innerHTML !== newHtml) {
+          el.innerHTML = newHtml;
+        }
       }
 
       function colorOutsideTemp(val) {
         let el = document.getElementById("outsideTemp");
-        el.style.color = "#FF7859";
+        if (el.style.color !== "rgb(255, 120, 89)") {
+          el.style.color = "#FF7859";
+        }
       }
 
       function colorSolarTemp(val) {
         let el = document.getElementById("solarTemp");
-        el.style.color = "#CF91FF";
+        if (el.style.color !== "rgb(207, 145, 255)") {
+          el.style.color = "#CF91FF";
+        }
       }
 
       updateDashboard();
