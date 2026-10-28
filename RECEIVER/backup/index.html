@@ -263,11 +263,11 @@
       @keyframes sunPulse {
         0%,
         100% {
-          r: 16;
+          r: 10;
           opacity: 0.15;
         }
         50% {
-          r: 22;
+          r: 14;
           opacity: 0.25;
         }
       }
@@ -275,11 +275,11 @@
       @keyframes sunPulseOuter {
         0%,
         100% {
-          r: 26;
+          r: 17;
           opacity: 0.06;
         }
         50% {
-          r: 32;
+          r: 22;
           opacity: 0.12;
         }
       }
@@ -582,6 +582,20 @@
                   <stop offset="0%" stop-color="#ffcc00" stop-opacity="0.6" />
                   <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
                 </radialGradient>
+                <!-- Clip path for Mini Earth Globe (increased radius r=30) -->
+                <clipPath id="earthClip">
+                  <circle cx="0" cy="0" r="30" />
+                </clipPath>
+                <!-- Subtle sunlit atmospheric gradient for Earth day side -->
+                <radialGradient id="earthDayGrad" cx="50%" cy="50%" r="60%">
+                  <stop offset="0%" stop-color="#ffe066" stop-opacity="0.22" />
+                  <stop offset="55%" stop-color="#4facfe" stop-opacity="0.16" />
+                  <stop
+                    offset="100%"
+                    stop-color="#0f2027"
+                    stop-opacity="0.25"
+                  />
+                </radialGradient>
               </defs>
               <!-- Azimuth direction label (top left) -->
               <text
@@ -596,78 +610,182 @@
               >
                 --
               </text>
-              <!-- Mini compass with plus shape (top right) -->
-              <g id="compassGroup" transform="translate(272,26)">
+              <!-- Mini compass with plus shape (top right) -> Mini Earth Globe -->
+              <g id="compassGroup" transform="translate(276, 45) scale(1.18)">
+                <!-- Clipped Earth interior: Day/Night zones + Latitudes & Longitudes + Sun Path -->
+                <g clip-path="url(#earthClip)">
+                  <!-- Base Earth ocean/daylight fill -->
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="30"
+                    fill="rgba(79, 172, 254, 0.14)"
+                  />
+                  <circle cx="0" cy="0" r="30" fill="url(#earthDayGrad)" />
+
+                  <!-- Live 3D Day & Night hemisphere group -->
+                  <g id="earthDayNightGroup">
+                    <!-- Night shadow area (recalculated 3D spherical projection) -->
+                    <path
+                      id="earthNightPath"
+                      d="M -31 0 L 31 0 L 31 31 L -31 31 Z"
+                      fill="rgba(5, 11, 18, 0.68)"
+                    />
+                    <!-- Twilight terminator curve -->
+                    <path
+                      id="earthTerminator"
+                      d="M -31 0 L 31 0"
+                      fill="none"
+                      stroke="rgba(255, 195, 75, 0.4)"
+                      stroke-width="0.7"
+                    />
+                  </g>
+
+                  <!-- Background Longitudes (Meridians) -->
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="9.5"
+                    ry="30"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.14)"
+                    stroke-width="0.38"
+                  />
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="18.5"
+                    ry="30"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.14)"
+                    stroke-width="0.38"
+                  />
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="25.5"
+                    ry="30"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.12)"
+                    stroke-width="0.35"
+                  />
+                  <!-- Current Location Vertical Axis (Local Meridian) -->
+                  <line
+                    x1="0"
+                    y1="-30"
+                    x2="0"
+                    y2="30"
+                    stroke="rgba(255,255,255,0.22)"
+                    stroke-width="0.45"
+                    stroke-dasharray="1.5, 1.5"
+                  />
+
+                  <!-- Latitudes (Horizontal Parallels - Earth rotates horizontally only) -->
+                  <line
+                    x1="-30"
+                    y1="-23.5"
+                    x2="30"
+                    y2="-23.5"
+                    stroke="rgba(255,255,255,0.12)"
+                    stroke-width="0.35"
+                  />
+                  <line
+                    x1="-30"
+                    y1="-16.5"
+                    x2="30"
+                    y2="-16.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="-8.5"
+                    x2="30"
+                    y2="-8.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="8.5"
+                    x2="30"
+                    y2="8.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="16.5"
+                    x2="30"
+                    y2="16.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="23.5"
+                    x2="30"
+                    y2="23.5"
+                    stroke="rgba(255,255,255,0.12)"
+                    stroke-width="0.35"
+                  />
+
+                  <!-- Prime Meridian (0° Longitude - Red, relative to current location) -->
+                  <path
+                    id="primeMeridianPath"
+                    d="M 0 -30 L 0 30"
+                    fill="none"
+                    stroke="rgba(255, 75, 75, 0.8)"
+                    stroke-width="0.65"
+                  />
+
+                  <!-- Equator (0° Latitude - Fixed Horizontal Red Line) -->
+                  <line
+                    id="equatorLine"
+                    x1="-30"
+                    y1="0"
+                    x2="30"
+                    y2="0"
+                    stroke="rgba(255, 75, 75, 0.8)"
+                    stroke-width="0.65"
+                  />
+
+                  <!-- Recalculated Non-Circular Sun Travelling Path (Daytime trajectory) -->
+                  <path
+                    id="earthSunPath"
+                    d="M 0 0"
+                    fill="none"
+                    stroke="rgba(255, 204, 0, 0.28)"
+                    stroke-width="0.55"
+                    stroke-dasharray="1.5, 1.5"
+                  />
+                  <!-- Active Traveled Sun Path (Sunrise to Now) -->
+                  <path
+                    id="earthSunPathActive"
+                    d="M 0 0"
+                    fill="none"
+                    stroke="rgba(255, 204, 0, 0.7)"
+                    stroke-width="0.75"
+                  />
+                </g>
+
+                <!-- Outer Earth perimeter ring -->
                 <circle
                   cx="0"
                   cy="0"
-                  r="24"
-                  fill="rgba(255,255,255,0.04)"
-                  stroke="rgba(255,255,255,0.12)"
-                  stroke-width="0.5"
+                  r="30"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.3)"
+                  stroke-width="0.75"
                 />
-                <!-- Plus crosshair lines (split to avoid crossing N/E/S/W) -->
-                <!-- Vertical: top stub above N -->
-                <line
-                  x1="0"
-                  y1="-24"
-                  x2="0"
-                  y2="-20"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="0.5"
-                />
-                <!-- Vertical: between N and S -->
-                <line
-                  x1="0"
-                  y1="-11"
-                  x2="0"
-                  y2="13"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="0.5"
-                />
-                <!-- Vertical: bottom stub below S -->
-                <line
-                  x1="0"
-                  y1="22"
-                  x2="0"
-                  y2="24"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="0.5"
-                />
-                <!-- Horizontal: left stub beyond W -->
-                <line
-                  x1="-24"
-                  y1="0"
-                  x2="-21"
-                  y2="0"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="0.5"
-                />
-                <!-- Horizontal: between W and E -->
-                <line
-                  x1="-11"
-                  y1="0"
-                  x2="11"
-                  y2="0"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="0.5"
-                />
-                <!-- Horizontal: right stub beyond E -->
-                <line
-                  x1="21"
-                  y1="0"
-                  x2="24"
-                  y2="0"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="0.5"
-                />
-                <!-- N E S W at plus terminals -->
+
+                <!-- N E S W just outside the circle -->
                 <text
                   x="0"
-                  y="-14"
+                  y="-32.2"
                   text-anchor="middle"
-                  fill="rgba(255,100,100,0.7)"
-                  font-size="7"
+                  fill="rgba(255,100,100,0.9)"
+                  font-size="6.5"
                   font-family="Segoe UI, sans-serif"
                   font-weight="700"
                 >
@@ -675,42 +793,79 @@
                 </text>
                 <text
                   x="0"
-                  y="20"
+                  y="37.2"
                   text-anchor="middle"
-                  fill="rgba(255,255,255,0.3)"
-                  font-size="7"
+                  fill="rgba(255,255,255,0.45)"
+                  font-size="6.5"
                   font-family="Segoe UI, sans-serif"
+                  font-weight="600"
                 >
                   S
                 </text>
                 <text
-                  x="16"
-                  y="3"
+                  x="33.2"
+                  y="2.2"
                   text-anchor="middle"
-                  fill="rgba(255,255,255,0.3)"
-                  font-size="7"
+                  fill="rgba(255,255,255,0.45)"
+                  font-size="6.5"
                   font-family="Segoe UI, sans-serif"
+                  font-weight="600"
                 >
                   E
                 </text>
                 <text
-                  x="-16"
-                  y="3"
+                  x="-33.5"
+                  y="2.2"
                   text-anchor="middle"
-                  fill="rgba(255,255,255,0.3)"
-                  font-size="7"
+                  fill="rgba(255,255,255,0.45)"
+                  font-size="6.5"
                   font-family="Segoe UI, sans-serif"
+                  font-weight="600"
                 >
                   W
                 </text>
-                <!-- Sun position dot -->
+
+                <!-- Thin dotted line from saved location (green dot) to Sun dot -->
+                <line
+                  id="compassRadiusLine"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="-21"
+                  stroke="rgba(255, 204, 0, 0.7)"
+                  stroke-width="0.6"
+                  stroke-dasharray="1.2, 1.4"
+                  opacity="0.85"
+                />
+
+                <!-- Current Saved Location (small green dot on vertical axis, above/below Equator) -->
+                <circle
+                  id="locationHalo"
+                  cx="0"
+                  cy="0"
+                  r="3.2"
+                  fill="rgba(46, 204, 113, 0.24)"
+                />
+                <circle
+                  id="locationDot"
+                  cx="0"
+                  cy="0"
+                  r="1.7"
+                  fill="#2ecc71"
+                  stroke="rgba(0,0,0,0.45)"
+                  stroke-width="0.3"
+                />
+
+                <!-- Current Sun position dot (yellow) -->
                 <circle
                   id="compassDot"
                   cx="0"
-                  cy="0"
-                  r="1.5"
+                  cy="-21"
+                  r="2.3"
                   fill="#ffcc00"
-                  opacity="0.85"
+                  stroke="rgba(0,0,0,0.4)"
+                  stroke-width="0.3"
+                  opacity="0.95"
                 />
               </g>
               <!-- Optimal sunlight zone (exact Bezier match between 45° diagonal axes) -->
@@ -786,6 +941,16 @@
                 stroke-width="1"
                 stroke-dasharray="3,4"
               />
+              <!-- Horizon center: Current Saved Location (small green dot) -->
+              <circle cx="150" cy="140" r="4" fill="rgba(46, 204, 113, 0.25)" />
+              <circle
+                cx="150"
+                cy="140"
+                r="2.2"
+                fill="#2ecc71"
+                stroke="rgba(0,0,0,0.45)"
+                stroke-width="0.4"
+              />
               <!-- Arc path (dashed) -->
               <path
                 id="sunArc"
@@ -810,7 +975,7 @@
                 id="sunGlowOuter"
                 cx="15"
                 cy="140"
-                r="26"
+                r="17"
                 fill="url(#sunGlowGrad)"
                 opacity="0.06"
               />
@@ -819,7 +984,7 @@
                 id="sunGlow"
                 cx="15"
                 cy="140"
-                r="16"
+                r="10"
                 fill="#ffcc00"
                 opacity="0.15"
               />
@@ -828,7 +993,7 @@
                 id="sunDot"
                 cx="15"
                 cy="140"
-                r="8"
+                r="5"
                 fill="#ffcc00"
                 opacity="0.9"
               />
@@ -1114,7 +1279,12 @@
           180.0;
         azimuth = ((azimuth % 360.0) + 360.0) % 360.0;
 
-        return { elevation: elevation, azimuth: azimuth };
+        return {
+          elevation: elevation,
+          azimuth: azimuth,
+          decl: decl,
+          haRad: haRad,
+        };
       }
 
       function azimuthToDir(az) {
@@ -1171,6 +1341,30 @@
         var h = Math.floor(total / 60);
         var mm = total % 60;
         return (h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm;
+      }
+
+      // Computes non-circular Sun coordinates on the globe relative to off-center Green Dot (0, yLoc)
+      function calcEarthSunPoint(azDeg, elevDeg, yLoc, maxOrbitR) {
+        var azRad = (azDeg * Math.PI) / 180.0;
+        var sinA = Math.sin(azRad);
+        var cosA = Math.cos(azRad);
+
+        // Distance from (0, yLoc) to the outer orbit boundary of radius maxOrbitR in direction azRad
+        var disc = Math.max(
+          0,
+          maxOrbitR * maxOrbitR - yLoc * yLoc * sinA * sinA,
+        );
+        var rBoundary = yLoc * cosA + Math.sqrt(disc);
+
+        // Modulate radius by solar elevation so higher elevation pulls the path inward (non-circular arc)
+        var elevClamped = Math.max(0, Math.min(89, elevDeg));
+        var elevRad = (elevClamped * Math.PI) / 180.0;
+        var r = rBoundary * (0.42 + 0.52 * Math.cos(elevRad));
+
+        return {
+          x: r * sinA,
+          y: yLoc - r * cosA,
+        };
       }
 
       function updateSunMap(
@@ -1345,17 +1539,175 @@
         document.getElementById("azimuthLabel").textContent =
           dirStr + " " + Math.round(sunAzimuth) + "°";
 
-        var azRad = (sunAzimuth * Math.PI) / 180.0;
-        var cR = 11;
-        var cdx = cR * Math.sin(azRad);
-        var cdy = -cR * Math.cos(azRad);
-        var compassDot = document.getElementById("compassDot");
-        compassDot.setAttribute("cx", cdx.toFixed(1));
-        compassDot.setAttribute("cy", cdy.toFixed(1));
-        compassDot.setAttribute(
-          "opacity",
-          nowMin >= sunriseMin && nowMin < sunsetMin ? "0.9" : "0.25",
+        // --- MINI EARTH GLOBE UPDATES ---
+        var earthR = 30.0;
+        var latRad = (lat * Math.PI) / 180.0;
+
+        // 1. Saved Location (Green Dot): fixed on vertical axis (x=0), above/below Equator (y=0)
+        var yLoc = -earthR * Math.sin(latRad);
+        yLoc = Math.max(-25.0, Math.min(25.0, yLoc));
+        var locDot = document.getElementById("locationDot");
+        var locHalo = document.getElementById("locationHalo");
+        if (locDot) locDot.setAttribute("cy", yLoc.toFixed(2));
+        if (locHalo) locHalo.setAttribute("cy", yLoc.toFixed(2));
+
+        // 2. Red Prime Meridian (0° Longitude) relative to current saved longitude
+        var pmPath = document.getElementById("primeMeridianPath");
+        if (pmPath) {
+          var deltaPM = (((-lon % 360.0) + 540.0) % 360.0) - 180.0; // [-180, 180]
+          var pmFront = Math.abs(deltaPM) <= 90.0;
+          var foldedDeg = deltaPM;
+          if (deltaPM > 90.0) foldedDeg = 180.0 - deltaPM;
+          else if (deltaPM < -90.0) foldedDeg = -180.0 - deltaPM;
+
+          // Scaled stereographic-style horizontal offset so longitudes near ±90° remain clearly visible inside the rim
+          var pmRatio = Math.sin((foldedDeg * 0.78 * Math.PI) / 180.0);
+          var rxPM = Math.abs(earthR * pmRatio);
+          if (rxPM < 0.3) {
+            pmPath.setAttribute("d", "M 0 -30 L 0 30");
+          } else {
+            var sweepPM = pmRatio >= 0 ? 1 : 0;
+            pmPath.setAttribute(
+              "d",
+              "M 0 -30 A " + rxPM.toFixed(2) + " 30 0 0 " + sweepPM + " 0 30",
+            );
+          }
+          pmPath.setAttribute("stroke-dasharray", pmFront ? "0" : "1.8, 1.8");
+          pmPath.setAttribute(
+            "stroke",
+            pmFront ? "rgba(255, 75, 75, 0.8)" : "rgba(255, 75, 75, 0.4)",
+          );
+        }
+
+        // 3. Recalculate Non-Circular Sun Travelling Path & Current Yellow Sun Dot
+        var maxOrbitR = 26.5;
+        var isDaytime = nowMin >= sunriseMin && nowMin < sunsetMin;
+        var curSunPt = calcEarthSunPoint(
+          sunAzimuth,
+          sunPos.elevation,
+          yLoc,
+          maxOrbitR,
         );
+
+        var compassDot = document.getElementById("compassDot");
+        compassDot.setAttribute("cx", curSunPt.x.toFixed(2));
+        compassDot.setAttribute("cy", curSunPt.y.toFixed(2));
+        compassDot.setAttribute("opacity", isDaytime ? "0.95" : "0.35");
+
+        var compassRadiusLine = document.getElementById("compassRadiusLine");
+        if (compassRadiusLine) {
+          compassRadiusLine.setAttribute("x1", "0");
+          compassRadiusLine.setAttribute("y1", yLoc.toFixed(2));
+          compassRadiusLine.setAttribute("x2", curSunPt.x.toFixed(2));
+          compassRadiusLine.setAttribute("y2", curSunPt.y.toFixed(2));
+          compassRadiusLine.setAttribute("opacity", isDaytime ? "0.85" : "0.3");
+        }
+
+        // Build non-circular daytime trajectory curve from Sunrise to Sunset on the globe
+        var earthSunPathEl = document.getElementById("earthSunPath");
+        var earthSunPathActiveEl =
+          document.getElementById("earthSunPathActive");
+        if (earthSunPathEl && earthSunPathActiveEl) {
+          var pathSamples = 24;
+          var fullCurveD = "";
+          var activeCurveD = "";
+          var yrNow = now.getFullYear();
+          var moNow = now.getMonth();
+          var dyNow = now.getDate();
+
+          for (var s = 0; s <= pathSamples; s++) {
+            var sampleMin = sunriseMin + (totalDay * s) / pathSamples;
+            var sSec = Math.round(sampleMin * 60);
+            var sDate = new Date(
+              yrNow,
+              moNow,
+              dyNow,
+              Math.floor(sSec / 3600),
+              Math.floor((sSec % 3600) / 60),
+              sSec % 60,
+            );
+            var sPos = calcSunPosition(lat, lon, tz, sDate);
+            var sPt = calcEarthSunPoint(
+              sPos.azimuth,
+              sPos.elevation,
+              yLoc,
+              maxOrbitR,
+            );
+            var cmd = s === 0 ? "M " : " L ";
+            fullCurveD += cmd + sPt.x.toFixed(1) + " " + sPt.y.toFixed(1);
+            if (isDaytime && sampleMin <= nowMin) {
+              activeCurveD += cmd + sPt.x.toFixed(1) + " " + sPt.y.toFixed(1);
+            }
+          }
+          if (isDaytime && activeCurveD !== "") {
+            activeCurveD +=
+              " L " + curSunPt.x.toFixed(1) + " " + curSunPt.y.toFixed(1);
+          }
+          earthSunPathEl.setAttribute("d", fullCurveD);
+          earthSunPathActiveEl.setAttribute(
+            "d",
+            isDaytime ? activeCurveD : "M 0 0",
+          );
+        }
+
+        // 4. Live 3D Spherical Day & Night Shadow (passes through off-center Green Dot at Sunrise/Sunset)
+        var nightPath = document.getElementById("earthNightPath");
+        var terminatorPath = document.getElementById("earthTerminator");
+        if (nightPath && terminatorPath) {
+          var decl = sunPos.decl;
+          var haRad = sunPos.haRad;
+
+          // 3D unit vector to Sun in globe frame (+X: East, -Y: North, +Z: Observer Meridian)
+          var Sx = -Math.cos(decl) * Math.sin(haRad);
+          var Sy = -Math.sin(decl);
+          var Sz = Math.cos(decl) * Math.cos(haRad);
+          var rho = Math.sqrt(Sx * Sx + Sy * Sy);
+          var Rpad = earthR + 1.0;
+
+          if (rho < 0.001) {
+            if (Sz >= 0) {
+              nightPath.setAttribute("d", "M 0 0");
+              terminatorPath.setAttribute("d", "M 0 0");
+            } else {
+              nightPath.setAttribute(
+                "d",
+                "M -31 -31 L 31 -31 L 31 31 L -31 31 Z",
+              );
+              terminatorPath.setAttribute("d", "M 0 0");
+            }
+          } else {
+            var ux = Sx / rho;
+            var uy = Sy / rho;
+            var vx = -uy;
+            var vy = ux;
+
+            var termPts = 20;
+            var termD = "";
+            for (var k = 0; k <= termPts; k++) {
+              var theta = (Math.PI * k) / termPts;
+              var cosT = Math.cos(theta);
+              var sinT = Math.sin(theta);
+              var tx = Rpad * cosT * vx - Rpad * Sz * sinT * ux;
+              var ty = Rpad * cosT * vy - Rpad * Sz * sinT * uy;
+              termD +=
+                (k === 0 ? "M " : " L ") + tx.toFixed(2) + " " + ty.toFixed(2);
+            }
+
+            // Close polygon around the night hemisphere limb (-u direction)
+            var nightD = termD;
+            var limbPts = 12;
+            for (var m = 1; m <= limbPts; m++) {
+              var phiL = Math.PI + (Math.PI * m) / limbPts;
+              var lx = Rpad * Math.cos(phiL) * vx + Rpad * Math.sin(phiL) * ux;
+              var ly = Rpad * Math.cos(phiL) * vy + Rpad * Math.sin(phiL) * uy;
+              nightD += " L " + lx.toFixed(2) + " " + ly.toFixed(2);
+            }
+            nightD += " Z";
+
+            nightPath.setAttribute("d", nightD);
+            terminatorPath.setAttribute("d", termD);
+          }
+        }
 
         progress = Math.max(0, Math.min(1, progress));
 
