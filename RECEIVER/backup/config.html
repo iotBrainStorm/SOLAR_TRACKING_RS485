@@ -458,6 +458,156 @@
         box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
       }
 
+      /* ====== PLACEMENT PANEL ====== */
+      input[type="date"] {
+        color-scheme: dark;
+      }
+
+      .preset-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .preset-btn {
+        padding: 6px 12px;
+        border: 1px solid rgba(79, 172, 254, 0.25);
+        border-radius: 6px;
+        background: rgba(79, 172, 254, 0.07);
+        color: #4facfe;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .preset-btn:hover {
+        background: rgba(79, 172, 254, 0.18);
+        border-color: #4facfe;
+      }
+
+      .loc-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: rgba(79, 172, 254, 0.06);
+        border: 1px solid rgba(79, 172, 254, 0.18);
+        margin-bottom: 20px;
+        font-size: 13px;
+      }
+
+      .loc-banner strong {
+        color: #4facfe;
+      }
+
+      .loc-link-btn {
+        background: none;
+        border: none;
+        color: #00f2fe;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: opacity 0.2s;
+      }
+
+      .loc-link-btn:hover {
+        opacity: 0.75;
+      }
+
+      .range-note {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.45);
+        margin-top: 4px;
+      }
+
+      .range-note.warn {
+        color: #ffaa00;
+      }
+
+      .placement-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .placement-card {
+        background: rgba(79, 172, 254, 0.06);
+        border: 1px solid rgba(79, 172, 254, 0.18);
+        border-radius: 10px;
+        padding: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .placement-card .p-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: rgba(255, 255, 255, 0.45);
+      }
+
+      .placement-card .p-val {
+        font-size: 30px;
+        font-weight: 700;
+        color: #4facfe;
+        margin: 4px 0;
+      }
+
+      .placement-card .p-sub {
+        font-size: 13px;
+        font-weight: 500;
+        color: #e0e6ed;
+      }
+
+      .placement-svg {
+        width: 92px;
+        height: 92px;
+        flex-shrink: 0;
+      }
+
+      .sun-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .sun-stat-box {
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        padding: 12px 14px;
+      }
+
+      .sun-stat-box .s-title {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.4);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 4px;
+      }
+
+      .sun-stat-box .s-val {
+        font-size: 15px;
+        font-weight: 600;
+        color: #e0e6ed;
+      }
+
+      @media (max-width: 768px) {
+        .placement-grid,
+        .sun-stats-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .footer {
         text-align: center;
         margin-top: auto;
@@ -504,6 +654,9 @@
       </div>
       <div class="nav-item" onclick="showPanel('location', this)">
         <span class="nav-icon">&#128205;</span> Location
+      </div>
+      <div class="nav-item" onclick="showPanel('placement', this)">
+        <span class="nav-icon">&#129517;</span> Placement
       </div>
 
       <div class="sidebar-footer">
@@ -835,8 +988,7 @@
               "
             >
               &#9888; It is recommended to set your location manually for
-              accurate sun information. Auto-detection may not be accurate, so
-              you should verify your auto-detected latitude and longitude.
+              accurate SUN information.
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -925,6 +1077,242 @@
             </div>
           </div>
         </div>
+
+        <!-- Placement Panel -->
+        <div class="panel" id="panel-placement">
+          <div class="page-header">
+            <h1>Solar Plate Placement</h1>
+            <p>Optimal panel direction and tilt angle calculation</p>
+          </div>
+
+          <div class="loc-banner">
+            <div>
+              <strong id="placeLocSummary"
+                >22.5726&deg; N, 88.3639&deg; E</strong
+              >
+            </div>
+            <button
+              type="button"
+              class="loc-link-btn"
+              onclick="goToLocationPanel()"
+            >
+              Edit Location &rarr;
+            </button>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-section-title">Date Range (Max 1 Year)</div>
+            <div class="preset-bar">
+              <button
+                type="button"
+                class="preset-btn"
+                onclick="setPlacementPreset('year')"
+              >
+                Full Year (365 Days)
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                onclick="setPlacementPreset('winter')"
+              >
+                Winter (Nov&ndash;Feb)
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                onclick="setPlacementPreset('summer')"
+              >
+                Summer (Mar&ndash;Jun)
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                onclick="setPlacementPreset('monsoon')"
+              >
+                Monsoon (Jul&ndash;Oct)
+              </button>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>From Date</label>
+                <input
+                  type="date"
+                  id="placeStart"
+                  name="placeStart"
+                  onchange="onPlacementDateChange('start')"
+                />
+              </div>
+              <div class="form-group">
+                <label>To Date</label>
+                <input
+                  type="date"
+                  id="placeEnd"
+                  name="placeEnd"
+                  onchange="onPlacementDateChange('end')"
+                />
+              </div>
+            </div>
+            <div class="range-note" id="placeRangeInfo">
+              Selected period: 365 days
+            </div>
+          </div>
+
+          <div class="sub-section">
+            <div class="sub-section-title">Recommended Solar Plate Setup</div>
+
+            <div class="placement-grid">
+              <!-- Azimuth / Direction Card -->
+              <div class="placement-card">
+                <div>
+                  <div class="p-label">Plate Direction (Azimuth)</div>
+                  <div class="p-val" id="recAzimuthVal">180.0&deg;</div>
+                  <div class="p-sub" id="recAzimuthDir">True South (S)</div>
+                </div>
+                <svg class="placement-svg" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.12)"
+                    stroke-width="2"
+                  />
+                  <text
+                    x="50"
+                    y="18"
+                    text-anchor="middle"
+                    fill="#ff4757"
+                    font-size="10"
+                    font-weight="700"
+                  >
+                    N
+                  </text>
+                  <text
+                    x="86"
+                    y="53"
+                    text-anchor="middle"
+                    fill="rgba(255,255,255,0.45)"
+                    font-size="9"
+                  >
+                    E
+                  </text>
+                  <text
+                    x="50"
+                    y="90"
+                    text-anchor="middle"
+                    fill="rgba(255,255,255,0.45)"
+                    font-size="9"
+                  >
+                    S
+                  </text>
+                  <text
+                    x="14"
+                    y="53"
+                    text-anchor="middle"
+                    fill="rgba(255,255,255,0.45)"
+                    font-size="9"
+                  >
+                    W
+                  </text>
+                  <g id="compassArrow" transform="rotate(180 50 50)">
+                    <line
+                      x1="50"
+                      y1="50"
+                      x2="50"
+                      y2="23"
+                      stroke="#4facfe"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                    <polygon points="50,17 44,27 56,27" fill="#00f2fe" />
+                  </g>
+                  <circle cx="50" cy="50" r="4" fill="#e0e6ed" />
+                </svg>
+              </div>
+
+              <!-- Tilt Angle Card -->
+              <div class="placement-card">
+                <div>
+                  <div class="p-label">Plate Tilt Angle</div>
+                  <div class="p-val" id="recTiltVal">22.6&deg;</div>
+                  <div class="p-sub" id="recTiltSub">
+                    From Horizontal Ground
+                  </div>
+                </div>
+                <svg class="placement-svg" viewBox="0 0 120 100">
+                  <!-- Ground line -->
+                  <line
+                    x1="10"
+                    y1="80"
+                    x2="110"
+                    y2="80"
+                    stroke="rgba(255,255,255,0.25)"
+                    stroke-width="2"
+                  />
+                  <!-- Angle arc -->
+                  <path
+                    id="tiltArc"
+                    d="M 48 80 A 28 28 0 0 0 45 68"
+                    fill="none"
+                    stroke="rgba(0,242,254,0.5)"
+                    stroke-width="1.8"
+                  />
+                  <!-- Support strut -->
+                  <line
+                    id="tiltStrut"
+                    x1="65"
+                    y1="80"
+                    x2="65"
+                    y2="62"
+                    stroke="rgba(255,255,255,0.35)"
+                    stroke-width="2"
+                    stroke-dasharray="3,2"
+                  />
+                  <!-- Solar Plate -->
+                  <line
+                    id="tiltPlate"
+                    x1="20"
+                    y1="80"
+                    x2="90"
+                    y2="51"
+                    stroke="#4facfe"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                  />
+                  <circle cx="20" cy="80" r="3.5" fill="#00f2fe" />
+                </svg>
+              </div>
+            </div>
+
+            <div class="sun-stats-grid">
+              <div class="sun-stat-box">
+                <div class="s-title">Solar Noon Sun Elevation</div>
+                <div class="s-val" id="statNoonElev">--</div>
+              </div>
+              <div class="sun-stat-box">
+                <div class="s-title">Avg. Sunrise &rarr; Sunset Bearing</div>
+                <div class="s-val" id="statSunBearing">--</div>
+              </div>
+              <div class="sun-stat-box">
+                <div class="s-title">Avg. Daylight &amp; Solar Noon</div>
+                <div class="s-val" id="statDaylight">--</div>
+              </div>
+              <div class="sun-stat-box">
+                <div class="s-title">Output Gain vs. Flat (0&deg;)</div>
+                <div class="s-val" id="statTiltGain">--</div>
+              </div>
+            </div>
+
+            <!-- <div class="range-note" style="margin-top: 14px; line-height: 1.5">
+              &#9432; Bearings are referenced to Geographic True North (0&deg;
+              N, 90&deg; E, 180&deg; S, 270&deg; W). Full-year fixed panels face
+              ~180&deg; South in the Northern Hemisphere, ~0&deg; North in the
+              Southern Hemisphere, and flip North in tropical summers when solar
+              declination exceeds latitude.
+            </div> -->
+          </div>
+        </div>
       </form>
 
       <div class="footer">
@@ -946,6 +1334,10 @@
           n.classList.remove("active");
         });
         el.classList.add("active");
+
+        if (name === "placement") {
+          calculatePlacement();
+        }
 
         if (window.innerWidth <= 768) {
           document.getElementById("sidebar").classList.remove("open");
@@ -1063,6 +1455,13 @@
             if (!isNaN(tzVal)) {
               document.querySelector("[name=tzOffset]").value =
                 tzVal.toString();
+            }
+            if (data.placeStart && data.placeEnd) {
+              document.getElementById("placeStart").value = data.placeStart;
+              document.getElementById("placeEnd").value = data.placeEnd;
+              onPlacementDateChange("start");
+            } else {
+              setPlacementPreset("year");
             }
           });
       });
@@ -1251,6 +1650,619 @@
         } else {
           tryIpService(0);
         }
+      }
+
+      function goToLocationPanel() {
+        var locNav = document.querySelector(
+          ".nav-item[onclick*=\"'location'\"]",
+        );
+        if (locNav) showPanel("location", locNav);
+      }
+
+      function formatUTCDate(utcMs) {
+        var d = new Date(utcMs);
+        var y = d.getUTCFullYear();
+        var m = String(d.getUTCMonth() + 1).padStart(2, "0");
+        var day = String(d.getUTCDate()).padStart(2, "0");
+        return y + "-" + m + "-" + day;
+      }
+
+      function parseDateUTC(str) {
+        if (!str) return NaN;
+        var p = str.split("-");
+        if (p.length !== 3) return NaN;
+        return Date.UTC(
+          parseInt(p[0], 10),
+          parseInt(p[1], 10) - 1,
+          parseInt(p[2], 10),
+        );
+      }
+
+      function getMaxEndUTC(startUTC) {
+        var d = new Date(startUTC);
+        return (
+          Date.UTC(d.getUTCFullYear() + 1, d.getUTCMonth(), d.getUTCDate()) -
+          86400000
+        );
+      }
+
+      function setPlacementPreset(preset) {
+        var now = new Date();
+        var y = now.getFullYear();
+        var startUTC, endUTC;
+
+        if (preset === "year") {
+          startUTC = Date.UTC(y, now.getMonth(), now.getDate());
+          endUTC = getMaxEndUTC(startUTC);
+        } else if (preset === "winter") {
+          startUTC = Date.UTC(y, 10, 1); // Nov 1
+          endUTC = Date.UTC(y + 1, 2, 0); // Last day of Feb (handles leap year)
+        } else if (preset === "summer") {
+          startUTC = Date.UTC(y, 2, 1); // Mar 1
+          endUTC = Date.UTC(y, 5, 30); // Jun 30
+        } else if (preset === "monsoon") {
+          startUTC = Date.UTC(y, 6, 1); // Jul 1
+          endUTC = Date.UTC(y, 9, 31); // Oct 31
+        }
+
+        var startEl = document.getElementById("placeStart");
+        var endEl = document.getElementById("placeEnd");
+        startEl.value = formatUTCDate(startUTC);
+        endEl.value = formatUTCDate(endUTC);
+        onPlacementDateChange("start");
+      }
+
+      function onPlacementDateChange(changedField) {
+        var startEl = document.getElementById("placeStart");
+        var endEl = document.getElementById("placeEnd");
+        var infoEl = document.getElementById("placeRangeInfo");
+
+        var startUTC = parseDateUTC(startEl.value);
+        var endUTC = parseDateUTC(endEl.value);
+        if (isNaN(startUTC)) return;
+
+        var maxEndUTC = getMaxEndUTC(startUTC);
+        endEl.min = formatUTCDate(startUTC);
+        endEl.max = formatUTCDate(maxEndUTC);
+
+        var clampedMsg = "";
+        if (isNaN(endUTC) || endUTC < startUTC) {
+          endUTC = startUTC;
+          endEl.value = formatUTCDate(endUTC);
+          clampedMsg = " (Adjusted: End date cannot be before Start date)";
+        } else if (endUTC > maxEndUTC) {
+          endUTC = maxEndUTC;
+          endEl.value = formatUTCDate(endUTC);
+          clampedMsg = " (Capped at maximum 1-year limit)";
+        }
+
+        var days = Math.round((endUTC - startUTC) / 86400000) + 1;
+        infoEl.innerText =
+          "Selected period: " +
+          days +
+          (days === 1 ? " day" : " days") +
+          clampedMsg;
+        infoEl.className = clampedMsg ? "range-note warn" : "range-note";
+
+        calculatePlacement();
+      }
+
+      function azimuthToCardinal(az) {
+        var dirs = [
+          "True North (N)",
+          "North-Northeast (NNE)",
+          "Northeast (NE)",
+          "East-Northeast (ENE)",
+          "True East (E)",
+          "East-Southeast (ESE)",
+          "Southeast (SE)",
+          "South-Southeast (SSE)",
+          "True South (S)",
+          "South-Southwest (SSW)",
+          "Southwest (SW)",
+          "West-Southwest (WSW)",
+          "True West (W)",
+          "West-Northwest (WNW)",
+          "Northwest (NW)",
+          "North-Northwest (NNW)",
+        ];
+        var idx = Math.round((((az % 360) + 360) % 360) / 22.5) % 16;
+        return dirs[idx];
+      }
+
+      // Recalculate automatically whenever coordinates or timezone change
+      ["latitude", "longitude", "tzOffset"].forEach(function (fieldName) {
+        var el = document.querySelector("[name=" + fieldName + "]");
+        if (el) {
+          el.addEventListener("input", calculatePlacement);
+          el.addEventListener("change", calculatePlacement);
+        }
+      });
+
+      // Exact NOAA / Jean Meeus Solar Ephemeris for a given Julian Day (UTC)
+      function solarEphemeris(jd) {
+        var DEG2RAD = Math.PI / 180.0;
+        var RAD2DEG = 180.0 / Math.PI;
+        var T = (jd - 2451545.0) / 36525.0;
+
+        var L0 =
+          (((280.46646 + T * (36000.76983 + 0.0003032 * T)) % 360) + 360) % 360;
+        var M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+        var e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+
+        var Mrad = M * DEG2RAD;
+        var C =
+          Math.sin(Mrad) * (1.914602 - T * (0.004817 + 0.000014 * T)) +
+          Math.sin(2.0 * Mrad) * (0.019993 - 0.000101 * T) +
+          Math.sin(3.0 * Mrad) * 0.000289;
+
+        var sunTrueLon = L0 + C;
+        var nuRad = (M + C) * DEG2RAD;
+        var R = (1.000001018 * (1.0 - e * e)) / (1.0 + e * Math.cos(nuRad));
+
+        var omegaRad = (125.04 - 1934.136 * T) * DEG2RAD;
+        var lambda =
+          (sunTrueLon - 0.00569 - 0.00478 * Math.sin(omegaRad)) * DEG2RAD;
+
+        var eps0 =
+          23.0 +
+          (26.0 +
+            (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60.0) /
+            60.0;
+        var eps = (eps0 + 0.00256 * Math.cos(omegaRad)) * DEG2RAD;
+
+        var sinDec = Math.sin(eps) * Math.sin(lambda);
+        var decRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDec)));
+
+        var y = Math.tan(eps * 0.5);
+        y = y * y;
+        var L0rad2 = 2.0 * L0 * DEG2RAD;
+        var eotMin =
+          4.0 *
+          RAD2DEG *
+          (y * Math.sin(L0rad2) -
+            2.0 * e * Math.sin(Mrad) +
+            4.0 * e * y * Math.sin(Mrad) * Math.cos(L0rad2) -
+            0.5 * y * y * Math.sin(2.0 * L0rad2) -
+            1.25 * e * e * Math.sin(2.0 * Mrad));
+
+        return {
+          decRad: decRad,
+          sinDec: sinDec,
+          cosDec: Math.cos(decRad),
+          R: R,
+          eotMin: eotMin,
+        };
+      }
+
+      // NOAA / Zimmerman atmospheric refraction correction (in degrees)
+      function calcRefractionDeg(hTrueDeg) {
+        if (hTrueDeg > 85.0) return 0.0;
+        var tanH = Math.tan((hTrueDeg * Math.PI) / 180.0);
+        if (hTrueDeg > 5.0) {
+          return (
+            (58.1 / tanH -
+              0.07 / (tanH * tanH * tanH) +
+              0.000086 / Math.pow(tanH, 5)) /
+            3600.0
+          );
+        }
+        if (hTrueDeg > -0.575) {
+          return (
+            (1735.0 +
+              hTrueDeg *
+                (-518.2 +
+                  hTrueDeg *
+                    (103.4 + hTrueDeg * (-12.79 + hTrueDeg * 0.711)))) /
+            3600.0
+          );
+        }
+        return -20.774 / tanH / 3600.0;
+      }
+
+      function calculatePlacement() {
+        var lat = parseFloat(document.querySelector("[name=latitude]").value);
+        var lon = parseFloat(document.querySelector("[name=longitude]").value);
+        var tz = parseFloat(document.querySelector("[name=tzOffset]").value);
+        if (isNaN(lat)) lat = 22.5726;
+        if (isNaN(lon)) lon = 88.3639;
+        if (isNaN(tz)) tz = 5.5;
+
+        lat = Math.max(-89.9, Math.min(89.9, lat));
+        lon = Math.max(-180.0, Math.min(180.0, lon));
+
+        var latDir = lat >= 0 ? "N" : "S";
+        var lonDir = lon >= 0 ? "E" : "W";
+        var tzSign = tz >= 0 ? "+" : "";
+        document.getElementById("placeLocSummary").innerHTML =
+          Math.abs(lat).toFixed(4) +
+          "&deg; " +
+          latDir +
+          ", " +
+          Math.abs(lon).toFixed(4) +
+          "&deg; " +
+          lonDir +
+          " UTC " +
+          tzSign +
+          tz;
+
+        var startUTC = parseDateUTC(
+          document.getElementById("placeStart").value,
+        );
+        var endUTC = parseDateUTC(document.getElementById("placeEnd").value);
+        if (isNaN(startUTC) || isNaN(endUTC) || endUTC < startUTC) return;
+
+        var numDays = Math.min(
+          366,
+          Math.round((endUTC - startUTC) / 86400000) + 1,
+        );
+        var DEG2RAD = Math.PI / 180.0;
+        var RAD2DEG = 180.0 / Math.PI;
+
+        var latRad = lat * DEG2RAD;
+        var sinLat = Math.sin(latRad);
+        var cosLat = Math.cos(latRad);
+
+        // Standard refractive sunrise/sunset altitude (-0.8333 deg, matches Dusk2Dawn)
+        var SIN_H0 = Math.sin(-0.8333 * DEG2RAD);
+        // Linke turbidity TL = 3.5 -> (TL - 1) = 2.5 for Ineichen-Perez clear-sky model
+        var TL_FACTOR = 2.5;
+
+        var STEPS_PER_DAY = 24;
+        var maxSlices = numDays * STEPS_PER_DAY;
+        var sE = new Float64Array(maxSlices);
+        var sN = new Float64Array(maxSlices);
+        var sU = new Float64Array(maxSlices);
+        var dirWeight = new Float64Array(maxSlices);
+        var sliceCount = 0;
+
+        var totalIsoDHI = 0.0;
+        var totalGHI = 0.0;
+        var vecE = 0.0;
+        var vecN = 0.0;
+
+        var minNoonElev = 90.0;
+        var maxNoonElev = -90.0;
+        var sumNoonElev = 0.0;
+        var sumDaylightHrs = 0.0;
+        var sumNoonMin = 0.0;
+        var sumSrE = 0.0,
+          sumSrN = 0.0;
+        var sumSsE = 0.0,
+          sumSsN = 0.0;
+        var validDays = 0;
+
+        for (var d = 0; d < numDays; d++) {
+          var dayMs = startUTC + d * 86400000;
+          var jdBase = dayMs / 86400000.0 + 2440587.5;
+
+          // Step 1: Initial solar noon estimate -> refine with Equation of Time
+          var utcNoonEst = 12.0 - lon / 15.0;
+          var eph0 = solarEphemeris(jdBase + utcNoonEst / 24.0);
+          var utcSolarNoon = 12.0 - lon / 15.0 - eph0.eotMin / 60.0;
+          var jdNoon = jdBase + utcSolarNoon / 24.0;
+          var ephNoon = solarEphemeris(jdNoon);
+
+          var cosWs =
+            (SIN_H0 - sinLat * ephNoon.sinDec) /
+            Math.max(1e-7, cosLat * ephNoon.cosDec);
+          if (cosWs >= 1.0) continue; // Polar night
+          var ws = cosWs <= -1.0 ? Math.PI : Math.acos(cosWs);
+
+          var halfDayHrs = (ws * RAD2DEG) / 15.0;
+          var ephSr = solarEphemeris(jdNoon - halfDayHrs / 24.0);
+          var ephSs = solarEphemeris(jdNoon + halfDayHrs / 24.0);
+
+          validDays++;
+          sumDaylightHrs += 2.0 * halfDayHrs;
+          sumNoonMin += ((((utcSolarNoon + tz) * 60.0) % 1440) + 1440) % 1440;
+
+          // Refracted solar noon elevation
+          var rawNoonU = sinLat * ephNoon.sinDec + cosLat * ephNoon.cosDec;
+          var noonTrueDeg =
+            Math.asin(Math.max(-1.0, Math.min(1.0, rawNoonU))) * RAD2DEG;
+          var noonAppDeg = Math.min(
+            90.0,
+            noonTrueDeg + calcRefractionDeg(noonTrueDeg),
+          );
+          if (noonAppDeg < minNoonElev) minNoonElev = noonAppDeg;
+          if (noonAppDeg > maxNoonElev) maxNoonElev = noonAppDeg;
+          sumNoonElev += noonAppDeg;
+
+          // Exact sunrise & sunset horizontal vectors using actual sunrise/sunset declination
+          var cosWsActual = Math.cos(ws);
+          var sinWsActual = Math.sin(ws);
+          sumSrE += ephSr.cosDec * sinWsActual;
+          sumSrN += cosLat * ephSr.sinDec - sinLat * ephSr.cosDec * cosWsActual;
+          sumSsE += -ephSs.cosDec * sinWsActual;
+          sumSsN += cosLat * ephSs.sinDec - sinLat * ephSs.cosDec * cosWsActual;
+
+          // 3-point Lagrange quadratic coefficients across [-1 (sunrise), 0 (noon), +1 (sunset)]
+          var dec0 = ephNoon.decRad;
+          var dec1 = 0.5 * (ephSs.decRad - ephSr.decRad);
+          var dec2 = 0.5 * (ephSr.decRad - 2.0 * ephNoon.decRad + ephSs.decRad);
+
+          var r0 = ephNoon.R;
+          var r1 = 0.5 * (ephSs.R - ephSr.R);
+          var r2 = 0.5 * (ephSr.R - 2.0 * ephNoon.R + ephSs.R);
+
+          var dtHours = (2.0 * halfDayHrs) / STEPS_PER_DAY;
+
+          for (var m = 0; m < STEPS_PER_DAY; m++) {
+            var u = -1.0 + (2.0 * (m + 0.5)) / STEPS_PER_DAY;
+            var w = u * ws;
+            var dec = dec0 + u * (dec1 + u * dec2);
+            var R = r0 + u * (r1 + u * r2);
+
+            var sinDec = Math.sin(dec);
+            var cosDec = Math.cos(dec);
+            var sinW = Math.sin(w);
+            var cosW = Math.cos(w);
+
+            var rawE = -cosDec * sinW;
+            var rawN = cosLat * sinDec - sinLat * cosDec * cosW;
+            var rawU = sinLat * sinDec + cosLat * cosDec * cosW;
+
+            var hTrue =
+              Math.asin(Math.max(-1.0, Math.min(1.0, rawU))) * RAD2DEG;
+            var hApp = hTrue + calcRefractionDeg(hTrue);
+            if (hApp <= 0.05) continue;
+
+            var hAppRad = hApp * DEG2RAD;
+            var upApp = Math.sin(hAppRad);
+            var cosHApp = Math.cos(hAppRad);
+            var hNorm = Math.sqrt(rawE * rawE + rawN * rawN);
+            var ux = hNorm > 1e-9 ? (rawE / hNorm) * cosHApp : 0.0;
+            var uy = hNorm > 1e-9 ? (rawN / hNorm) * cosHApp : 0.0;
+
+            // Ineichen-Perez (2002) clear-sky DNI, GHI & DHI (in kWh/m2 per step)
+            var E0 = 1.361 / (R * R);
+            var am =
+              1.0 / (upApp + 0.50572 * Math.pow(hApp + 6.07995, -1.6364));
+            var ghiInst =
+              0.868 * E0 * upApp * Math.exp(-0.0387 * am * TL_FACTOR);
+            var dniInst = 0.827 * E0 * Math.exp(-0.09 * am * TL_FACTOR);
+            var dhiInst = Math.max(0.0, ghiInst - dniInst * upApp);
+
+            var dni = dniInst * dtHours;
+            var dhi = dhiInst * dtHours;
+            var ghi = ghiInst * dtHours;
+
+            // Hay-Davies anisotropy index separates circumsolar vs isotropic sky diffuse
+            var ai = Math.min(0.92, dniInst / E0);
+            var dirW = dni + dhi * (ai / Math.max(0.02, upApp));
+
+            sE[sliceCount] = ux;
+            sN[sliceCount] = uy;
+            sU[sliceCount] = upApp;
+            dirWeight[sliceCount] = dirW;
+            sliceCount++;
+
+            vecE += dirW * ux;
+            vecN += dirW * uy;
+            totalIsoDHI += dhi * (1.0 - ai);
+            totalGHI += ghi;
+          }
+        }
+
+        if (sliceCount === 0 || validDays === 0) return;
+
+        // Plane-of-Array energy evaluator with physical Fresnel glass IAM & ground albedo
+        function evalPOA(tiltDeg, azDeg) {
+          var bRad = tiltDeg * DEG2RAD;
+          var gRad = azDeg * DEG2RAD;
+          var sinB = Math.sin(bRad);
+          var cosB = Math.cos(bRad);
+          var nE = sinB * Math.sin(gRad);
+          var nN = sinB * Math.cos(gRad);
+          var nU = cosB;
+
+          var dirSum = 0.0;
+          for (var i = 0; i < sliceCount; i++) {
+            var dot = sE[i] * nE + sN[i] * nN + sU[i] * nU;
+            if (dot > 0.0) {
+              // Schlick physical Fresnel IAM for AR-coated solar tempered glass
+              var u1 = 1.0 - dot;
+              var u2 = u1 * u1;
+              var iam = 1.0 - u2 * u2 * u1;
+              dirSum += dirWeight[i] * dot * iam;
+            }
+          }
+          var skyDiffuse = totalIsoDHI * 0.5 * (1.0 + cosB) * 0.955;
+          var groundRefl = totalGHI * 0.2 * 0.5 * (1.0 - cosB) * 0.93;
+          return dirSum + skyDiffuse + groundRefl;
+        }
+
+        // Analytical horizontal sun-vector seed prevents t=0 flat tie-breaking bugs
+        var vecAz =
+          Math.abs(vecE) + Math.abs(vecN) > 1e-9
+            ? (((Math.atan2(vecE, vecN) * RAD2DEG) % 360) + 360) % 360
+            : lat >= 0
+              ? 180.0
+              : 0.0;
+
+        var flatEnergy = evalPOA(0.0, vecAz);
+        var bestEnergy = flatEnergy;
+        var bestTilt = 0.0;
+        var bestAz = vecAz;
+
+        // Stage 1: Coarse scan over strictly positive tilts (t >= 1) + exact vecAz line
+        var coarseTilts = [
+          1, 3, 6, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82,
+          90,
+        ];
+        for (var az = 0; az < 360; az += 15) {
+          for (var ti = 0; ti < coarseTilts.length; ti++) {
+            var e1 = evalPOA(coarseTilts[ti], az);
+            if (e1 > bestEnergy) {
+              bestEnergy = e1;
+              bestTilt = coarseTilts[ti];
+              bestAz = az;
+            }
+          }
+        }
+        for (var tv = 0; tv < coarseTilts.length; tv++) {
+          var ev = evalPOA(coarseTilts[tv], vecAz);
+          if (ev > bestEnergy) {
+            bestEnergy = ev;
+            bestTilt = coarseTilts[tv];
+            bestAz = vecAz;
+          }
+        }
+
+        // Stage 2: Medium refinement (2 deg azimuth, 1 deg tilt)
+        var cAz = bestAz;
+        var cTilt = bestTilt;
+        for (var dAz = -15; dAz <= 15; dAz += 2) {
+          var candAz = (((cAz + dAz) % 360) + 360) % 360;
+          for (var dT = -5; dT <= 5; dT += 1) {
+            var candT = cTilt + dT;
+            if (candT < 0 || candT > 90) continue;
+            var e2 = evalPOA(candT, candAz);
+            if (e2 > bestEnergy) {
+              bestEnergy = e2;
+              bestTilt = candT;
+              bestAz = candAz;
+            }
+          }
+        }
+
+        // Stage 3: Fine refinement (0.2 deg azimuth, 0.1 deg tilt)
+        cAz = bestAz;
+        cTilt = bestTilt;
+        for (var fAz = -2.0; fAz <= 2.001; fAz += 0.2) {
+          var fineAz = (((cAz + fAz) % 360) + 360) % 360;
+          for (var fT = -1.2; fT <= 1.201; fT += 0.1) {
+            var fineT = cTilt + fT;
+            if (fineT < 0 || fineT > 90) continue;
+            var e3 = evalPOA(fineT, fineAz);
+            if (e3 > bestEnergy) {
+              bestEnergy = e3;
+              bestTilt = fineT;
+              bestAz = fineAz;
+            }
+          }
+        }
+
+        // Stage 4: Ultra-fine 0.05 deg polish
+        cAz = bestAz;
+        cTilt = bestTilt;
+        for (var pAz = -0.2; pAz <= 0.201; pAz += 0.05) {
+          var polAz = (((cAz + pAz) % 360) + 360) % 360;
+          for (var pT = -0.15; pT <= 0.151; pT += 0.05) {
+            var polT = cTilt + pT;
+            if (polT < 0 || polT > 90) continue;
+            var e4 = evalPOA(polT, polAz);
+            if (e4 > bestEnergy) {
+              bestEnergy = e4;
+              bestTilt = polT;
+              bestAz = polAz;
+            }
+          }
+        }
+
+        if (bestTilt < 0.3) {
+          bestAz = vecAz;
+        }
+        if (bestAz >= 359.95) bestAz = 0.0;
+
+        var gainPct =
+          flatEnergy > 0
+            ? ((bestEnergy - flatEnergy) / flatEnergy) * 100.0
+            : 0.0;
+        var dailyKwh = bestEnergy / validDays;
+
+        if (bestTilt < 0.5) {
+          document.getElementById("recAzimuthVal").innerHTML =
+            bestAz.toFixed(1) + "&deg;";
+          document.getElementById("recAzimuthDir").innerText =
+            "Flat (" + azimuthToCardinal(bestAz) + ")";
+        } else {
+          document.getElementById("recAzimuthVal").innerHTML =
+            bestAz.toFixed(1) + "&deg;";
+          document.getElementById("recAzimuthDir").innerText =
+            azimuthToCardinal(bestAz);
+        }
+
+        document.getElementById("recTiltVal").innerHTML =
+          bestTilt.toFixed(1) + "&deg;";
+        document.getElementById("recTiltSub").innerText =
+          bestTilt < 10.0
+            ? "Low Tilt (10°+ advised for rain cleaning)"
+            : "From Horizontal Ground";
+
+        // Update Compass SVG
+        document
+          .getElementById("compassArrow")
+          .setAttribute("transform", "rotate(" + bestAz.toFixed(1) + " 50 50)");
+
+        // Update Tilt Profile SVG
+        var pRad = bestTilt * DEG2RAD;
+        var x2 = 20 + 72 * Math.cos(pRad);
+        var y2 = 80 - 72 * Math.sin(pRad);
+        var sx = 20 + 48 * Math.cos(pRad);
+        var sy = 80 - 48 * Math.sin(pRad);
+        var ax = 20 + 28 * Math.cos(pRad);
+        var ay = 80 - 28 * Math.sin(pRad);
+
+        var plateEl = document.getElementById("tiltPlate");
+        plateEl.setAttribute("x2", x2.toFixed(1));
+        plateEl.setAttribute("y2", y2.toFixed(1));
+
+        var strutEl = document.getElementById("tiltStrut");
+        strutEl.setAttribute("x1", sx.toFixed(1));
+        strutEl.setAttribute("x2", sx.toFixed(1));
+        strutEl.setAttribute("y2", sy.toFixed(1));
+
+        var arcEl = document.getElementById("tiltArc");
+        if (bestTilt > 2.0) {
+          arcEl.setAttribute(
+            "d",
+            "M 48 80 A 28 28 0 0 0 " + ax.toFixed(1) + " " + ay.toFixed(1),
+          );
+        } else {
+          arcEl.setAttribute("d", "");
+        }
+
+        // Update Summary Stats
+        var avgNoon = sumNoonElev / validDays;
+        document.getElementById("statNoonElev").innerHTML =
+          minNoonElev.toFixed(1) +
+          "&deg; &ndash; " +
+          maxNoonElev.toFixed(1) +
+          "&deg; (Avg " +
+          avgNoon.toFixed(1) +
+          "&deg;)";
+
+        var avgSr =
+          (((Math.atan2(sumSrE, sumSrN) * RAD2DEG) % 360) + 360) % 360;
+        var avgSs =
+          (((Math.atan2(sumSsE, sumSsN) * RAD2DEG) % 360) + 360) % 360;
+        document.getElementById("statSunBearing").innerHTML =
+          avgSr.toFixed(1) + "&deg; E &rarr; " + avgSs.toFixed(1) + "&deg; W";
+
+        var avgHrs = sumDaylightHrs / validDays;
+        var dH = Math.floor(avgHrs);
+        var dM = Math.round((avgHrs - dH) * 60);
+        if (dM === 60) {
+          dH++;
+          dM = 0;
+        }
+        var avgNoonClock = Math.round(sumNoonMin / validDays) % 1440;
+        var nH = Math.floor(avgNoonClock / 60);
+        var nM = avgNoonClock % 60;
+        var noonStr =
+          String(nH).padStart(2, "0") + ":" + String(nM).padStart(2, "0");
+
+        document.getElementById("statDaylight").innerText =
+          dH + "h " + String(dM).padStart(2, "0") + "m (Noon " + noonStr + ")";
+
+        document.getElementById("statTiltGain").innerHTML =
+          "+" +
+          Math.max(0.0, gainPct).toFixed(1) +
+          "% (~" +
+          dailyKwh.toFixed(2) +
+          " kWh/m&sup2;/d)";
       }
     </script>
   </body>

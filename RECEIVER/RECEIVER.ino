@@ -68,6 +68,9 @@ struct DeviceSettings {
   float latitude;
   float longitude;
   float tzOffset;  // timezone offset in hours (e.g. 5.5 for +5:30)
+
+  String placeStart;
+  String placeEnd;
 };
 DeviceSettings settings;
 
@@ -232,6 +235,9 @@ void setDefaultSettings() {
   settings.latitude = 22.5726f;
   settings.longitude = 88.3639f;
   settings.tzOffset = 5.5f;
+
+  settings.placeStart = "";
+  settings.placeEnd = "";
 }
 
 //////////////////////   SANITIZE SETTINGS   //////////////////////
@@ -293,6 +299,9 @@ void loadSettings() {
   settings.longitude = preferences.getFloat("lon", 88.3639f);
   settings.tzOffset = preferences.getFloat("tzOff", 5.5f);
 
+  settings.placeStart = preferences.getString("plStart", "");
+  settings.placeEnd = preferences.getString("plEnd", "");
+
   preferences.end();
 
   sanitizeSettings();
@@ -340,6 +349,9 @@ void saveSettings() {
   preferences.putFloat("lat", settings.latitude);
   preferences.putFloat("lon", settings.longitude);
   preferences.putFloat("tzOff", settings.tzOffset);
+
+  preferences.putString("plStart", settings.placeStart);
+  preferences.putString("plEnd", settings.placeEnd);
 
   preferences.end();
   Serial.println("Settings Saved to NVS");
@@ -725,6 +737,12 @@ void setupWebServer() {
       settings.gmtOffset = (long)round(settings.tzOffset * 3600.0f);
     }
 
+    // -------- PLACEMENT DATE RANGE --------
+    if (request->hasParam("placeStart", true))
+      settings.placeStart = request->getParam("placeStart", true)->value();
+    if (request->hasParam("placeEnd", true))
+      settings.placeEnd = request->getParam("placeEnd", true)->value();
+
     sanitizeSettings();
     pendingSaveAndSync = true;  // Handled safely in loop()
 
@@ -732,7 +750,7 @@ void setupWebServer() {
   });
 
   server.on("/settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    StaticJsonDocument<768> doc;
+    StaticJsonDocument<1024> doc;
 
     doc["tempPrecision"] = settings.tempPrecision;
     doc["humidityPrecision"] = settings.humidityPrecision;
@@ -766,6 +784,9 @@ void setupWebServer() {
     doc["latitude"] = serialized(String(settings.latitude, 6));
     doc["longitude"] = serialized(String(settings.longitude, 6));
     doc["tzOffset"] = serialized(String(settings.tzOffset, 2));
+
+    doc["placeStart"] = settings.placeStart;
+    doc["placeEnd"] = settings.placeEnd;
 
     String response;
     serializeJson(doc, response);
