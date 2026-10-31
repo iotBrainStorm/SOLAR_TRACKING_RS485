@@ -1488,6 +1488,15 @@
             } else {
               setPlacementPreset("year");
             }
+
+            var saveBtn = document.getElementById("saveBtn");
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Configuration";
+          })
+          .catch(function () {
+            alert(
+              "Could not load current settings from ESP32. Refresh before saving!",
+            );
           });
       });
 
@@ -1537,7 +1546,6 @@
         if (!confirm("Do you want to save configuration?")) return;
 
         isSavingOrResetting = true;
-        var form = document.getElementById("configForm");
         var formData = new FormData(form);
 
         fetch("/save", {

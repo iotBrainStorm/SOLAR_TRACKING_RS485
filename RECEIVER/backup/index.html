@@ -3,180 +3,62 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Device Configuration</title>
-    <link rel="icon" type="image/svg+xml" href="settings.svg" />
+    <title>Solar Monitor Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="dashboard.svg" />
 
     <style>
       * {
-        box-sizing: border-box;
         margin: 0;
         padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", sans-serif;
       }
 
       body {
-        font-family: "Segoe UI", Arial, sans-serif;
-        background: #0f1923;
-        color: #e0e6ed;
         min-height: 100vh;
-        display: flex;
-      }
-
-      /* ====== SIDEBAR ====== */
-      .sidebar {
-        width: 240px;
-        min-height: 100vh;
-        background: #151f2b;
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
-        padding: 20px 0;
-        position: fixed;
-        top: 0;
-        left: 0;
-        overflow-y: auto;
-        z-index: 100;
         display: flex;
         flex-direction: column;
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color: white;
       }
 
-      .sidebar-brand {
-        padding: 10px 20px 25px;
-        font-size: 17px;
+      .container {
+        flex: 1; /* pushes footer down */
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+        animation: fadeSlide 1s ease forwards;
+      }
+
+      .main-title {
+        font-size: 36px;
         font-weight: 700;
         letter-spacing: 1px;
-        color: #4facfe;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        margin-bottom: 10px;
+        background: linear-gradient(90deg, #00f2fe, #4facfe);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 20px rgba(79, 172, 254, 0.4);
+        margin-bottom: 8px;
       }
 
-      .sidebar-brand span {
-        font-size: 11px;
-        display: block;
-        margin-top: 4px;
-        color: rgba(255, 255, 255, 0.35);
-        font-weight: 400;
+      .subtitle {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.7);
         letter-spacing: 2px;
         text-transform: uppercase;
       }
 
-      .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 13px 22px;
-        cursor: pointer;
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        border-left: 3px solid transparent;
-        user-select: none;
-      }
-
-      .nav-item:hover {
-        color: rgba(255, 255, 255, 0.8);
-        background: rgba(255, 255, 255, 0.03);
-      }
-
-      .nav-item.active {
-        color: #4facfe;
-        background: rgba(79, 172, 254, 0.08);
-        border-left-color: #4facfe;
-      }
-
-      .nav-icon {
-        font-size: 18px;
-        width: 24px;
-        text-align: center;
-        flex-shrink: 0;
-      }
-
-      .sidebar-footer {
-        margin-top: auto;
-        padding: 15px 20px;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      .sidebar-footer .btn-save {
-        width: 100%;
-        padding: 11px;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        color: #0f1923;
-        transition: 0.2s;
-        margin-bottom: 8px;
-      }
-
-      .sidebar-footer .btn-save:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
-      }
-
-      .sidebar-footer .btn-reset {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        background: transparent;
-        color: rgba(255, 255, 255, 0.5);
-        transition: 0.2s;
-      }
-
-      .sidebar-footer .btn-reset:hover {
-        border-color: #ff4757;
-        color: #ff4757;
-        background: rgba(255, 71, 87, 0.08);
-      }
-
-      /* ====== MAIN CONTENT ====== */
-      .main {
-        margin-left: 240px;
-        flex: 1;
-        padding: 30px 40px 20px;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-
-      #configForm {
-        flex: 1;
-      }
-
-      .page-header {
-        margin-bottom: 30px;
-      }
-
-      .page-header h1 {
-        font-size: 24px;
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 4px;
-      }
-
-      .page-header p {
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.4);
-      }
-
-      /* ====== PANELS ====== */
-      .panel {
-        display: none;
-        animation: panelFade 0.3s ease;
-      }
-
-      .panel.active {
-        display: block;
-      }
-
-      @keyframes panelFade {
+      /* Minimal smooth animation */
+      @keyframes fadeSlide {
         from {
           opacity: 0;
-          transform: translateY(8px);
+          transform: translateY(-20px);
         }
         to {
           opacity: 1;
@@ -184,2086 +66,1731 @@
         }
       }
 
-      .form-group {
-        margin-bottom: 18px;
-      }
-
-      .form-group label {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.6);
-        margin-bottom: 6px;
-        letter-spacing: 0.3px;
-      }
-
-      .form-group input,
-      .form-group select {
-        width: 100%;
-        padding: 10px 14px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        outline: none;
-        font-size: 14px;
-        background: rgba(255, 255, 255, 0.05);
-        color: #e0e6ed;
-        transition: 0.2s;
-      }
-
-      .form-group input:focus,
-      .form-group select:focus {
-        border-color: #4facfe;
-        box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.12);
-      }
-
-      .form-group select option {
-        background: #1a2636;
-        color: #e0e6ed;
-      }
-
-      .form-row {
-        display: flex;
-        gap: 20px;
-      }
-
-      .form-row .form-group {
-        flex: 1;
-      }
-
-      .sub-section {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 10px;
-        padding: 18px;
-        margin-bottom: 20px;
-      }
-
-      .sub-section-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.5);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 14px;
-      }
-
-      /* Toggle Switch */
-      .toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 18px;
-      }
-
-      .toggle-row .toggle-label {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      .switch {
-        position: relative;
-        display: inline-block;
-        width: 48px;
-        height: 26px;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-      }
-
-      .slider {
-        position: absolute;
-        cursor: pointer;
-        background-color: rgba(255, 255, 255, 0.15);
-        border-radius: 26px;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        transition: 0.3s;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      .slider:before {
-        position: absolute;
-        content: "";
-        height: 20px;
-        width: 20px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        border-radius: 50%;
-        transition: 0.3s;
-      }
-
-      input:checked + .slider {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-      }
-
-      input:checked + .slider:before {
-        transform: translateX(22px);
-      }
-
-      /* LUX live display */
-      .lux-live {
-        text-align: center;
-        padding: 18px;
-        background: rgba(79, 172, 254, 0.06);
-        border: 1px solid rgba(79, 172, 254, 0.15);
-        border-radius: 10px;
-        margin-bottom: 18px;
-      }
-
-      .lux-live .lux-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: rgba(255, 255, 255, 0.4);
-      }
-
-      .lux-live .lux-val {
+      .header h1 {
         font-size: 32px;
-        font-weight: 700;
-        color: #4facfe;
-        margin-top: 4px;
+        font-weight: 600;
+        letter-spacing: 1px;
       }
 
-      .hidden {
-        display: none;
+      .dashboard {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center; /* Centers each row */
+        gap: 25px;
       }
 
-      /* GPS Button */
-      .gps-btn {
-        display: inline-flex;
+      .card {
+        flex: 0 0 300px;
+        max-width: 300px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+      }
+
+      .card-sub {
+        display: flex;
+        justify-content: center;
         align-items: center;
         gap: 6px;
-        padding: 8px 14px;
-        border: 1px solid rgba(79, 172, 254, 0.3);
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.08);
         border-radius: 8px;
-        background: rgba(79, 172, 254, 0.08);
-        color: #4facfe;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: 0.2s;
-        margin-bottom: 14px;
+        contain: layout paint; /* Isolates humidity text repaints */
       }
 
-      .gps-btn:hover {
-        background: rgba(79, 172, 254, 0.15);
-        border-color: #4facfe;
-      }
-
-      .gps-btn.loading {
-        opacity: 0.6;
-        pointer-events: none;
-      }
-
-      .gps-btn svg {
-        width: 16px;
-        height: 16px;
-        fill: currentColor;
-      }
-
-      /* ====== MOBILE ====== */
-      .mobile-header {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 56px;
-        background: #151f2b;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        z-index: 200;
-        align-items: center;
-        padding: 0 16px;
-      }
-
-      .hamburger {
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 22px;
-        color: rgba(255, 255, 255, 0.7);
-        border: none;
-        background: none;
-      }
-
-      .mobile-title {
+      .card-sub .sub-icon {
         font-size: 16px;
+      }
+
+      .card-sub .sub-value {
+        font-size: 18px;
         font-weight: 600;
-        color: #4facfe;
-        margin-left: 12px;
+        color: #91a2ff;
       }
 
-      .overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 90;
-      }
-
-      @media (max-width: 768px) {
-        .sidebar {
-          transform: translateX(-100%);
-          transition: transform 0.3s ease;
-        }
-
-        .sidebar.open {
-          transform: translateX(0);
-        }
-
-        .overlay.active {
-          display: block;
-        }
-
-        .mobile-header {
-          display: flex;
-        }
-
-        .main {
-          margin-left: 0;
-          padding: 72px 16px 30px;
-        }
-
-        .form-row {
-          flex-direction: column;
-          gap: 0;
-        }
-      }
-
-      .btn-lux-reset {
-        padding: 9px 18px;
-        border: 1px solid rgba(255, 71, 87, 0.4);
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        background: rgba(255, 71, 87, 0.1);
-        color: #ff4757;
-        transition: 0.2s;
-      }
-
-      .btn-lux-reset:hover {
-        background: #ff4757;
-        color: #fff;
-        box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-      }
-
-      /* ====== PLACEMENT PANEL ====== */
-      input[type="date"] {
-        color-scheme: dark;
-      }
-
-      .preset-bar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 16px;
-      }
-
-      .preset-btn {
-        padding: 6px 12px;
-        border: 1px solid rgba(79, 172, 254, 0.25);
-        border-radius: 6px;
-        background: rgba(79, 172, 254, 0.07);
-        color: #4facfe;
+      .card-sub .sub-unit {
         font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: 0.2s;
+        opacity: 0.6;
       }
 
-      .preset-btn:hover {
-        background: rgba(79, 172, 254, 0.18);
-        border-color: #4facfe;
+      .icon {
+        font-size: 40px;
+        margin-bottom: 15px;
       }
 
-      .loc-banner {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 10px;
-        padding: 12px 16px;
-        border-radius: 8px;
-        background: rgba(79, 172, 254, 0.06);
-        border: 1px solid rgba(79, 172, 254, 0.18);
-        margin-bottom: 20px;
-        font-size: 13px;
-      }
-
-      .loc-banner strong {
-        color: #4facfe;
-      }
-
-      .loc-link-btn {
-        background: none;
-        border: none;
-        color: #00f2fe;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-        transition: opacity 0.2s;
-      }
-
-      .loc-link-btn:hover {
-        opacity: 0.75;
-      }
-
-      .range-note {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.45);
-        margin-top: 4px;
-      }
-
-      .range-note.warn {
-        color: #ffaa00;
-      }
-
-      .placement-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        margin-bottom: 16px;
-      }
-
-      .placement-card {
-        background: rgba(79, 172, 254, 0.06);
-        border: 1px solid rgba(79, 172, 254, 0.18);
-        border-radius: 10px;
-        padding: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-      }
-
-      .placement-card .p-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        color: rgba(255, 255, 255, 0.45);
-      }
-
-      .placement-card .p-val {
-        font-size: 30px;
-        font-weight: 700;
-        color: #4facfe;
-        margin: 4px 0;
-      }
-
-      .placement-card .p-sub {
-        font-size: 13px;
-        font-weight: 500;
-        color: #e0e6ed;
-      }
-
-      .placement-svg {
-        width: 92px;
-        height: 92px;
-        flex-shrink: 0;
-      }
-
-      .sun-stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-
-      .sun-stat-box {
-        background: rgba(255, 255, 255, 0.025);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 8px;
-        padding: 12px 14px;
-      }
-
-      .sun-stat-box .s-title {
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.4);
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-bottom: 4px;
-      }
-
-      .sun-stat-box .s-val {
+      .title {
         font-size: 15px;
         font-weight: 600;
-        color: #e0e6ed;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, #ffffff, #cfd9df);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        position: relative;
       }
 
-      @media (max-width: 768px) {
-        .placement-grid,
-        .sun-stats-grid {
-          grid-template-columns: 1fr;
-        }
+      /* Elegant underline */
+      .title::after {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 2px;
+        margin: 8px auto 0;
+        background: linear-gradient(90deg, #4facfe, #00f2fe);
+        border-radius: 2px;
+        opacity: 0.8;
+      }
+
+      .value {
+        font-size: 36px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        contain: layout paint; /* Isolates temperature text repaints */
+      }
+
+      .unit {
+        font-size: 16px;
+        opacity: 0.7;
       }
 
       .footer {
         text-align: center;
-        margin-top: auto;
-        padding: 30px 10px 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.25);
+        margin-top: 100px;
+        padding: 15px 10px;
+        font-size: 13px;
+        opacity: 0.7;
+      }
+      /* Settings Button (top right) */
+      .setup-btn {
+        position: fixed;
+        top: 18px;
+        right: 20px;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+        transition: color 0.3s ease;
+        z-index: 1000;
+        box-shadow: none;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+      }
+
+      .setup-btn:hover {
+        color: #4facfe;
+      }
+
+      .setup-btn:active {
+        color: #00f2fe;
+        box-shadow: none;
+        outline: none;
+      }
+
+      .setup-btn svg {
+        width: 22px;
+        height: 22px;
+        fill: currentColor;
+      }
+
+      /* Sun Map Card */
+      .sun-map-card {
+        flex: 0 0 100%;
+        max-width: 630px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 25px 25px 15px;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease;
+      }
+
+      .sun-map-card:hover {
+        transform: translateY(-2px);
+      }
+
+      .sun-arc-container {
+        position: relative;
+        width: 100%;
+        height: 170px;
+        margin: 10px 0 5px;
+        overflow: hidden;
+      }
+
+      .sun-arc-svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .sun-times {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        padding: 0 10px;
+        margin-top: 2px;
+      }
+
+      .sun-times .sun-label {
+        font-size: 11px;
+        opacity: 0.6;
+        display: block;
+      }
+
+      .sun-times .sun-time {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      /* Sun glow pulse animation */
+      @keyframes sunPulse {
+        0%,
+        100% {
+          r: 10;
+          opacity: 0.15;
+        }
+        50% {
+          r: 14;
+          opacity: 0.25;
+        }
+      }
+
+      @keyframes sunPulseOuter {
+        0%,
+        100% {
+          r: 17;
+          opacity: 0.06;
+        }
+        50% {
+          r: 22;
+          opacity: 0.12;
+        }
+      }
+
+      #sunGlow {
+        animation: sunPulse 2s ease-in-out infinite;
+      }
+
+      #sunGlowOuter {
+        animation: sunPulseOuter 2.5s ease-in-out infinite;
+      }
+
+      .sun-glow-off #sunGlow,
+      .sun-glow-off #sunGlowOuter {
+        animation: none;
+      }
+
+      /* Sun stats row */
+      .sun-stats {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 12px;
+        padding: 10px 5px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+      }
+
+      .sun-stat-item {
+        text-align: center;
+        flex: 1;
+      }
+
+      .sun-stat-item .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .sun-stat-item .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.5;
+        margin-top: 2px;
+      }
+
+      .sun-stat-divider {
+        width: 1px;
+        background: rgba(255, 255, 255, 0.15);
+        margin: 2px 0;
+      }
+
+      .lux-arrow {
+        font-size: 0.65em;
+        margin-left: 3px;
+        vertical-align: middle;
+        transition: opacity 0.3s ease;
+      }
+
+      .lux-arrow.up {
+        color: #2ecc71;
+      }
+
+      .lux-arrow.down {
+        color: #fc513e;
+      }
+
+      /* Responsive: Tablet */
+      @media (max-width: 768px) {
+        .container {
+          padding: 15px 12px;
+        }
+
+        .header {
+          margin-bottom: 25px;
+        }
+
+        .main-title {
+          font-size: 28px;
+        }
+
+        .subtitle {
+          font-size: 12px;
+          letter-spacing: 1.5px;
+        }
+
+        .dashboard {
+          gap: 16px;
+        }
+
+        .card {
+          flex: 1 1 calc(50% - 10px);
+          max-width: calc(50% - 10px);
+          min-width: 200px;
+          padding: 20px;
+        }
+
+        .icon {
+          font-size: 34px;
+          margin-bottom: 10px;
+        }
+
+        .value {
+          font-size: 30px;
+        }
+
+        .card-sub .sub-value {
+          font-size: 16px;
+        }
+
+        .sun-map-card {
+          flex: 0 0 100%;
+          max-width: 100%;
+          padding: 20px 16px 12px;
+        }
+
+        .sun-arc-container {
+          height: 155px;
+        }
+
+        .sun-times {
+          padding: 0 8px;
+        }
+
+        .sun-times .sun-time {
+          font-size: 15px;
+        }
+
+        .sun-stats {
+          padding: 10px 8px;
+        }
+
+        .sun-stat-item .stat-value {
+          font-size: 17px;
+        }
+
+        .sun-stat-item .stat-label {
+          font-size: 9px;
+          letter-spacing: 0.8px;
+        }
+
+        .setup-btn {
+          top: 14px;
+          right: 14px;
+          width: 38px;
+          height: 38px;
+        }
+
+        .setup-btn svg {
+          width: 20px;
+          height: 20px;
+        }
+
+        .footer {
+          margin-top: 50px;
+          font-size: 11px;
+        }
+      }
+
+      /* Responsive: Mobile */
+      @media (max-width: 480px) {
+        .container {
+          padding: 12px 8px;
+        }
+
+        .header {
+          margin-bottom: 18px;
+        }
+
+        .main-title {
+          font-size: 20px;
+        }
+
+        .subtitle {
+          font-size: 10px;
+          letter-spacing: 1px;
+        }
+
+        .dashboard {
+          gap: 12px;
+        }
+
+        .card {
+          flex: 0 0 100%;
+          max-width: 100%;
+          padding: 16px;
+          border-radius: 14px;
+        }
+
+        .icon {
+          font-size: 28px;
+          margin-bottom: 8px;
+        }
+
+        .title {
+          font-size: 13px;
+          margin-bottom: 8px;
+        }
+
+        .value {
+          font-size: 26px;
+        }
+
+        .unit {
+          font-size: 13px;
+        }
+
+        .sun-map-card {
+          padding: 14px 10px 10px;
+          border-radius: 14px;
+        }
+
+        .sun-arc-container {
+          height: 130px;
+        }
+
+        .sun-times .sun-time {
+          font-size: 14px;
+        }
+
+        .sun-times .sun-label {
+          font-size: 10px;
+        }
+
+        .sun-stats {
+          padding: 8px 3px;
+          gap: 2px;
+        }
+
+        .sun-stat-item .stat-value {
+          font-size: 14px;
+        }
+
+        .sun-stat-item .stat-label {
+          font-size: 8px;
+          letter-spacing: 0.5px;
+        }
+
+        .setup-btn {
+          top: 12px;
+          right: 12px;
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+        }
+
+        .setup-btn svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .footer {
+          margin-top: 35px;
+          font-size: 10px;
+        }
       }
     </style>
   </head>
 
   <body>
-    <!-- Mobile Header -->
-    <div class="mobile-header">
-      <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
-      <span class="mobile-title">Configuration</span>
-    </div>
-    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-    <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        &#9881; Device Config
-        <span>ESP32 Settings</span>
+    <div class="container">
+      <div class="header">
+        <h1 class="main-title">Solar Monitoring Dashboard</h1>
+        <div class="subtitle">Real-Time Device Analytics</div>
       </div>
 
-      <div class="nav-item active" onclick="showPanel('temperature', this)">
-        <span class="nav-icon">&#127777;</span> Temperature
-      </div>
-      <div class="nav-item" onclick="showPanel('ntc', this)">
-        <span class="nav-icon">&#128268;</span> NTC Sensor
-      </div>
-      <div class="nav-item" onclick="showPanel('lux', this)">
-        <span class="nav-icon">&#128161;</span> LUX Settings
-      </div>
-      <div class="nav-item" onclick="showPanel('nodered', this)">
-        <span class="nav-icon">&#128279;</span> Node-RED
-      </div>
-      <div class="nav-item" onclick="showPanel('rs485', this)">
-        <span class="nav-icon">&#128225;</span> RS485 Modbus
-      </div>
-      <div class="nav-item" onclick="showPanel('time', this)">
-        <span class="nav-icon">&#128336;</span> Time
-      </div>
-      <div class="nav-item" onclick="showPanel('location', this)">
-        <span class="nav-icon">&#128205;</span> Location
-      </div>
-      <div class="nav-item" onclick="showPanel('placement', this)">
-        <span class="nav-icon">&#129517;</span> Placement
+      <div
+        id="staleBanner"
+        style="
+          display: none;
+          max-width: 630px;
+          margin: 0 auto 20px;
+          padding: 10px 16px;
+          border-radius: 10px;
+          background: rgba(252, 81, 62, 0.18);
+          border: 1px solid rgba(252, 81, 62, 0.45);
+          color: #ff9f94;
+          text-align: center;
+          font-size: 13px;
+          font-weight: 600;
+        "
+      >
+        RS485 Transmitter Not Responding — Showing Last Known SPV &amp; Lux
+        Readings
       </div>
 
-      <div class="sidebar-footer">
-        <button class="btn-save" onclick="submitForm()">
-          Save Configuration
-        </button>
-        <button class="btn-reset" onclick="confirmReset()">
-          Reset to Default
-        </button>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="main">
-      <form id="configForm" action="/save" method="POST">
-        <!-- Temperature Panel -->
-        <div class="panel active" id="panel-temperature">
-          <div class="page-header">
-            <h1>Temperature Settings</h1>
-            <p>
-              Configure temperature and humidity sensor precision and intervals
-            </p>
+      <div class="dashboard">
+        <div class="card">
+          <div class="icon">🌡️</div>
+          <div class="title">Room Temperature</div>
+          <div class="value" id="outsideTemp">
+            -- <span class="unit">°C</span>
           </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Precision</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Temperature Precision</label>
-                <select name="tempPrecision">
-                  <option value="0">None</option>
-                  <option value="1">Up to 1 Decimal</option>
-                  <option value="2">Up to 2 Decimals</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Humidity Precision</label>
-                <select name="humidityPrecision">
-                  <option value="0">None</option>
-                  <option value="1">Up to 1 Decimal</option>
-                  <option value="2">Up to 2 Decimals</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Timing</div>
-            <div class="form-group">
-              <label>Reading Interval (seconds)</label>
-              <input type="number" name="ahtInterval" min="1" value="1" />
-            </div>
+          <div class="card-sub">
+            <span class="sub-icon">💧</span>
+            <span class="sub-value" id="humidity">--</span>
+            <span class="sub-unit">%</span>
           </div>
         </div>
 
-        <!-- NTC Panel -->
-        <div class="panel" id="panel-ntc">
-          <div class="page-header">
-            <h1>NTC Sensor Settings</h1>
-            <p>Configure NTC thermistor parameters and calibration</p>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Sensor Parameters</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Resistance at 25&deg;C (&Omega;)</label>
-                <input type="number" name="ntcResistance" placeholder="10000" />
-              </div>
-              <div class="form-group">
-                <label>Beta Constant</label>
-                <input type="number" name="betaConstant" value="3435" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Offset (&deg;C)</label>
-                <input type="number" name="ntcOffset" step="0.1" value="0" />
-              </div>
-              <div class="form-group">
-                <label>Reading Interval (seconds)</label>
-                <input type="number" name="ntcInterval" min="1" value="1" />
-              </div>
-            </div>
+        <div class="card">
+          <div class="icon">🔥</div>
+          <div class="title">SPV Temperature</div>
+          <div class="value" id="solarTemp">
+            -- <span class="unit">°C</span>
           </div>
         </div>
 
-        <!-- LUX Panel -->
-        <div class="panel" id="panel-lux">
-          <div class="page-header">
-            <h1>LUX Settings</h1>
-            <p>Configure light sensor mode, thresholds and intervals</p>
-          </div>
-
-          <div class="lux-live">
-            <div class="lux-label">Real-Time Value</div>
-            <div class="lux-val" id="luxValue">0 LUX</div>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Mode</div>
-            <div class="form-group">
-              <label>Calculate Mode</label>
-              <select id="luxMode" name="luxMode" onchange="toggleLuxMode()">
-                <option value="0">Auto</option>
-                <option value="1">Manual</option>
-              </select>
-            </div>
-
-            <div id="manualLuxSection" class="hidden">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Max LUX Value</label>
-                  <input
-                    type="number"
-                    name="maxLuxValue"
-                    min="1"
-                    placeholder="e.g. 100000"
+        <!-- Sun Map -->
+        <div class="sun-map-card">
+          <div class="title">Sun Map</div>
+          <div class="sun-arc-container">
+            <svg
+              class="sun-arc-svg"
+              viewBox="-45 0 390 150"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <defs>
+                <radialGradient id="sunGlowGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffcc00" stop-opacity="0.6" />
+                  <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
+                </radialGradient>
+                <!-- Clip path for Mini Earth Globe (increased radius r=30) -->
+                <clipPath id="earthClip">
+                  <circle cx="0" cy="0" r="30" />
+                </clipPath>
+                <!-- Subtle sunlit atmospheric gradient for Earth day side -->
+                <radialGradient id="earthDayGrad" cx="50%" cy="50%" r="60%">
+                  <stop offset="0%" stop-color="#ffe066" stop-opacity="0.22" />
+                  <stop offset="55%" stop-color="#4facfe" stop-opacity="0.16" />
+                  <stop
+                    offset="100%"
+                    stop-color="#0f2027"
+                    stop-opacity="0.25"
                   />
-                </div>
-                <div class="form-group">
-                  <label>Min LUX Value</label>
-                  <input
-                    type="number"
-                    name="minLuxValue"
-                    min="1"
-                    placeholder="e.g. 100"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Intervals &amp; Thresholds</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Reading Interval (seconds)</label>
-                <input type="number" name="luxInterval" min="1" value="1" />
-              </div>
-              <div class="form-group">
-                <label>Update Threshold (min: 10)</label>
-                <input
-                  type="number"
-                  name="luxUpdateThreshold"
-                  min="10"
-                  value="200"
-                />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Save Interval (seconds, min: 300)</label>
-              <input
-                type="number"
-                name="luxSaveInterval"
-                min="300"
-                value="300"
-              />
-            </div>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Reset LUX</div>
-            <div class="toggle-row" style="margin-bottom: 0">
-              <span class="toggle-label">Reset LUX calibration</span>
-              <button
-                type="button"
-                class="btn-lux-reset"
-                onclick="confirmLuxReset()"
+                </radialGradient>
+              </defs>
+              <!-- Azimuth direction label (top left) -->
+              <text
+                id="azimuthLabel"
+                x="5"
+                y="14"
+                fill="rgba(255,255,255,0.5)"
+                font-size="11"
+                font-family="Segoe UI, sans-serif"
+                font-weight="600"
+                letter-spacing="0.5"
               >
-                Reset LUX
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Node-RED Panel -->
-        <div class="panel" id="panel-nodered">
-          <div class="page-header">
-            <h1>Node-RED Settings</h1>
-            <p>Configure data forwarding to Node-RED server</p>
-          </div>
-
-          <div class="sub-section">
-            <div class="toggle-row">
-              <span class="toggle-label">Enable Node-RED</span>
-              <label class="switch">
-                <input
-                  type="checkbox"
-                  id="nodeRedToggle"
-                  name="enableNodeRed"
-                />
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>IP Address</label>
-                <input
-                  type="text"
-                  name="nodeRedIP"
-                  placeholder="192.168.1.100"
-                />
-              </div>
-              <div class="form-group">
-                <label>Port</label>
-                <input type="number" name="nodeRedPort" placeholder="1880" />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Send Interval (seconds)</label>
-              <input
-                type="number"
-                name="nodeRedInterval"
-                min="1"
-                placeholder="10"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- RS485 Panel -->
-        <div class="panel" id="panel-rs485">
-          <div class="page-header">
-            <h1>RS485 Modbus Settings</h1>
-            <p>Configure RS485 serial communication and Modbus protocol</p>
-          </div>
-
-          <div class="sub-section">
-            <div class="toggle-row">
-              <span class="toggle-label">Enable RS485 Modbus</span>
-              <label class="switch">
-                <input type="checkbox" name="enableRS485" />
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>Device ID (1&ndash;247)</label>
-                <input
-                  type="number"
-                  name="modbusDeviceID"
-                  min="1"
-                  max="247"
-                  value="1"
-                />
-              </div>
-              <div class="form-group">
-                <label>Baud Rate</label>
-                <select name="modbusBaudRate">
-                  <option value="9600">9600</option>
-                  <option value="19200">19200</option>
-                  <option value="38400">38400</option>
-                  <option value="57600">57600</option>
-                  <option value="115200" selected>115200</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Share Interval (seconds)</label>
-              <input type="number" name="modbusInterval" min="1" value="5" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Time Panel -->
-        <div class="panel" id="panel-time">
-          <div class="page-header">
-            <h1>Time Settings</h1>
-            <p>Configure time zone and clock display format</p>
-          </div>
-
-          <div class="sub-section">
-            <div class="form-row">
-              <div class="form-group">
-                <label>GMT Offset (seconds)</label>
-                <input
-                  type="number"
-                  name="gmtOffset"
-                  placeholder="19800 for GMT+5:30"
-                  step="1800"
-                />
-              </div>
-              <div class="form-group">
-                <label>Clock Format</label>
-                <select name="clockFormat">
-                  <option value="24">24 Hour</option>
-                  <option value="12">12 Hour</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Location Panel -->
-        <div class="panel" id="panel-location">
-          <div class="page-header">
-            <h1>Location Settings</h1>
-            <p>Set coordinates for accurate sunrise and sunset calculation</p>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Coordinates</div>
-            <button
-              type="button"
-              class="gps-btn"
-              id="gpsBtn"
-              onclick="fetchGPS()"
-            >
-              <svg viewBox="0 0 24 24">
-                <path
-                  d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"
-                />
-              </svg>
-              Auto-detect Location
-            </button>
-            <div
-              style="
-                padding: 10px 14px;
-                margin-bottom: 14px;
-                border-radius: 8px;
-                background: rgba(255, 170, 0, 0.08);
-                border: 1px solid rgba(255, 170, 0, 0.25);
-                font-size: 12px;
-                color: rgba(255, 255, 255, 0.6);
-                line-height: 1.5;
-              "
-            >
-              &#9888; It is recommended to set your location manually for
-              accurate SUN information.
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Latitude</label>
-                <input
-                  type="number"
-                  name="latitude"
-                  step="0.000001"
-                  placeholder="e.g. 22.5726"
-                />
-              </div>
-              <div class="form-group">
-                <label>Longitude</label>
-                <input
-                  type="number"
-                  name="longitude"
-                  step="0.000001"
-                  placeholder="e.g. 88.3639"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Timezone</div>
-            <div class="form-group">
-              <label>Timezone</label>
-              <select name="tzOffset">
-                <option value="-12">UTC-12:00 – Baker Island</option>
-                <option value="-11">UTC-11:00 – American Samoa</option>
-                <option value="-10">UTC-10:00 – Hawaii, USA</option>
-                <option value="-9.5">UTC-09:30 – Marquesas Islands</option>
-                <option value="-9">UTC-09:00 – Alaska, USA</option>
-                <option value="-8">UTC-08:00 – US/Canada Pacific</option>
-                <option value="-7">UTC-07:00 – US/Canada Mountain</option>
-                <option value="-6">
-                  UTC-06:00 – US/Canada Central, Mexico
-                </option>
-                <option value="-5">
-                  UTC-05:00 – US/Canada Eastern, Colombia
-                </option>
-                <option value="-4">
-                  UTC-04:00 – Atlantic, Venezuela, Bolivia
-                </option>
-                <option value="-3.5">UTC-03:30 – Newfoundland, Canada</option>
-                <option value="-3">UTC-03:00 – Brazil, Argentina</option>
-                <option value="-2">UTC-02:00 – South Georgia Island</option>
-                <option value="-1">UTC-01:00 – Azores, Cape Verde</option>
-                <option value="0">UTC±00:00 – UK, Iceland, Ghana</option>
-                <option value="1">UTC+01:00 – Germany, France, Nigeria</option>
-                <option value="2">
-                  UTC+02:00 – Egypt, South Africa, Finland
-                </option>
-                <option value="3">
-                  UTC+03:00 – Saudi Arabia, Russia (Moscow)
-                </option>
-                <option value="3.5">UTC+03:30 – Iran</option>
-                <option value="4">UTC+04:00 – UAE, Oman, Georgia</option>
-                <option value="4.5">UTC+04:30 – Afghanistan</option>
-                <option value="5">UTC+05:00 – Pakistan, Uzbekistan</option>
-                <option value="5.5">UTC+05:30 – India, Sri Lanka</option>
-                <option value="5.75">UTC+05:45 – Nepal</option>
-                <option value="6">UTC+06:00 – Bangladesh, Kazakhstan</option>
-                <option value="6.5">UTC+06:30 – Myanmar</option>
-                <option value="7">
-                  UTC+07:00 – Thailand, Vietnam, Indonesia
-                </option>
-                <option value="8">
-                  UTC+08:00 – China, Singapore, Malaysia
-                </option>
-                <option value="8.75">UTC+08:45 – Australia (Eucla)</option>
-                <option value="9">UTC+09:00 – Japan, South Korea</option>
-                <option value="9.5">
-                  UTC+09:30 – Australia (Darwin, Adelaide)
-                </option>
-                <option value="10">
-                  UTC+10:00 – Australia (Sydney), Papua
-                </option>
-                <option value="10.5">UTC+10:30 – Lord Howe Island</option>
-                <option value="11">UTC+11:00 – Solomon Islands, Vanuatu</option>
-                <option value="12">UTC+12:00 – New Zealand, Fiji</option>
-                <option value="12.75">UTC+12:45 – Chatham Islands</option>
-                <option value="13">UTC+13:00 – Tonga, Samoa</option>
-                <option value="14">UTC+14:00 – Line Islands</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Placement Panel -->
-        <div class="panel" id="panel-placement">
-          <div class="page-header">
-            <h1>Solar Plate Placement</h1>
-            <p>Optimal panel direction and tilt angle calculation</p>
-          </div>
-
-          <div class="loc-banner">
-            <div>
-              <strong id="placeLocSummary"
-                >22.5726&deg; N, 88.3639&deg; E</strong
-              >
-            </div>
-            <button
-              type="button"
-              class="loc-link-btn"
-              onclick="goToLocationPanel()"
-            >
-              Edit Location &rarr;
-            </button>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Date Range (Max 1 Year)</div>
-            <div class="preset-bar">
-              <button
-                type="button"
-                class="preset-btn"
-                onclick="setPlacementPreset('year')"
-              >
-                Full Year (365 Days)
-              </button>
-              <button
-                type="button"
-                class="preset-btn"
-                onclick="setPlacementPreset('winter')"
-              >
-                Winter (Nov&ndash;Feb)
-              </button>
-              <button
-                type="button"
-                class="preset-btn"
-                onclick="setPlacementPreset('summer')"
-              >
-                Summer (Mar&ndash;Jun)
-              </button>
-              <button
-                type="button"
-                class="preset-btn"
-                onclick="setPlacementPreset('monsoon')"
-              >
-                Monsoon (Jul&ndash;Oct)
-              </button>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>From Date</label>
-                <input
-                  type="date"
-                  id="placeStart"
-                  name="placeStart"
-                  onchange="onPlacementDateChange('start')"
-                />
-              </div>
-              <div class="form-group">
-                <label>To Date</label>
-                <input
-                  type="date"
-                  id="placeEnd"
-                  name="placeEnd"
-                  onchange="onPlacementDateChange('end')"
-                />
-              </div>
-            </div>
-            <div class="range-note" id="placeRangeInfo">
-              Selected period: 365 days
-            </div>
-          </div>
-
-          <div class="sub-section">
-            <div class="sub-section-title">Recommended Solar Plate Setup</div>
-
-            <div class="placement-grid">
-              <!-- Azimuth / Direction Card -->
-              <div class="placement-card">
-                <div>
-                  <div class="p-label">Plate Direction (Azimuth)</div>
-                  <div class="p-val" id="recAzimuthVal">180.0&deg;</div>
-                  <div class="p-sub" id="recAzimuthDir">True South (S)</div>
-                </div>
-                <svg class="placement-svg" viewBox="0 0 100 100">
+                --
+              </text>
+              <!-- Mini compass with plus shape (top right) -> Mini Earth Globe -->
+              <g id="compassGroup" transform="translate(300, 48) scale(1.15)">
+                <!-- Clipped Earth interior: Day/Night zones + Latitudes & Longitudes + Sun Path -->
+                <g clip-path="url(#earthClip)">
+                  <!-- Base Earth ocean/daylight fill -->
                   <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
+                    cx="0"
+                    cy="0"
+                    r="30"
+                    fill="rgba(79, 172, 254, 0.14)"
+                  />
+                  <circle cx="0" cy="0" r="30" fill="url(#earthDayGrad)" />
+
+                  <!-- Live 3D Day & Night hemisphere group -->
+                  <g id="earthDayNightGroup">
+                    <!-- Night shadow area (recalculated 3D spherical projection) -->
+                    <path
+                      id="earthNightPath"
+                      d="M -31 0 L 31 0 L 31 31 L -31 31 Z"
+                      fill="rgba(5, 11, 18, 0.68)"
+                    />
+                    <!-- Twilight terminator curve -->
+                    <path
+                      id="earthTerminator"
+                      d="M -31 0 L 31 0"
+                      fill="none"
+                      stroke="rgba(255, 195, 75, 0.4)"
+                      stroke-width="0.7"
+                    />
+                  </g>
+
+                  <!-- Background Longitudes (Meridians) -->
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="9.5"
+                    ry="30"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.14)"
+                    stroke-width="0.38"
+                  />
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="18.5"
+                    ry="30"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.14)"
+                    stroke-width="0.38"
+                  />
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="25.5"
+                    ry="30"
                     fill="none"
                     stroke="rgba(255,255,255,0.12)"
-                    stroke-width="2"
+                    stroke-width="0.35"
                   />
-                  <text
-                    x="50"
-                    y="18"
-                    text-anchor="middle"
-                    fill="#ff4757"
-                    font-size="10"
-                    font-weight="700"
-                  >
-                    N
-                  </text>
-                  <text
-                    x="86"
-                    y="53"
-                    text-anchor="middle"
-                    fill="rgba(255,255,255,0.45)"
-                    font-size="9"
-                  >
-                    E
-                  </text>
-                  <text
-                    x="50"
-                    y="90"
-                    text-anchor="middle"
-                    fill="rgba(255,255,255,0.45)"
-                    font-size="9"
-                  >
-                    S
-                  </text>
-                  <text
-                    x="14"
-                    y="53"
-                    text-anchor="middle"
-                    fill="rgba(255,255,255,0.45)"
-                    font-size="9"
-                  >
-                    W
-                  </text>
-                  <g id="compassArrow" transform="rotate(180 50 50)">
-                    <line
-                      x1="50"
-                      y1="50"
-                      x2="50"
-                      y2="23"
-                      stroke="#4facfe"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                    />
-                    <polygon points="50,17 44,27 56,27" fill="#00f2fe" />
-                  </g>
-                  <circle cx="50" cy="50" r="4" fill="#e0e6ed" />
-                </svg>
-              </div>
-
-              <!-- Tilt Angle Card -->
-              <div class="placement-card">
-                <div>
-                  <div class="p-label">Plate Tilt Angle</div>
-                  <div class="p-val" id="recTiltVal">22.6&deg;</div>
-                  <div class="p-sub" id="recTiltSub">
-                    From Horizontal Ground
-                  </div>
-                </div>
-                <svg class="placement-svg" viewBox="0 0 120 100">
-                  <!-- Ground line -->
+                  <!-- Current Location Vertical Axis (Local Meridian) -->
                   <line
-                    x1="10"
-                    y1="80"
-                    x2="110"
-                    y2="80"
-                    stroke="rgba(255,255,255,0.25)"
-                    stroke-width="2"
+                    x1="0"
+                    y1="-30"
+                    x2="0"
+                    y2="30"
+                    stroke="rgba(255,255,255,0.22)"
+                    stroke-width="0.45"
+                    stroke-dasharray="1.5, 1.5"
                   />
-                  <!-- Angle arc -->
+
+                  <!-- Latitudes (Horizontal Parallels - Earth rotates horizontally only) -->
+                  <line
+                    x1="-30"
+                    y1="-23.5"
+                    x2="30"
+                    y2="-23.5"
+                    stroke="rgba(255,255,255,0.12)"
+                    stroke-width="0.35"
+                  />
+                  <line
+                    x1="-30"
+                    y1="-16.5"
+                    x2="30"
+                    y2="-16.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="-8.5"
+                    x2="30"
+                    y2="-8.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="8.5"
+                    x2="30"
+                    y2="8.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="16.5"
+                    x2="30"
+                    y2="16.5"
+                    stroke="rgba(255,255,255,0.15)"
+                    stroke-width="0.38"
+                  />
+                  <line
+                    x1="-30"
+                    y1="23.5"
+                    x2="30"
+                    y2="23.5"
+                    stroke="rgba(255,255,255,0.12)"
+                    stroke-width="0.35"
+                  />
+
+                  <!-- Prime Meridian (0° Longitude - Red, relative to current location) -->
                   <path
-                    id="tiltArc"
-                    d="M 48 80 A 28 28 0 0 0 45 68"
+                    id="primeMeridianPath"
+                    d="M 0 -30 L 0 30"
                     fill="none"
-                    stroke="rgba(0,242,254,0.5)"
-                    stroke-width="1.8"
+                    stroke="rgba(255, 75, 75, 0.8)"
+                    stroke-width="0.65"
                   />
-                  <!-- Support strut -->
-                  <line
-                    id="tiltStrut"
-                    x1="65"
-                    y1="80"
-                    x2="65"
-                    y2="62"
-                    stroke="rgba(255,255,255,0.35)"
-                    stroke-width="2"
-                    stroke-dasharray="3,2"
-                  />
-                  <!-- Solar Plate -->
-                  <line
-                    id="tiltPlate"
-                    x1="20"
-                    y1="80"
-                    x2="90"
-                    y2="51"
-                    stroke="#4facfe"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                  />
-                  <circle cx="20" cy="80" r="3.5" fill="#00f2fe" />
-                </svg>
-              </div>
-            </div>
 
-            <div class="sun-stats-grid">
-              <div class="sun-stat-box">
-                <div class="s-title">Solar Noon Sun Elevation</div>
-                <div class="s-val" id="statNoonElev">--</div>
-              </div>
-              <div class="sun-stat-box">
-                <div class="s-title">Avg. Sunrise &rarr; Sunset Bearing</div>
-                <div class="s-val" id="statSunBearing">--</div>
-              </div>
-              <div class="sun-stat-box">
-                <div class="s-title">Avg. Daylight &amp; Solar Noon</div>
-                <div class="s-val" id="statDaylight">--</div>
-              </div>
-              <div class="sun-stat-box">
-                <div class="s-title">Output Gain vs. Flat (0&deg;)</div>
-                <div class="s-val" id="statTiltGain">--</div>
-              </div>
-            </div>
+                  <!-- Equator (0° Latitude - Fixed Horizontal Red Line) -->
+                  <line
+                    id="equatorLine"
+                    x1="-30"
+                    y1="0"
+                    x2="30"
+                    y2="0"
+                    stroke="rgba(255, 75, 75, 0.8)"
+                    stroke-width="0.65"
+                  />
 
-            <!-- <div class="range-note" style="margin-top: 14px; line-height: 1.5">
-              &#9432; Bearings are referenced to Geographic True North (0&deg;
-              N, 90&deg; E, 180&deg; S, 270&deg; W). Full-year fixed panels face
-              ~180&deg; South in the Northern Hemisphere, ~0&deg; North in the
-              Southern Hemisphere, and flip North in tropical summers when solar
-              declination exceeds latitude.
-            </div> -->
+                  <!-- Recalculated Non-Circular Sun Travelling Path (Daytime trajectory) -->
+                  <path
+                    id="earthSunPath"
+                    d="M 0 0"
+                    fill="none"
+                    stroke="rgba(255, 204, 0, 0.28)"
+                    stroke-width="0.55"
+                    stroke-dasharray="1.5, 1.5"
+                  />
+                  <!-- Active Traveled Sun Path (Sunrise to Now) -->
+                  <path
+                    id="earthSunPathActive"
+                    d="M 0 0"
+                    fill="none"
+                    stroke="rgba(255, 204, 0, 0.7)"
+                    stroke-width="0.75"
+                  />
+                </g>
+
+                <!-- Outer Earth perimeter ring -->
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="30"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.3)"
+                  stroke-width="0.75"
+                />
+
+                <!-- N E S W just outside the circle -->
+                <text
+                  x="0"
+                  y="-32.2"
+                  text-anchor="middle"
+                  fill="rgba(255,100,100,0.9)"
+                  font-size="6.5"
+                  font-family="Segoe UI, sans-serif"
+                  font-weight="700"
+                >
+                  N
+                </text>
+                <text
+                  x="0"
+                  y="37.2"
+                  text-anchor="middle"
+                  fill="rgba(255,255,255,0.45)"
+                  font-size="6.5"
+                  font-family="Segoe UI, sans-serif"
+                  font-weight="600"
+                >
+                  S
+                </text>
+                <text
+                  x="33.2"
+                  y="2.2"
+                  text-anchor="middle"
+                  fill="rgba(255,255,255,0.45)"
+                  font-size="6.5"
+                  font-family="Segoe UI, sans-serif"
+                  font-weight="600"
+                >
+                  E
+                </text>
+                <text
+                  x="-33.5"
+                  y="2.2"
+                  text-anchor="middle"
+                  fill="rgba(255,255,255,0.45)"
+                  font-size="6.5"
+                  font-family="Segoe UI, sans-serif"
+                  font-weight="600"
+                >
+                  W
+                </text>
+
+                <!-- Thin dotted line from saved location (green dot) to Sun dot -->
+                <line
+                  id="compassRadiusLine"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="-21"
+                  stroke="rgba(255, 204, 0, 0.7)"
+                  stroke-width="0.6"
+                  stroke-dasharray="1.2, 1.4"
+                  opacity="0.85"
+                />
+
+                <!-- Current Saved Location (small green dot on vertical axis, above/below Equator) -->
+                <circle
+                  id="locationHalo"
+                  cx="0"
+                  cy="0"
+                  r="3.2"
+                  fill="rgba(46, 204, 113, 0.24)"
+                />
+                <circle
+                  id="locationDot"
+                  cx="0"
+                  cy="0"
+                  r="1.7"
+                  fill="#2ecc71"
+                  stroke="rgba(0,0,0,0.45)"
+                  stroke-width="0.3"
+                />
+
+                <!-- Current Sun position dot (yellow) -->
+                <circle
+                  id="compassDot"
+                  cx="0"
+                  cy="-21"
+                  r="1.8"
+                  fill="#ffcc00"
+                  stroke="rgba(0,0,0,0.4)"
+                  stroke-width="0.3"
+                  opacity="0.95"
+                />
+              </g>
+              <!-- Optimal sunlight zone (exact Bezier match between 45° diagonal axes) -->
+              <path
+                id="optimalZonePath"
+                d="M 150 140 L 82.5 72.5 Q 150 27.5 217.5 72.5 Z"
+                fill="rgba(255,70,70,0.06)"
+              />
+              <!-- Horizon line (solid) -->
+              <line
+                x1="15"
+                y1="140"
+                x2="285"
+                y2="140"
+                stroke="rgba(255,255,255,0.2)"
+                stroke-width="1"
+              />
+              <!-- Left 45° diagonal dotted axis (from center to t=0.25 on arc) -->
+              <line
+                id="line45Left"
+                x1="150"
+                y1="140"
+                x2="82.5"
+                y2="72.5"
+                stroke="rgba(255,120,120,0.25)"
+                stroke-width="1"
+                stroke-dasharray="3,4"
+              />
+              <!-- Right 45° diagonal dotted axis (from center to t=0.75 on arc) -->
+              <line
+                id="line45Right"
+                x1="150"
+                y1="140"
+                x2="217.5"
+                y2="72.5"
+                stroke="rgba(255,120,120,0.25)"
+                stroke-width="1"
+                stroke-dasharray="3,4"
+              />
+              <!-- Left 45° time label (rotated along line direction) -->
+              <text
+                id="time45Left"
+                x="116"
+                y="106"
+                text-anchor="middle"
+                fill="rgba(255,255,255,0.45)"
+                font-size="8"
+                font-family="Segoe UI, sans-serif"
+                transform="rotate(45, 116, 106)"
+              >
+                --:--
+              </text>
+              <!-- Right 45° time label (rotated along line direction) -->
+              <text
+                id="time45Right"
+                x="184"
+                y="106"
+                text-anchor="middle"
+                fill="rgba(255,255,255,0.45)"
+                font-size="8"
+                font-family="Segoe UI, sans-serif"
+                transform="rotate(-45, 184, 106)"
+              >
+                --:--
+              </text>
+              <!-- Solar Noon vertical dotted axis -->
+              <line
+                x1="150"
+                y1="140"
+                x2="150"
+                y2="10"
+                stroke="rgba(255,255,255,0.15)"
+                stroke-width="1"
+                stroke-dasharray="3,4"
+              />
+              <!-- Horizon center: Current Saved Location (small green dot) -->
+              <circle cx="150" cy="140" r="4" fill="rgba(46, 204, 113, 0.25)" />
+              <circle
+                cx="150"
+                cy="140"
+                r="2.2"
+                fill="#2ecc71"
+                stroke="rgba(0,0,0,0.45)"
+                stroke-width="0.4"
+              />
+              <!-- Arc path (dashed) -->
+              <path
+                id="sunArc"
+                d="M 15 140 Q 150 -40 285 140"
+                fill="none"
+                stroke="rgba(255,255,255,0.15)"
+                stroke-width="1.5"
+                stroke-dasharray="3,3"
+              />
+              <!-- Traveled arc (colored) -->
+              <path
+                id="sunArcActive"
+                d="M 15 140 Q 150 -40 285 140"
+                fill="none"
+                stroke="#ffcc00"
+                stroke-width="2"
+                stroke-dasharray="0"
+                opacity="0.5"
+              />
+              <!-- Outer glow -->
+              <circle
+                id="sunGlowOuter"
+                cx="15"
+                cy="140"
+                r="17"
+                fill="url(#sunGlowGrad)"
+                opacity="0.06"
+              />
+              <!-- Inner glow -->
+              <circle
+                id="sunGlow"
+                cx="15"
+                cy="140"
+                r="10"
+                fill="#ffcc00"
+                opacity="0.15"
+              />
+              <!-- Sun dot -->
+              <circle
+                id="sunDot"
+                cx="15"
+                cy="140"
+                r="5"
+                fill="#ffcc00"
+                opacity="0.9"
+              />
+            </svg>
+          </div>
+          <div class="sun-times">
+            <div>
+              <span class="sun-label">Sunrise</span>
+              <span class="sun-time" id="sunriseTime">--:--</span>
+            </div>
+            <div style="text-align: center">
+              <span class="sun-label">Solar Noon</span>
+              <span class="sun-time" id="solarNoonTime">--:--</span>
+            </div>
+            <div style="text-align: right">
+              <span class="sun-label">Sunset</span>
+              <span class="sun-time" id="sunsetTime">--:--</span>
+            </div>
+          </div>
+          <!-- Stats row -->
+          <div class="sun-stats">
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunMapAngle" style="color: #ff9f43">
+                --°
+              </div>
+              <div class="stat-label">Sun Angle</div>
+            </div>
+            <div class="sun-stat-divider"></div>
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunMapPercent" style="color: #ffcc00">
+                --%
+              </div>
+              <div class="stat-label">Sunlight</div>
+            </div>
+            <div class="sun-stat-divider"></div>
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunMapLux" style="color: #6dd3fc">
+                -- lx <span id="luxArrow" class="lux-arrow"></span>
+              </div>
+              <div class="stat-label">Lux</div>
+            </div>
+            <div class="sun-stat-divider"></div>
+            <div class="sun-stat-item">
+              <div class="stat-value" id="sunRemaining" style="color: #a29bfe">
+                --
+              </div>
+              <div class="stat-label">Remaining</div>
+            </div>
           </div>
         </div>
-      </form>
+      </div>
 
       <div class="footer">
-        ESP32 Web Configuration Dashboard | Developer &copy; M.Maity
+        <div style="margin-bottom: 8px">
+          <span id="dateTime"></span>
+        </div>
+        <div>ESP32 Real-time Solar Monitor Dashboard | Developer © M.Maity</div>
       </div>
     </div>
 
     <script>
-      var isPollingLux = false;
-      var isSavingOrResetting = false;
+      var selectedTZ = 5.5; // default; updated from sensor data
+      var prevLux = null; // track previous lux for trend arrow
+      var isFetchingSensor = false;
 
-      function showPanel(name, el) {
-        document.querySelectorAll(".panel").forEach(function (p) {
-          p.classList.remove("active");
-        });
-        document.getElementById("panel-" + name).classList.add("active");
-
-        document.querySelectorAll(".nav-item").forEach(function (n) {
-          n.classList.remove("active");
-        });
-        el.classList.add("active");
-
-        if (name === "placement") {
-          calculatePlacement();
-        }
-
-        if (window.innerWidth <= 768) {
-          document.getElementById("sidebar").classList.remove("open");
-          document.getElementById("overlay").classList.remove("active");
-        }
+      function getTimeInTZ(tzOffsetHours) {
+        var now = new Date();
+        var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+        return new Date(utcMs + tzOffsetHours * 3600000);
       }
 
-      function toggleSidebar() {
-        document.getElementById("sidebar").classList.toggle("open");
-        document.getElementById("overlay").classList.toggle("active");
-      }
-
-      function toggleLuxMode() {
-        var mode = document.getElementById("luxMode").value;
-        var section = document.getElementById("manualLuxSection");
-        var maxInput = document.querySelector("[name=maxLuxValue]");
-        var minInput = document.querySelector("[name=minLuxValue]");
-
-        if (mode === "1") {
-          section.classList.remove("hidden");
-          maxInput.disabled = false;
-          minInput.disabled = false;
-        } else {
-          section.classList.add("hidden");
-          maxInput.disabled = true;
-          minInput.disabled = true;
-        }
-      }
-
-      setInterval(function () {
-        if (isPollingLux || isSavingOrResetting) return;
-        isPollingLux = true;
+      function updateDashboard() {
+        if (isFetchingSensor) return;
+        isFetchingSensor = true;
 
         var controller = new AbortController();
-        var tId = setTimeout(function () {
+        var timeoutId = setTimeout(function () {
           controller.abort();
-        }, 1800);
+        }, 2000);
 
         fetch("/sensor.json", { signal: controller.signal, cache: "no-store" })
-          .then(function (r) {
-            return r.json();
+          .then(function (res) {
+            if (!res.ok) throw new Error("No response");
+            return res.json();
           })
           .then(function (data) {
-            document.getElementById("luxValue").innerText = data.lux + " LUX";
-          })
-          .catch(function () {})
-          .finally(function () {
-            clearTimeout(tId);
-            isPollingLux = false;
-          });
-      }, 2000);
-
-      window.addEventListener("load", function () {
-        fetch("/settings.json", { cache: "no-store" })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (data) {
-            document.querySelector("[name=tempPrecision]").value =
-              data.tempPrecision;
-            document.querySelector("[name=humidityPrecision]").value =
-              data.humidityPrecision;
-            document.querySelector("[name=ahtInterval]").value =
-              data.ahtInterval;
-
-            document.querySelector("[name=ntcResistance]").value =
-              data.ntcResistance;
-            document.querySelector("[name=betaConstant]").value =
-              data.betaConstant;
-            document.querySelector("[name=ntcOffset]").value = parseFloat(
-              data.ntcOffset,
-            ).toFixed(2);
-            document.querySelector("[name=ntcInterval]").value =
-              data.ntcInterval;
-
-            document.querySelector("[name=luxMode]").value = data.luxMode;
-            toggleLuxMode();
-            document.querySelector("[name=maxLuxValue]").value =
-              data.maxLuxValue;
-            document.querySelector("[name=minLuxValue]").value =
-              data.minLuxValue;
-            document.querySelector("[name=luxInterval]").value =
-              data.luxInterval;
-            document.querySelector("[name=luxUpdateThreshold]").value =
-              data.luxUpdateThreshold;
-            document.querySelector("[name=luxSaveInterval]").value =
-              data.luxSaveInterval;
-
-            document.querySelector("[name=enableNodeRed]").checked =
-              data.enableNodeRed == 1;
-            document.querySelector("[name=nodeRedIP]").value = data.nodeRedIP;
-            document.querySelector("[name=nodeRedPort]").value =
-              data.nodeRedPort;
-            document.querySelector("[name=nodeRedInterval]").value =
-              data.nodeRedInterval;
-
-            document.querySelector("[name=enableRS485]").checked =
-              data.enableRS485 == 1;
-            document.querySelector("[name=modbusDeviceID]").value =
-              data.modbusDeviceID;
-            document.querySelector("[name=modbusBaudRate]").value =
-              data.modbusBaudRate;
-            document.querySelector("[name=modbusInterval]").value =
-              data.modbusInterval;
-
-            document.querySelector("[name=gmtOffset]").value = data.gmtOffset;
-            document.querySelector("[name=clockFormat]").value =
-              data.clockFormat;
-
-            document.querySelector("[name=latitude]").value = data.latitude;
-            document.querySelector("[name=longitude]").value = data.longitude;
-
-            // Normalize float string so "5.00" -> "5", "5.50" -> "5.5", "5.75" -> "5.75"
-            var tzVal = parseFloat(data.tzOffset);
-            if (!isNaN(tzVal)) {
-              document.querySelector("[name=tzOffset]").value =
-                tzVal.toString();
+            var staleEl = document.getElementById("staleBanner");
+            if (staleEl) {
+              staleEl.style.display = data.sensorStale ? "block" : "none";
             }
-            if (data.placeStart && data.placeEnd) {
-              document.getElementById("placeStart").value = data.placeStart;
-              document.getElementById("placeEnd").value = data.placeEnd;
-              onPlacementDateChange("start");
-            } else {
-              setPlacementPreset("year");
-            }
-          });
-      });
 
-      document
-        .querySelector("[name=tzOffset]")
-        .addEventListener("change", function () {
-          var tz = parseFloat(this.value);
-          if (!isNaN(tz)) {
-            document.querySelector("[name=gmtOffset]").value = Math.round(
-              tz * 3600,
+            let outside = parseFloat(data.ahtTemp) || 0;
+            let solar = parseFloat(data.ntcTemp) || 0;
+            let hum = parseFloat(data.humidity) || 0;
+            let sunPercent = parseFloat(data.sunlight) || 0;
+            let lux = parseFloat(data.lux) || 0;
+
+            let tPrec =
+              data.tempPrecision !== undefined ? data.tempPrecision : 2;
+            let hPrec = data.humPrecision !== undefined ? data.humPrecision : 2;
+
+            setValue("outsideTemp", outside.toFixed(tPrec), "°C");
+            setValue("solarTemp", solar.toFixed(tPrec), "°C");
+
+            var humEl = document.getElementById("humidity");
+            var humStr = hum.toFixed(hPrec);
+            if (humEl.textContent !== humStr) {
+              humEl.textContent = humStr;
+            }
+
+            colorOutsideTemp(outside);
+            colorSolarTemp(solar);
+
+            var lat = parseFloat(data.latitude) || 0;
+            var lon = parseFloat(data.longitude) || 0;
+            var tz =
+              data.tzOffset !== undefined ? parseFloat(data.tzOffset) : 5.5;
+            if (isNaN(tz)) tz = 5.5;
+            selectedTZ = tz;
+
+            updateSunMap(
+              data.sunrise,
+              data.sunset,
+              data.sunriseMin,
+              data.sunsetMin,
+              sunPercent,
+              lux,
+              lat,
+              lon,
+              tz,
             );
-          }
-        });
-
-      document
-        .querySelector("[name=gmtOffset]")
-        .addEventListener("input", function () {
-          var gmt = parseFloat(this.value);
-          if (!isNaN(gmt)) {
-            var tzHours = (gmt / 3600).toString();
-            var tzSelect = document.querySelector("[name=tzOffset]");
-            if (tzSelect.querySelector('option[value="' + tzHours + '"]')) {
-              tzSelect.value = tzHours;
-            }
-          }
-        });
-
-      function submitForm() {
-        if (!confirm("Do you want to save configuration?")) return;
-
-        isSavingOrResetting = true;
-        var form = document.getElementById("configForm");
-        var formData = new FormData(form);
-
-        fetch("/save", {
-          method: "POST",
-          body: formData,
-        })
-          .then(function (r) {
-            if (!r.ok) throw new Error("Save failed");
-            return r.text();
-          })
-          .then(function (data) {
-            alert(data);
           })
           .catch(function () {
-            alert("Error saving settings!");
+            // Keep UI stable on transient packet drop
           })
           .finally(function () {
-            isSavingOrResetting = false;
+            clearTimeout(timeoutId);
+            isFetchingSensor = false;
           });
       }
 
-      function confirmReset() {
-        if (confirm("Do you want to reset to default settings?")) {
-          isSavingOrResetting = true;
-          fetch("/reset", { method: "POST" })
-            .then(function () {
-              alert("Device reset to default successfully! Rebooting...");
-              setTimeout(function () {
-                location.reload();
-              }, 2000);
-            })
-            .catch(function () {
-              isSavingOrResetting = false;
-              alert("Reset failed!");
-            });
+      function setValue(id, value, unit) {
+        var el = document.getElementById(id);
+        var newHtml = value + ' <span class="unit">' + unit + "</span>";
+        if (el.innerHTML !== newHtml) {
+          el.innerHTML = newHtml;
         }
       }
 
-      function confirmLuxReset() {
-        if (confirm("Do you want to reset LUX settings?")) {
-          isSavingOrResetting = true;
-          fetch("/reset-lux", { method: "POST" })
-            .then(function (r) {
-              return r.text();
-            })
-            .then(function (msg) {
-              document.querySelector("[name=luxMode]").value = "0";
-              toggleLuxMode();
-              document.querySelector("[name=maxLuxValue]").value = 1;
-              document.querySelector("[name=minLuxValue]").value = 1;
-              document.querySelector("[name=luxInterval]").value = 1;
-              document.querySelector("[name=luxUpdateThreshold]").value = 200;
-              document.querySelector("[name=luxSaveInterval]").value = 300;
-              alert(msg);
-            })
-            .catch(function () {
-              alert("LUX reset failed!");
-            })
-            .finally(function () {
-              isSavingOrResetting = false;
-            });
+      function colorOutsideTemp(val) {
+        let el = document.getElementById("outsideTemp");
+        if (el.style.color !== "rgb(255, 120, 89)") {
+          el.style.color = "#FF7859";
         }
       }
 
-      function fetchGPS() {
-        var btn = document.getElementById("gpsBtn");
-        var svgIcon =
-          '<svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>';
-
-        function resetBtn() {
-          btn.classList.remove("loading");
-          btn.innerHTML = svgIcon + " Auto-detect Location";
+      function colorSolarTemp(val) {
+        let el = document.getElementById("solarTemp");
+        if (el.style.color !== "rgb(207, 145, 255)") {
+          el.style.color = "#CF91FF";
         }
+      }
 
-        function setCoords(lat, lon) {
-          document.querySelector("[name=latitude]").value =
-            parseFloat(lat).toFixed(6);
-          document.querySelector("[name=longitude]").value =
-            parseFloat(lon).toFixed(6);
-          resetBtn();
-        }
+      updateDashboard();
+      setInterval(updateDashboard, 2500);
 
-        var ipServices = [
-          {
-            url: "https://ipwho.is/",
-            lat: function (d) {
-              return d.latitude;
-            },
-            lon: function (d) {
-              return d.longitude;
-            },
-          },
-          {
-            url: "https://ipapi.co/json/",
-            lat: function (d) {
-              return d.latitude;
-            },
-            lon: function (d) {
-              return d.longitude;
-            },
-          },
-          {
-            url: "http://ip-api.com/json/?fields=lat,lon",
-            lat: function (d) {
-              return d.lat;
-            },
-            lon: function (d) {
-              return d.lon;
-            },
-          },
+      function updateDateTime() {
+        const now = getTimeInTZ(selectedTZ);
+
+        const yr = now.getFullYear();
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
         ];
+        const mon = months[now.getMonth()];
+        const day = now.getDate();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
 
-        function tryIpService(index) {
-          if (index >= ipServices.length) {
-            alert(
-              "Location detection failed. Please enter coordinates manually.",
-            );
-            resetBtn();
-            return;
-          }
-          var svc = ipServices[index];
-          fetch(svc.url)
-            .then(function (r) {
-              return r.json();
-            })
-            .then(function (data) {
-              var lat = svc.lat(data);
-              var lon = svc.lon(data);
-              if (lat !== undefined && lon !== undefined) {
-                setCoords(lat, lon);
-              } else {
-                tryIpService(index + 1);
-              }
-            })
-            .catch(function () {
-              tryIpService(index + 1);
-            });
-        }
+        const tzH = Math.floor(Math.abs(selectedTZ));
+        const tzM = Math.round((Math.abs(selectedTZ) - tzH) * 60);
+        const tzSign = selectedTZ >= 0 ? "+" : "-";
+        const tzLabel =
+          "UTC" +
+          tzSign +
+          String(tzH).padStart(2, "0") +
+          ":" +
+          String(tzM).padStart(2, "0");
 
-        btn.classList.add("loading");
-        btn.innerHTML = svgIcon + " Locating...";
-
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            function (pos) {
-              setCoords(pos.coords.latitude, pos.coords.longitude);
-            },
-            function () {
-              tryIpService(0);
-            },
-            { enableHighAccuracy: true, timeout: 6000 },
-          );
-        } else {
-          tryIpService(0);
-        }
+        document.getElementById("dateTime").innerText =
+          day +
+          " " +
+          mon +
+          " " +
+          yr +
+          ", " +
+          hh +
+          ":" +
+          mm +
+          ":" +
+          ss +
+          " (" +
+          tzLabel +
+          ")";
       }
 
-      function goToLocationPanel() {
-        var locNav = document.querySelector(
-          ".nav-item[onclick*=\"'location'\"]",
-        );
-        if (locNav) showPanel("location", locNav);
+      updateDateTime();
+      setInterval(updateDateTime, 1000);
+
+      function openSetup() {
+        window.location.href = "config.html";
       }
 
-      function formatUTCDate(utcMs) {
-        var d = new Date(utcMs);
-        var y = d.getUTCFullYear();
-        var m = String(d.getUTCMonth() + 1).padStart(2, "0");
-        var day = String(d.getUTCDate()).padStart(2, "0");
-        return y + "-" + m + "-" + day;
-      }
+      function calcSunPosition(lat, lon, tz, dateObj) {
+        // Use UTC date diff to avoid any local DST/timezone skew on dayOfYear
+        var yr = dateObj.getFullYear();
+        var utcToday = Date.UTC(yr, dateObj.getMonth(), dateObj.getDate());
+        var utcYearStart = Date.UTC(yr, 0, 0);
+        var dayOfYear = Math.floor((utcToday - utcYearStart) / 86400000);
 
-      function parseDateUTC(str) {
-        if (!str) return NaN;
-        var p = str.split("-");
-        if (p.length !== 3) return NaN;
-        return Date.UTC(
-          parseInt(p[0], 10),
-          parseInt(p[1], 10) - 1,
-          parseInt(p[2], 10),
-        );
-      }
+        var isLeap = (yr % 4 === 0 && yr % 100 !== 0) || yr % 400 === 0;
+        var daysInYear = isLeap ? 366.0 : 365.0;
 
-      function getMaxEndUTC(startUTC) {
-        var d = new Date(startUTC);
-        return (
-          Date.UTC(d.getUTCFullYear() + 1, d.getUTCMonth(), d.getUTCDate()) -
-          86400000
-        );
-      }
+        var hour =
+          dateObj.getHours() +
+          dateObj.getMinutes() / 60.0 +
+          dateObj.getSeconds() / 3600.0;
 
-      function setPlacementPreset(preset) {
-        var now = new Date();
-        var y = now.getFullYear();
-        var startUTC, endUTC;
+        var gamma =
+          ((2.0 * Math.PI) / daysInYear) *
+          (dayOfYear - 1 + (hour - 12.0) / 24.0);
 
-        if (preset === "year") {
-          startUTC = Date.UTC(y, now.getMonth(), now.getDate());
-          endUTC = getMaxEndUTC(startUTC);
-        } else if (preset === "winter") {
-          startUTC = Date.UTC(y, 10, 1); // Nov 1
-          endUTC = Date.UTC(y + 1, 2, 0); // Last day of Feb (handles leap year)
-        } else if (preset === "summer") {
-          startUTC = Date.UTC(y, 2, 1); // Mar 1
-          endUTC = Date.UTC(y, 5, 30); // Jun 30
-        } else if (preset === "monsoon") {
-          startUTC = Date.UTC(y, 6, 1); // Jul 1
-          endUTC = Date.UTC(y, 9, 31); // Oct 31
-        }
+        var eqTime =
+          229.18 *
+          (0.000075 +
+            0.001868 * Math.cos(gamma) -
+            0.032077 * Math.sin(gamma) -
+            0.014615 * Math.cos(2 * gamma) -
+            0.040849 * Math.sin(2 * gamma));
 
-        var startEl = document.getElementById("placeStart");
-        var endEl = document.getElementById("placeEnd");
-        startEl.value = formatUTCDate(startUTC);
-        endEl.value = formatUTCDate(endUTC);
-        onPlacementDateChange("start");
-      }
+        var decl =
+          0.006918 -
+          0.399912 * Math.cos(gamma) +
+          0.070257 * Math.sin(gamma) -
+          0.006758 * Math.cos(2 * gamma) +
+          0.000907 * Math.sin(2 * gamma) -
+          0.002697 * Math.cos(3 * gamma) +
+          0.00148 * Math.sin(3 * gamma);
 
-      function onPlacementDateChange(changedField) {
-        var startEl = document.getElementById("placeStart");
-        var endEl = document.getElementById("placeEnd");
-        var infoEl = document.getElementById("placeRangeInfo");
+        var timeOffset = eqTime + 4.0 * lon - 60.0 * tz;
 
-        var startUTC = parseDateUTC(startEl.value);
-        var endUTC = parseDateUTC(endEl.value);
-        if (isNaN(startUTC)) return;
+        var tst =
+          dateObj.getHours() * 60.0 +
+          dateObj.getMinutes() +
+          dateObj.getSeconds() / 60.0 +
+          timeOffset;
 
-        var maxEndUTC = getMaxEndUTC(startUTC);
-        endEl.min = formatUTCDate(startUTC);
-        endEl.max = formatUTCDate(maxEndUTC);
+        var ha = tst / 4.0 - 180.0;
+        var haRad = (ha * Math.PI) / 180.0;
+        var latRad = (lat * Math.PI) / 180.0;
 
-        var clampedMsg = "";
-        if (isNaN(endUTC) || endUTC < startUTC) {
-          endUTC = startUTC;
-          endEl.value = formatUTCDate(endUTC);
-          clampedMsg = " (Adjusted: End date cannot be before Start date)";
-        } else if (endUTC > maxEndUTC) {
-          endUTC = maxEndUTC;
-          endEl.value = formatUTCDate(endUTC);
-          clampedMsg = " (Capped at maximum 1-year limit)";
-        }
+        var cosZenith =
+          Math.sin(latRad) * Math.sin(decl) +
+          Math.cos(latRad) * Math.cos(decl) * Math.cos(haRad);
+        cosZenith = Math.max(-1, Math.min(1, cosZenith));
+        var zenith = Math.acos(cosZenith);
+        var elevation = 90.0 - (zenith * 180.0) / Math.PI;
 
-        var days = Math.round((endUTC - startUTC) / 86400000) + 1;
-        infoEl.innerText =
-          "Selected period: " +
-          days +
-          (days === 1 ? " day" : " days") +
-          clampedMsg;
-        infoEl.className = clampedMsg ? "range-note warn" : "range-note";
-
-        calculatePlacement();
-      }
-
-      function azimuthToCardinal(az) {
-        var dirs = [
-          "True North (N)",
-          "North-Northeast (NNE)",
-          "Northeast (NE)",
-          "East-Northeast (ENE)",
-          "True East (E)",
-          "East-Southeast (ESE)",
-          "Southeast (SE)",
-          "South-Southeast (SSE)",
-          "True South (S)",
-          "South-Southwest (SSW)",
-          "Southwest (SW)",
-          "West-Southwest (WSW)",
-          "True West (W)",
-          "West-Northwest (WNW)",
-          "Northwest (NW)",
-          "North-Northwest (NNW)",
-        ];
-        var idx = Math.round((((az % 360) + 360) % 360) / 22.5) % 16;
-        return dirs[idx];
-      }
-
-      // Recalculate automatically whenever coordinates or timezone change
-      ["latitude", "longitude", "tzOffset"].forEach(function (fieldName) {
-        var el = document.querySelector("[name=" + fieldName + "]");
-        if (el) {
-          el.addEventListener("input", calculatePlacement);
-          el.addEventListener("change", calculatePlacement);
-        }
-      });
-
-      // Exact NOAA / Jean Meeus Solar Ephemeris for a given Julian Day (UTC)
-      function solarEphemeris(jd) {
-        var DEG2RAD = Math.PI / 180.0;
-        var RAD2DEG = 180.0 / Math.PI;
-        var T = (jd - 2451545.0) / 36525.0;
-
-        var L0 =
-          (((280.46646 + T * (36000.76983 + 0.0003032 * T)) % 360) + 360) % 360;
-        var M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
-        var e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
-
-        var Mrad = M * DEG2RAD;
-        var C =
-          Math.sin(Mrad) * (1.914602 - T * (0.004817 + 0.000014 * T)) +
-          Math.sin(2.0 * Mrad) * (0.019993 - 0.000101 * T) +
-          Math.sin(3.0 * Mrad) * 0.000289;
-
-        var sunTrueLon = L0 + C;
-        var nuRad = (M + C) * DEG2RAD;
-        var R = (1.000001018 * (1.0 - e * e)) / (1.0 + e * Math.cos(nuRad));
-
-        var omegaRad = (125.04 - 1934.136 * T) * DEG2RAD;
-        var lambda =
-          (sunTrueLon - 0.00569 - 0.00478 * Math.sin(omegaRad)) * DEG2RAD;
-
-        var eps0 =
-          23.0 +
-          (26.0 +
-            (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60.0) /
-            60.0;
-        var eps = (eps0 + 0.00256 * Math.cos(omegaRad)) * DEG2RAD;
-
-        var sinDec = Math.sin(eps) * Math.sin(lambda);
-        var decRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinDec)));
-
-        var y = Math.tan(eps * 0.5);
-        y = y * y;
-        var L0rad2 = 2.0 * L0 * DEG2RAD;
-        var eotMin =
-          4.0 *
-          RAD2DEG *
-          (y * Math.sin(L0rad2) -
-            2.0 * e * Math.sin(Mrad) +
-            4.0 * e * y * Math.sin(Mrad) * Math.cos(L0rad2) -
-            0.5 * y * y * Math.sin(2.0 * L0rad2) -
-            1.25 * e * e * Math.sin(2.0 * Mrad));
+        var azimuth =
+          (Math.atan2(
+            Math.sin(haRad),
+            Math.cos(haRad) * Math.sin(latRad) -
+              Math.tan(decl) * Math.cos(latRad),
+          ) *
+            180.0) /
+            Math.PI +
+          180.0;
+        azimuth = ((azimuth % 360.0) + 360.0) % 360.0;
 
         return {
-          decRad: decRad,
-          sinDec: sinDec,
-          cosDec: Math.cos(decRad),
-          R: R,
-          eotMin: eotMin,
+          elevation: elevation,
+          azimuth: azimuth,
+          decl: decl,
+          haRad: haRad,
         };
       }
 
-      // NOAA / Zimmerman atmospheric refraction correction (in degrees)
-      function calcRefractionDeg(hTrueDeg) {
-        if (hTrueDeg > 85.0) return 0.0;
-        var tanH = Math.tan((hTrueDeg * Math.PI) / 180.0);
-        if (hTrueDeg > 5.0) {
-          return (
-            (58.1 / tanH -
-              0.07 / (tanH * tanH * tanH) +
-              0.000086 / Math.pow(tanH, 5)) /
-            3600.0
-          );
-        }
-        if (hTrueDeg > -0.575) {
-          return (
-            (1735.0 +
-              hTrueDeg *
-                (-518.2 +
-                  hTrueDeg *
-                    (103.4 + hTrueDeg * (-12.79 + hTrueDeg * 0.711)))) /
-            3600.0
-          );
-        }
-        return -20.774 / tanH / 3600.0;
+      function azimuthToDir(az) {
+        var dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        var normAz = ((az % 360) + 360) % 360;
+        var idx = Math.round(normAz / 45) % 8;
+        return dirs[idx];
       }
 
-      function calculatePlacement() {
-        var lat = parseFloat(document.querySelector("[name=latitude]").value);
-        var lon = parseFloat(document.querySelector("[name=longitude]").value);
-        var tz = parseFloat(document.querySelector("[name=tzOffset]").value);
-        if (isNaN(lat)) lat = 22.5726;
-        if (isNaN(lon)) lon = 88.3639;
-        if (isNaN(tz)) tz = 5.5;
+      function findAngleCrossingTime(
+        lat,
+        lon,
+        tz,
+        targetAngle,
+        sunriseMin,
+        sunsetMin,
+        noonMin,
+        direction,
+      ) {
+        var today = getTimeInTZ(tz);
+        var yr = today.getFullYear();
+        var mo = today.getMonth();
+        var dy = today.getDate();
 
-        lat = Math.max(-89.9, Math.min(89.9, lat));
-        lon = Math.max(-180.0, Math.min(180.0, lon));
+        var startMin = direction === "rising" ? sunriseMin : noonMin;
+        var endMin = direction === "rising" ? noonMin : sunsetMin;
 
-        var latDir = lat >= 0 ? "N" : "S";
-        var lonDir = lon >= 0 ? "E" : "W";
-        var tzSign = tz >= 0 ? "+" : "";
-        document.getElementById("placeLocSummary").innerHTML =
-          Math.abs(lat).toFixed(4) +
-          "&deg; " +
-          latDir +
-          ", " +
-          Math.abs(lon).toFixed(4) +
-          "&deg; " +
-          lonDir +
-          " UTC " +
-          tzSign +
-          tz;
-
-        var startUTC = parseDateUTC(
-          document.getElementById("placeStart").value,
-        );
-        var endUTC = parseDateUTC(document.getElementById("placeEnd").value);
-        if (isNaN(startUTC) || isNaN(endUTC) || endUTC < startUTC) return;
-
-        var numDays = Math.min(
-          366,
-          Math.round((endUTC - startUTC) / 86400000) + 1,
-        );
-        var DEG2RAD = Math.PI / 180.0;
-        var RAD2DEG = 180.0 / Math.PI;
-
-        var latRad = lat * DEG2RAD;
-        var sinLat = Math.sin(latRad);
-        var cosLat = Math.cos(latRad);
-
-        // Standard refractive sunrise/sunset altitude (-0.8333 deg, matches Dusk2Dawn)
-        var SIN_H0 = Math.sin(-0.8333 * DEG2RAD);
-        // Linke turbidity TL = 3.5 -> (TL - 1) = 2.5 for Ineichen-Perez clear-sky model
-        var TL_FACTOR = 2.5;
-
-        var STEPS_PER_DAY = 24;
-        var maxSlices = numDays * STEPS_PER_DAY;
-        var sE = new Float64Array(maxSlices);
-        var sN = new Float64Array(maxSlices);
-        var sU = new Float64Array(maxSlices);
-        var dirWeight = new Float64Array(maxSlices);
-        var sliceCount = 0;
-
-        var totalIsoDHI = 0.0;
-        var totalGHI = 0.0;
-        var vecE = 0.0;
-        var vecN = 0.0;
-
-        var minNoonElev = 90.0;
-        var maxNoonElev = -90.0;
-        var sumNoonElev = 0.0;
-        var sumDaylightHrs = 0.0;
-        var sumNoonMin = 0.0;
-        var sumSrE = 0.0,
-          sumSrN = 0.0;
-        var sumSsE = 0.0,
-          sumSsN = 0.0;
-        var validDays = 0;
-
-        for (var d = 0; d < numDays; d++) {
-          var dayMs = startUTC + d * 86400000;
-          var jdBase = dayMs / 86400000.0 + 2440587.5;
-
-          // Step 1: Initial solar noon estimate -> refine with Equation of Time
-          var utcNoonEst = 12.0 - lon / 15.0;
-          var eph0 = solarEphemeris(jdBase + utcNoonEst / 24.0);
-          var utcSolarNoon = 12.0 - lon / 15.0 - eph0.eotMin / 60.0;
-          var jdNoon = jdBase + utcSolarNoon / 24.0;
-          var ephNoon = solarEphemeris(jdNoon);
-
-          var cosWs =
-            (SIN_H0 - sinLat * ephNoon.sinDec) /
-            Math.max(1e-7, cosLat * ephNoon.cosDec);
-          if (cosWs >= 1.0) continue; // Polar night
-          var ws = cosWs <= -1.0 ? Math.PI : Math.acos(cosWs);
-
-          var halfDayHrs = (ws * RAD2DEG) / 15.0;
-          var ephSr = solarEphemeris(jdNoon - halfDayHrs / 24.0);
-          var ephSs = solarEphemeris(jdNoon + halfDayHrs / 24.0);
-
-          validDays++;
-          sumDaylightHrs += 2.0 * halfDayHrs;
-          sumNoonMin += ((((utcSolarNoon + tz) * 60.0) % 1440) + 1440) % 1440;
-
-          // Refracted solar noon elevation
-          var rawNoonU = sinLat * ephNoon.sinDec + cosLat * ephNoon.cosDec;
-          var noonTrueDeg =
-            Math.asin(Math.max(-1.0, Math.min(1.0, rawNoonU))) * RAD2DEG;
-          var noonAppDeg = Math.min(
-            90.0,
-            noonTrueDeg + calcRefractionDeg(noonTrueDeg),
+        // Floating-point binary search prevents Math.round boundary lock
+        for (var i = 0; i < 16; i++) {
+          var midMin = (startMin + endMin) / 2.0;
+          var totalSec = Math.round(midMin * 60);
+          var d = new Date(
+            yr,
+            mo,
+            dy,
+            Math.floor(totalSec / 3600),
+            Math.floor((totalSec % 3600) / 60),
+            totalSec % 60,
           );
-          if (noonAppDeg < minNoonElev) minNoonElev = noonAppDeg;
-          if (noonAppDeg > maxNoonElev) maxNoonElev = noonAppDeg;
-          sumNoonElev += noonAppDeg;
-
-          // Exact sunrise & sunset horizontal vectors using actual sunrise/sunset declination
-          var cosWsActual = Math.cos(ws);
-          var sinWsActual = Math.sin(ws);
-          sumSrE += ephSr.cosDec * sinWsActual;
-          sumSrN += cosLat * ephSr.sinDec - sinLat * ephSr.cosDec * cosWsActual;
-          sumSsE += -ephSs.cosDec * sinWsActual;
-          sumSsN += cosLat * ephSs.sinDec - sinLat * ephSs.cosDec * cosWsActual;
-
-          // 3-point Lagrange quadratic coefficients across [-1 (sunrise), 0 (noon), +1 (sunset)]
-          var dec0 = ephNoon.decRad;
-          var dec1 = 0.5 * (ephSs.decRad - ephSr.decRad);
-          var dec2 = 0.5 * (ephSr.decRad - 2.0 * ephNoon.decRad + ephSs.decRad);
-
-          var r0 = ephNoon.R;
-          var r1 = 0.5 * (ephSs.R - ephSr.R);
-          var r2 = 0.5 * (ephSr.R - 2.0 * ephNoon.R + ephSs.R);
-
-          var dtHours = (2.0 * halfDayHrs) / STEPS_PER_DAY;
-
-          for (var m = 0; m < STEPS_PER_DAY; m++) {
-            var u = -1.0 + (2.0 * (m + 0.5)) / STEPS_PER_DAY;
-            var w = u * ws;
-            var dec = dec0 + u * (dec1 + u * dec2);
-            var R = r0 + u * (r1 + u * r2);
-
-            var sinDec = Math.sin(dec);
-            var cosDec = Math.cos(dec);
-            var sinW = Math.sin(w);
-            var cosW = Math.cos(w);
-
-            var rawE = -cosDec * sinW;
-            var rawN = cosLat * sinDec - sinLat * cosDec * cosW;
-            var rawU = sinLat * sinDec + cosLat * cosDec * cosW;
-
-            var hTrue =
-              Math.asin(Math.max(-1.0, Math.min(1.0, rawU))) * RAD2DEG;
-            var hApp = hTrue + calcRefractionDeg(hTrue);
-            if (hApp <= 0.05) continue;
-
-            var hAppRad = hApp * DEG2RAD;
-            var upApp = Math.sin(hAppRad);
-            var cosHApp = Math.cos(hAppRad);
-            var hNorm = Math.sqrt(rawE * rawE + rawN * rawN);
-            var ux = hNorm > 1e-9 ? (rawE / hNorm) * cosHApp : 0.0;
-            var uy = hNorm > 1e-9 ? (rawN / hNorm) * cosHApp : 0.0;
-
-            // Ineichen-Perez (2002) clear-sky DNI, GHI & DHI (in kWh/m2 per step)
-            var E0 = 1.361 / (R * R);
-            var am =
-              1.0 / (upApp + 0.50572 * Math.pow(hApp + 6.07995, -1.6364));
-            var ghiInst =
-              0.868 * E0 * upApp * Math.exp(-0.0387 * am * TL_FACTOR);
-            var dniInst = 0.827 * E0 * Math.exp(-0.09 * am * TL_FACTOR);
-            var dhiInst = Math.max(0.0, ghiInst - dniInst * upApp);
-
-            var dni = dniInst * dtHours;
-            var dhi = dhiInst * dtHours;
-            var ghi = ghiInst * dtHours;
-
-            // Hay-Davies anisotropy index separates circumsolar vs isotropic sky diffuse
-            var ai = Math.min(0.92, dniInst / E0);
-            var dirW = dni + dhi * (ai / Math.max(0.02, upApp));
-
-            sE[sliceCount] = ux;
-            sN[sliceCount] = uy;
-            sU[sliceCount] = upApp;
-            dirWeight[sliceCount] = dirW;
-            sliceCount++;
-
-            vecE += dirW * ux;
-            vecN += dirW * uy;
-            totalIsoDHI += dhi * (1.0 - ai);
-            totalGHI += ghi;
+          var elev = calcSunPosition(lat, lon, tz, d).elevation;
+          if (elev < targetAngle) {
+            if (direction === "rising") startMin = midMin;
+            else endMin = midMin;
+          } else {
+            if (direction === "rising") endMin = midMin;
+            else startMin = midMin;
           }
         }
+        return Math.round((startMin + endMin) / 2.0);
+      }
 
-        if (sliceCount === 0 || validDays === 0) return;
+      function formatMin(m) {
+        var total = ((Math.round(m) % 1440) + 1440) % 1440;
+        var h = Math.floor(total / 60);
+        var mm = total % 60;
+        return (h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm;
+      }
 
-        // Plane-of-Array energy evaluator with physical Fresnel glass IAM & ground albedo
-        function evalPOA(tiltDeg, azDeg) {
-          var bRad = tiltDeg * DEG2RAD;
-          var gRad = azDeg * DEG2RAD;
-          var sinB = Math.sin(bRad);
-          var cosB = Math.cos(bRad);
-          var nE = sinB * Math.sin(gRad);
-          var nN = sinB * Math.cos(gRad);
-          var nU = cosB;
+      // Computes non-circular Sun coordinates on the globe relative to off-center Green Dot (0, yLoc)
+      function calcEarthSunPoint(azDeg, elevDeg, yLoc, maxOrbitR) {
+        var azRad = (azDeg * Math.PI) / 180.0;
+        var sinA = Math.sin(azRad);
+        var cosA = Math.cos(azRad);
 
-          var dirSum = 0.0;
-          for (var i = 0; i < sliceCount; i++) {
-            var dot = sE[i] * nE + sN[i] * nN + sU[i] * nU;
-            if (dot > 0.0) {
-              // Schlick physical Fresnel IAM for AR-coated solar tempered glass
-              var u1 = 1.0 - dot;
-              var u2 = u1 * u1;
-              var iam = 1.0 - u2 * u2 * u1;
-              dirSum += dirWeight[i] * dot * iam;
-            }
+        // Distance from (0, yLoc) to the outer orbit boundary of radius maxOrbitR in direction azRad
+        var disc = Math.max(
+          0,
+          maxOrbitR * maxOrbitR - yLoc * yLoc * sinA * sinA,
+        );
+        var rBoundary = yLoc * cosA + Math.sqrt(disc);
+
+        // Modulate radius by solar elevation so higher elevation pulls the path inward (non-circular arc)
+        var elevClamped = Math.max(0, Math.min(89, elevDeg));
+        var elevRad = (elevClamped * Math.PI) / 180.0;
+        var r = rBoundary * (0.42 + 0.52 * Math.cos(elevRad));
+
+        return {
+          x: r * sinA,
+          y: yLoc - r * cosA,
+        };
+      }
+
+      function updateSunMap(
+        sunriseStr,
+        sunsetStr,
+        sunriseMin,
+        sunsetMin,
+        sunPercent,
+        lux,
+        lat,
+        lon,
+        tz,
+      ) {
+        document.getElementById("sunriseTime").textContent =
+          sunriseStr || "--:--";
+        document.getElementById("sunsetTime").textContent =
+          sunsetStr || "--:--";
+
+        var validSunTimes =
+          sunriseMin !== undefined &&
+          sunsetMin !== undefined &&
+          sunriseMin >= 0 &&
+          sunsetMin > sunriseMin;
+
+        var noonMin = -1;
+        var left45 = -1;
+        var right45 = -1;
+        var hasOptimalZone = false;
+
+        var optPath = document.getElementById("optimalZonePath");
+        var line45L = document.getElementById("line45Left");
+        var line45R = document.getElementById("line45Right");
+
+        if (validSunTimes) {
+          noonMin = Math.round((sunriseMin + sunsetMin) / 2);
+          document.getElementById("solarNoonTime").textContent =
+            formatMin(noonMin);
+
+          var today = getTimeInTZ(tz);
+          var noonDate = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            Math.floor(noonMin / 60),
+            noonMin % 60,
+            0,
+          );
+          var maxElev = calcSunPosition(lat, lon, tz, noonDate).elevation;
+
+          if (maxElev >= 45) {
+            hasOptimalZone = true;
+            left45 = findAngleCrossingTime(
+              lat,
+              lon,
+              tz,
+              45,
+              sunriseMin,
+              sunsetMin,
+              noonMin,
+              "rising",
+            );
+            right45 = findAngleCrossingTime(
+              lat,
+              lon,
+              tz,
+              45,
+              sunriseMin,
+              sunsetMin,
+              noonMin,
+              "setting",
+            );
+            document.getElementById("time45Left").textContent =
+              formatMin(left45);
+            document.getElementById("time45Right").textContent =
+              formatMin(right45);
+            if (optPath) optPath.style.display = "";
+            if (line45L) line45L.style.display = "";
+            if (line45R) line45R.style.display = "";
+          } else {
+            document.getElementById("time45Left").textContent = "--:--";
+            document.getElementById("time45Right").textContent = "--:--";
+            if (optPath) optPath.style.display = "none";
+            if (line45L) line45L.style.display = "none";
+            if (line45R) line45R.style.display = "none";
           }
-          var skyDiffuse = totalIsoDHI * 0.5 * (1.0 + cosB) * 0.955;
-          var groundRefl = totalGHI * 0.2 * 0.5 * (1.0 - cosB) * 0.93;
-          return dirSum + skyDiffuse + groundRefl;
-        }
-
-        // Analytical horizontal sun-vector seed prevents t=0 flat tie-breaking bugs
-        var vecAz =
-          Math.abs(vecE) + Math.abs(vecN) > 1e-9
-            ? (((Math.atan2(vecE, vecN) * RAD2DEG) % 360) + 360) % 360
-            : lat >= 0
-              ? 180.0
-              : 0.0;
-
-        var flatEnergy = evalPOA(0.0, vecAz);
-        var bestEnergy = flatEnergy;
-        var bestTilt = 0.0;
-        var bestAz = vecAz;
-
-        // Stage 1: Coarse scan over strictly positive tilts (t >= 1) + exact vecAz line
-        var coarseTilts = [
-          1, 3, 6, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82,
-          90,
-        ];
-        for (var az = 0; az < 360; az += 15) {
-          for (var ti = 0; ti < coarseTilts.length; ti++) {
-            var e1 = evalPOA(coarseTilts[ti], az);
-            if (e1 > bestEnergy) {
-              bestEnergy = e1;
-              bestTilt = coarseTilts[ti];
-              bestAz = az;
-            }
-          }
-        }
-        for (var tv = 0; tv < coarseTilts.length; tv++) {
-          var ev = evalPOA(coarseTilts[tv], vecAz);
-          if (ev > bestEnergy) {
-            bestEnergy = ev;
-            bestTilt = coarseTilts[tv];
-            bestAz = vecAz;
-          }
-        }
-
-        // Stage 2: Medium refinement (2 deg azimuth, 1 deg tilt)
-        var cAz = bestAz;
-        var cTilt = bestTilt;
-        for (var dAz = -15; dAz <= 15; dAz += 2) {
-          var candAz = (((cAz + dAz) % 360) + 360) % 360;
-          for (var dT = -5; dT <= 5; dT += 1) {
-            var candT = cTilt + dT;
-            if (candT < 0 || candT > 90) continue;
-            var e2 = evalPOA(candT, candAz);
-            if (e2 > bestEnergy) {
-              bestEnergy = e2;
-              bestTilt = candT;
-              bestAz = candAz;
-            }
-          }
-        }
-
-        // Stage 3: Fine refinement (0.2 deg azimuth, 0.1 deg tilt)
-        cAz = bestAz;
-        cTilt = bestTilt;
-        for (var fAz = -2.0; fAz <= 2.001; fAz += 0.2) {
-          var fineAz = (((cAz + fAz) % 360) + 360) % 360;
-          for (var fT = -1.2; fT <= 1.201; fT += 0.1) {
-            var fineT = cTilt + fT;
-            if (fineT < 0 || fineT > 90) continue;
-            var e3 = evalPOA(fineT, fineAz);
-            if (e3 > bestEnergy) {
-              bestEnergy = e3;
-              bestTilt = fineT;
-              bestAz = fineAz;
-            }
-          }
-        }
-
-        // Stage 4: Ultra-fine 0.05 deg polish
-        cAz = bestAz;
-        cTilt = bestTilt;
-        for (var pAz = -0.2; pAz <= 0.201; pAz += 0.05) {
-          var polAz = (((cAz + pAz) % 360) + 360) % 360;
-          for (var pT = -0.15; pT <= 0.151; pT += 0.05) {
-            var polT = cTilt + pT;
-            if (polT < 0 || polT > 90) continue;
-            var e4 = evalPOA(polT, polAz);
-            if (e4 > bestEnergy) {
-              bestEnergy = e4;
-              bestTilt = polT;
-              bestAz = polAz;
-            }
-          }
-        }
-
-        if (bestTilt < 0.3) {
-          bestAz = vecAz;
-        }
-        if (bestAz >= 359.95) bestAz = 0.0;
-
-        var gainPct =
-          flatEnergy > 0
-            ? ((bestEnergy - flatEnergy) / flatEnergy) * 100.0
-            : 0.0;
-        var dailyKwh = bestEnergy / validDays;
-
-        if (bestTilt < 0.5) {
-          document.getElementById("recAzimuthVal").innerHTML =
-            bestAz.toFixed(1) + "&deg;";
-          document.getElementById("recAzimuthDir").innerText =
-            "Flat (" + azimuthToCardinal(bestAz) + ")";
         } else {
-          document.getElementById("recAzimuthVal").innerHTML =
-            bestAz.toFixed(1) + "&deg;";
-          document.getElementById("recAzimuthDir").innerText =
-            azimuthToCardinal(bestAz);
+          document.getElementById("solarNoonTime").textContent = "--:--";
+          document.getElementById("time45Left").textContent = "--:--";
+          document.getElementById("time45Right").textContent = "--:--";
         }
 
-        document.getElementById("recTiltVal").innerHTML =
-          bestTilt.toFixed(1) + "&deg;";
-        document.getElementById("recTiltSub").innerText =
-          bestTilt < 10.0
-            ? "Low Tilt (10°+ advised for rain cleaning)"
-            : "From Horizontal Ground";
+        var svgEl = document.querySelector(".sun-arc-svg");
 
-        // Update Compass SVG
-        document
-          .getElementById("compassArrow")
-          .setAttribute("transform", "rotate(" + bestAz.toFixed(1) + " 50 50)");
+        document.getElementById("sunMapPercent").textContent =
+          sunPercent != null ? Math.round(sunPercent) + "%" : "--%";
+        var luxText = lux != null ? Math.round(lux) + " lx" : "-- lx";
+        var arrowHtml = '<span id="luxArrow" class="lux-arrow"></span>';
+        if (lux != null && prevLux != null) {
+          if (lux > prevLux) {
+            arrowHtml =
+              '<span id="luxArrow" class="lux-arrow up">&#9650;</span>';
+          } else if (lux < prevLux) {
+            arrowHtml =
+              '<span id="luxArrow" class="lux-arrow down">&#9660;</span>';
+          }
+        }
+        document.getElementById("sunMapLux").innerHTML =
+          luxText + " " + arrowHtml;
+        prevLux = lux;
 
-        // Update Tilt Profile SVG
-        var pRad = bestTilt * DEG2RAD;
-        var x2 = 20 + 72 * Math.cos(pRad);
-        var y2 = 80 - 72 * Math.sin(pRad);
-        var sx = 20 + 48 * Math.cos(pRad);
-        var sy = 80 - 48 * Math.sin(pRad);
-        var ax = 20 + 28 * Math.cos(pRad);
-        var ay = 80 - 28 * Math.sin(pRad);
+        if (!validSunTimes) {
+          document.getElementById("sunRemaining").textContent = "--";
+          document.getElementById("sunMapAngle").textContent = "--°";
+          return;
+        }
 
-        var plateEl = document.getElementById("tiltPlate");
-        plateEl.setAttribute("x2", x2.toFixed(1));
-        plateEl.setAttribute("y2", y2.toFixed(1));
+        var now = getTimeInTZ(tz);
+        var nowMin =
+          now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60.0;
+        var totalDay = sunsetMin - sunriseMin;
+        var progress = 0;
 
-        var strutEl = document.getElementById("tiltStrut");
-        strutEl.setAttribute("x1", sx.toFixed(1));
-        strutEl.setAttribute("x2", sx.toFixed(1));
-        strutEl.setAttribute("y2", sy.toFixed(1));
+        var sunDot = document.getElementById("sunDot");
+        var sunGlow = document.getElementById("sunGlow");
+        var sunGlowOuter = document.getElementById("sunGlowOuter");
+        var arcActive = document.getElementById("sunArcActive");
+        var remainEl = document.getElementById("sunRemaining");
 
-        var arcEl = document.getElementById("tiltArc");
-        if (bestTilt > 2.0) {
-          arcEl.setAttribute(
+        if (nowMin < sunriseMin) {
+          var totalMins = sunsetMin - sunriseMin;
+          remainEl.textContent =
+            Math.floor(totalMins / 60) + "h " + (totalMins % 60) + "m";
+          progress = 0;
+        } else if (nowMin >= sunsetMin) {
+          remainEl.textContent = "Set";
+          progress = 1;
+        } else {
+          var minsLeft = Math.ceil(sunsetMin - nowMin);
+          remainEl.textContent =
+            Math.floor(minsLeft / 60) + "h " + (minsLeft % 60) + "m";
+
+          // Piecewise progress so live Sun Dot aligns with the 45° lines & Solar Noon
+          if (
+            hasOptimalZone &&
+            left45 > sunriseMin &&
+            right45 < sunsetMin &&
+            right45 > left45
+          ) {
+            if (nowMin <= left45) {
+              progress = 0.25 * ((nowMin - sunriseMin) / (left45 - sunriseMin));
+            } else if (nowMin <= noonMin) {
+              progress = 0.25 + 0.25 * ((nowMin - left45) / (noonMin - left45));
+            } else if (nowMin <= right45) {
+              progress =
+                0.5 + 0.25 * ((nowMin - noonMin) / (right45 - noonMin));
+            } else {
+              progress =
+                0.75 + 0.25 * ((nowMin - right45) / (sunsetMin - right45));
+            }
+          } else {
+            progress = (nowMin - sunriseMin) / totalDay;
+          }
+        }
+
+        var sunPos = calcSunPosition(lat, lon, tz, now);
+        var sunAngle = Math.max(0, sunPos.elevation);
+        var sunAzimuth = sunPos.azimuth;
+        document.getElementById("sunMapAngle").textContent =
+          Math.round(sunAngle) + "°";
+
+        var dirStr = azimuthToDir(sunAzimuth);
+        document.getElementById("azimuthLabel").textContent =
+          dirStr + " " + Math.round(sunAzimuth) + "°";
+
+        // --- MINI EARTH GLOBE UPDATES ---
+        var earthR = 30.0;
+        var latRad = (lat * Math.PI) / 180.0;
+
+        // 1. Saved Location (Green Dot): fixed on vertical axis (x=0), above/below Equator (y=0)
+        var yLoc = -earthR * Math.sin(latRad);
+        yLoc = Math.max(-25.0, Math.min(25.0, yLoc));
+        var locDot = document.getElementById("locationDot");
+        var locHalo = document.getElementById("locationHalo");
+        if (locDot) locDot.setAttribute("cy", yLoc.toFixed(2));
+        if (locHalo) locHalo.setAttribute("cy", yLoc.toFixed(2));
+
+        // 2. Red Prime Meridian (0° Longitude) relative to current saved longitude
+        var pmPath = document.getElementById("primeMeridianPath");
+        if (pmPath) {
+          var deltaPM = (((-lon % 360.0) + 540.0) % 360.0) - 180.0; // [-180, 180]
+          var pmFront = Math.abs(deltaPM) <= 90.0;
+          var foldedDeg = deltaPM;
+          if (deltaPM > 90.0) foldedDeg = 180.0 - deltaPM;
+          else if (deltaPM < -90.0) foldedDeg = -180.0 - deltaPM;
+
+          // Scaled stereographic-style horizontal offset so longitudes near ±90° remain clearly visible inside the rim
+          var pmRatio = Math.sin((foldedDeg * 0.78 * Math.PI) / 180.0);
+          var rxPM = Math.abs(earthR * pmRatio);
+          if (rxPM < 0.3) {
+            pmPath.setAttribute("d", "M 0 -30 L 0 30");
+          } else {
+            var sweepPM = pmRatio >= 0 ? 1 : 0;
+            pmPath.setAttribute(
+              "d",
+              "M 0 -30 A " + rxPM.toFixed(2) + " 30 0 0 " + sweepPM + " 0 30",
+            );
+          }
+          pmPath.setAttribute("stroke-dasharray", pmFront ? "0" : "1.8, 1.8");
+          pmPath.setAttribute(
+            "stroke",
+            pmFront ? "rgba(255, 75, 75, 0.8)" : "rgba(255, 75, 75, 0.4)",
+          );
+        }
+
+        // 3. Recalculate Non-Circular Sun Travelling Path & Current Yellow Sun Dot
+        var maxOrbitR = 26.5;
+        var isDaytime = nowMin >= sunriseMin && nowMin < sunsetMin;
+        var curSunPt = calcEarthSunPoint(
+          sunAzimuth,
+          sunPos.elevation,
+          yLoc,
+          maxOrbitR,
+        );
+
+        var compassDot = document.getElementById("compassDot");
+        compassDot.setAttribute("cx", curSunPt.x.toFixed(2));
+        compassDot.setAttribute("cy", curSunPt.y.toFixed(2));
+        compassDot.setAttribute("opacity", isDaytime ? "0.95" : "0.35");
+
+        var compassRadiusLine = document.getElementById("compassRadiusLine");
+        if (compassRadiusLine) {
+          compassRadiusLine.setAttribute("x1", "0");
+          compassRadiusLine.setAttribute("y1", yLoc.toFixed(2));
+          compassRadiusLine.setAttribute("x2", curSunPt.x.toFixed(2));
+          compassRadiusLine.setAttribute("y2", curSunPt.y.toFixed(2));
+          compassRadiusLine.setAttribute("opacity", isDaytime ? "0.85" : "0.3");
+        }
+
+        // Build non-circular daytime trajectory curve from Sunrise to Sunset on the globe
+        var earthSunPathEl = document.getElementById("earthSunPath");
+        var earthSunPathActiveEl =
+          document.getElementById("earthSunPathActive");
+        if (earthSunPathEl && earthSunPathActiveEl) {
+          var pathSamples = 24;
+          var fullCurveD = "";
+          var activeCurveD = "";
+          var yrNow = now.getFullYear();
+          var moNow = now.getMonth();
+          var dyNow = now.getDate();
+
+          for (var s = 0; s <= pathSamples; s++) {
+            var sampleMin = sunriseMin + (totalDay * s) / pathSamples;
+            var sSec = Math.round(sampleMin * 60);
+            var sDate = new Date(
+              yrNow,
+              moNow,
+              dyNow,
+              Math.floor(sSec / 3600),
+              Math.floor((sSec % 3600) / 60),
+              sSec % 60,
+            );
+            var sPos = calcSunPosition(lat, lon, tz, sDate);
+            var sPt = calcEarthSunPoint(
+              sPos.azimuth,
+              sPos.elevation,
+              yLoc,
+              maxOrbitR,
+            );
+            var cmd = s === 0 ? "M " : " L ";
+            fullCurveD += cmd + sPt.x.toFixed(1) + " " + sPt.y.toFixed(1);
+            if (isDaytime && sampleMin <= nowMin) {
+              activeCurveD += cmd + sPt.x.toFixed(1) + " " + sPt.y.toFixed(1);
+            }
+          }
+          if (isDaytime && activeCurveD !== "") {
+            activeCurveD +=
+              " L " + curSunPt.x.toFixed(1) + " " + curSunPt.y.toFixed(1);
+          }
+          earthSunPathEl.setAttribute("d", fullCurveD);
+          earthSunPathActiveEl.setAttribute(
             "d",
-            "M 48 80 A 28 28 0 0 0 " + ax.toFixed(1) + " " + ay.toFixed(1),
+            isDaytime ? activeCurveD : "M 0 0",
           );
+        }
+
+        // 4. Live 3D Spherical Day & Night Shadow (passes through off-center Green Dot at Sunrise/Sunset)
+        var nightPath = document.getElementById("earthNightPath");
+        var terminatorPath = document.getElementById("earthTerminator");
+        if (nightPath && terminatorPath) {
+          var decl = sunPos.decl;
+          var haRad = sunPos.haRad;
+
+          // 3D unit vector to Sun in globe frame (+X: East, -Y: North, +Z: Observer Meridian)
+          var Sx = -Math.cos(decl) * Math.sin(haRad);
+          var Sy = -Math.sin(decl);
+          var Sz = Math.cos(decl) * Math.cos(haRad);
+          var rho = Math.sqrt(Sx * Sx + Sy * Sy);
+          var Rpad = earthR + 1.0;
+
+          if (rho < 0.001) {
+            if (Sz >= 0) {
+              nightPath.setAttribute("d", "M 0 0");
+              terminatorPath.setAttribute("d", "M 0 0");
+            } else {
+              nightPath.setAttribute(
+                "d",
+                "M -31 -31 L 31 -31 L 31 31 L -31 31 Z",
+              );
+              terminatorPath.setAttribute("d", "M 0 0");
+            }
+          } else {
+            var ux = Sx / rho;
+            var uy = Sy / rho;
+            var vx = -uy;
+            var vy = ux;
+
+            var termPts = 20;
+            var termD = "";
+            for (var k = 0; k <= termPts; k++) {
+              var theta = (Math.PI * k) / termPts;
+              var cosT = Math.cos(theta);
+              var sinT = Math.sin(theta);
+              var tx = Rpad * cosT * vx - Rpad * Sz * sinT * ux;
+              var ty = Rpad * cosT * vy - Rpad * Sz * sinT * uy;
+              termD +=
+                (k === 0 ? "M " : " L ") + tx.toFixed(2) + " " + ty.toFixed(2);
+            }
+
+            // Close polygon around the night hemisphere limb (-u direction)
+            var nightD = termD;
+            var limbPts = 12;
+            for (var m = 1; m <= limbPts; m++) {
+              var phiL = Math.PI + (Math.PI * m) / limbPts;
+              var lx = Rpad * Math.cos(phiL) * vx + Rpad * Math.sin(phiL) * ux;
+              var ly = Rpad * Math.cos(phiL) * vy + Rpad * Math.sin(phiL) * uy;
+              nightD += " L " + lx.toFixed(2) + " " + ly.toFixed(2);
+            }
+            nightD += " Z";
+
+            nightPath.setAttribute("d", nightD);
+            terminatorPath.setAttribute("d", termD);
+          }
+        }
+
+        progress = Math.max(0, Math.min(1, progress));
+
+        var t = progress;
+        var x = (1 - t) * (1 - t) * 15 + 2 * (1 - t) * t * 150 + t * t * 285;
+        var y = (1 - t) * (1 - t) * 140 + 2 * (1 - t) * t * -40 + t * t * 140;
+
+        sunDot.setAttribute("cx", x.toFixed(1));
+        sunDot.setAttribute("cy", y.toFixed(1));
+        sunGlow.setAttribute("cx", x.toFixed(1));
+        sunGlow.setAttribute("cy", y.toFixed(1));
+        sunGlowOuter.setAttribute("cx", x.toFixed(1));
+        sunGlowOuter.setAttribute("cy", y.toFixed(1));
+
+        if (progress > 0 && progress < 1) {
+          var pathD = "M 15 140";
+          var steps = Math.max(1, Math.round(t * 50));
+          for (var i = 1; i <= steps; i++) {
+            var st = (t * i) / steps;
+            var sx =
+              (1 - st) * (1 - st) * 15 +
+              2 * (1 - st) * st * 150 +
+              st * st * 285;
+            var sy =
+              (1 - st) * (1 - st) * 140 +
+              2 * (1 - st) * st * -40 +
+              st * st * 140;
+            pathD += " L " + sx.toFixed(1) + " " + sy.toFixed(1);
+          }
+          arcActive.setAttribute("d", pathD);
+          arcActive.setAttribute("opacity", "0.6");
+          sunDot.setAttribute("opacity", "0.95");
+          sunGlow.setAttribute("opacity", "0.2");
+          sunGlowOuter.setAttribute("opacity", "0.08");
+          svgEl.classList.remove("sun-glow-off");
+        } else if (progress >= 1) {
+          arcActive.setAttribute("d", "M 15 140 Q 150 -40 285 140");
+          arcActive.setAttribute("opacity", "0.2");
+          sunDot.setAttribute("opacity", "0.3");
+          sunGlow.setAttribute("opacity", "0.05");
+          sunGlowOuter.setAttribute("opacity", "0");
+          svgEl.classList.add("sun-glow-off");
         } else {
-          arcEl.setAttribute("d", "");
+          arcActive.setAttribute("d", "M 0 0");
+          arcActive.setAttribute("opacity", "0");
+          sunDot.setAttribute("opacity", "0.4");
+          sunGlow.setAttribute("opacity", "0.08");
+          sunGlowOuter.setAttribute("opacity", "0");
+          svgEl.classList.add("sun-glow-off");
         }
-
-        // Update Summary Stats
-        var avgNoon = sumNoonElev / validDays;
-        document.getElementById("statNoonElev").innerHTML =
-          minNoonElev.toFixed(1) +
-          "&deg; &ndash; " +
-          maxNoonElev.toFixed(1) +
-          "&deg; (Avg " +
-          avgNoon.toFixed(1) +
-          "&deg;)";
-
-        var avgSr =
-          (((Math.atan2(sumSrE, sumSrN) * RAD2DEG) % 360) + 360) % 360;
-        var avgSs =
-          (((Math.atan2(sumSsE, sumSsN) * RAD2DEG) % 360) + 360) % 360;
-        document.getElementById("statSunBearing").innerHTML =
-          avgSr.toFixed(1) + "&deg; E &rarr; " + avgSs.toFixed(1) + "&deg; W";
-
-        var avgHrs = sumDaylightHrs / validDays;
-        var dH = Math.floor(avgHrs);
-        var dM = Math.round((avgHrs - dH) * 60);
-        if (dM === 60) {
-          dH++;
-          dM = 0;
-        }
-        var avgNoonClock = Math.round(sumNoonMin / validDays) % 1440;
-        var nH = Math.floor(avgNoonClock / 60);
-        var nM = avgNoonClock % 60;
-        var noonStr =
-          String(nH).padStart(2, "0") + ":" + String(nM).padStart(2, "0");
-
-        document.getElementById("statDaylight").innerText =
-          dH + "h " + String(dM).padStart(2, "0") + "m (Noon " + noonStr + ")";
-
-        document.getElementById("statTiltGain").innerHTML =
-          "+" +
-          Math.max(0.0, gainPct).toFixed(1) +
-          "% (~" +
-          dailyKwh.toFixed(2) +
-          " kWh/m&sup2;/d)";
       }
     </script>
+    <div class="setup-btn" onclick="openSetup()">
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"
+        />
+      </svg>
+    </div>
   </body>
 </html>
