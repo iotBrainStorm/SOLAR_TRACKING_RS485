@@ -109,9 +109,16 @@
         margin-bottom: 8px;
       }
 
-      .sidebar-footer .btn-save:hover {
+      .sidebar-footer .btn-save:hover:not(:disabled) {
         transform: scale(1.02);
         box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+      }
+
+      .sidebar-footer .btn-save:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
       }
 
       .sidebar-footer .btn-reset {
@@ -622,7 +629,9 @@
   <body>
     <!-- Mobile Header -->
     <div class="mobile-header">
-      <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+      <button type="button" class="hamburger" onclick="toggleSidebar()">
+        &#9776;
+      </button>
       <span class="mobile-title">Configuration</span>
     </div>
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
@@ -721,7 +730,13 @@
             <div class="sub-section-title">Timing</div>
             <div class="form-group">
               <label>Reading Interval (seconds)</label>
-              <input type="number" name="ahtInterval" min="1" value="1" />
+              <input
+                type="number"
+                name="ahtInterval"
+                min="1"
+                value="1"
+                required
+              />
             </div>
           </div>
         </div>
@@ -743,23 +758,46 @@
                   name="ntcResistance"
                   min="100"
                   max="65535"
+                  step="any"
                   placeholder="10000"
                   required
                 />
               </div>
               <div class="form-group">
                 <label>Beta Constant</label>
-                <input type="number" name="betaConstant" value="3435" />
+                <input
+                  type="number"
+                  name="betaConstant"
+                  min="100"
+                  max="65535"
+                  step="any"
+                  value="3435"
+                  required
+                />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label>Offset (&deg;C)</label>
-                <input type="number" name="ntcOffset" step="0.1" value="0" />
+                <input
+                  type="number"
+                  name="ntcOffset"
+                  min="-50"
+                  max="50"
+                  step="0.01"
+                  value="0"
+                  required
+                />
               </div>
               <div class="form-group">
                 <label>Reading Interval (seconds)</label>
-                <input type="number" name="ntcInterval" min="1" value="1" />
+                <input
+                  type="number"
+                  name="ntcInterval"
+                  min="1"
+                  value="1"
+                  required
+                />
               </div>
             </div>
           </div>
@@ -803,8 +841,8 @@
                   <input
                     type="number"
                     name="minLuxValue"
-                    min="1"
-                    placeholder="e.g. 100"
+                    min="0"
+                    placeholder="e.g. 0"
                   />
                 </div>
               </div>
@@ -816,7 +854,13 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Reading Interval (seconds)</label>
-                <input type="number" name="luxInterval" min="1" value="1" />
+                <input
+                  type="number"
+                  name="luxInterval"
+                  min="1"
+                  value="1"
+                  required
+                />
               </div>
               <div class="form-group">
                 <label>Update Threshold (min: 10)</label>
@@ -825,6 +869,7 @@
                   name="luxUpdateThreshold"
                   min="10"
                   value="200"
+                  required
                 />
               </div>
             </div>
@@ -835,6 +880,7 @@
                 name="luxSaveInterval"
                 min="300"
                 value="300"
+                required
               />
             </div>
           </div>
@@ -885,7 +931,13 @@
               </div>
               <div class="form-group">
                 <label>Port</label>
-                <input type="number" name="nodeRedPort" placeholder="1880" />
+                <input
+                  type="number"
+                  name="nodeRedPort"
+                  min="1"
+                  max="65535"
+                  placeholder="1880"
+                />
               </div>
             </div>
             <div class="form-group">
@@ -895,6 +947,7 @@
                 name="nodeRedInterval"
                 min="1"
                 placeholder="10"
+                required
               />
             </div>
           </div>
@@ -925,6 +978,7 @@
                   min="1"
                   max="247"
                   value="1"
+                  required
                 />
               </div>
               <div class="form-group">
@@ -940,7 +994,13 @@
             </div>
             <div class="form-group">
               <label>Share Interval (seconds)</label>
-              <input type="number" name="modbusInterval" min="1" value="5" />
+              <input
+                type="number"
+                name="modbusInterval"
+                min="1"
+                value="5"
+                required
+              />
             </div>
           </div>
         </div>
@@ -959,8 +1019,11 @@
                 <input
                   type="number"
                   name="gmtOffset"
+                  min="-43200"
+                  max="50400"
+                  step="1"
                   placeholder="19800 for GMT+5:30"
-                  step="1800"
+                  required
                 />
               </div>
               <div class="form-group">
@@ -1017,8 +1080,11 @@
                 <input
                   type="number"
                   name="latitude"
-                  step="0.000001"
+                  min="-89.9"
+                  max="89.9"
+                  step="any"
                   placeholder="e.g. 22.5726"
+                  required
                 />
               </div>
               <div class="form-group">
@@ -1026,8 +1092,11 @@
                 <input
                   type="number"
                   name="longitude"
-                  step="0.000001"
+                  min="-180"
+                  max="180"
+                  step="any"
                   placeholder="e.g. 88.3639"
+                  required
                 />
               </div>
             </div>
@@ -1324,14 +1393,6 @@
                 <div class="s-val" id="statTiltGain">--</div>
               </div>
             </div>
-
-            <!-- <div class="range-note" style="margin-top: 14px; line-height: 1.5">
-              &#9432; Bearings are referenced to Geographic True North (0&deg;
-              N, 90&deg; E, 180&deg; S, 270&deg; W). Full-year fixed panels face
-              ~180&deg; South in the Northern Hemisphere, ~0&deg; North in the
-              Southern Hemisphere, and flip North in tropical summers when solar
-              declination exceeds latitude.
-            </div> -->
           </div>
         </div>
       </form>
@@ -1376,10 +1437,12 @@
         var section = document.getElementById("manualLuxSection");
         var maxInput = document.querySelector("[name=maxLuxValue]");
         var minInput = document.querySelector("[name=minLuxValue]");
-        maxInput.required = mode === "1";
-        minInput.required = mode === "1";
+        var isManual = mode === "1";
 
-        if (mode === "1") {
+        maxInput.required = isManual;
+        minInput.required = isManual;
+
+        if (isManual) {
           section.classList.remove("hidden");
           maxInput.disabled = false;
           minInput.disabled = false;
@@ -1387,8 +1450,20 @@
           section.classList.add("hidden");
           maxInput.disabled = true;
           minInput.disabled = true;
+          maxInput.setCustomValidity("");
+          minInput.setCustomValidity("");
         }
       }
+
+      // Clear custom LUX range error immediately when the user edits either field
+      ["maxLuxValue", "minLuxValue"].forEach(function (name) {
+        var el = document.querySelector("[name=" + name + "]");
+        if (el) {
+          el.addEventListener("input", function () {
+            document.querySelector("[name=maxLuxValue]").setCustomValidity("");
+          });
+        }
+      });
 
       setInterval(function () {
         if (isPollingLux || isSavingOrResetting) return;
@@ -1403,6 +1478,7 @@
 
         fetch("/sensor.json", { signal: controller.signal, cache: "no-store" })
           .then(function (r) {
+            if (!r.ok) throw new Error("Sensor poll failed");
             return r.json();
           })
           .then(function (data) {
@@ -1418,6 +1494,7 @@
       window.addEventListener("load", function () {
         fetch("/settings.json", { cache: "no-store" })
           .then(function (r) {
+            if (!r.ok) throw new Error("Failed to load settings");
             return r.json();
           })
           .then(function (data) {
@@ -1489,11 +1566,14 @@
               setPlacementPreset("year");
             }
 
+            // Unlock Save button only after all settings have populated cleanly
             var saveBtn = document.getElementById("saveBtn");
             saveBtn.disabled = false;
             saveBtn.textContent = "Save Configuration";
           })
           .catch(function () {
+            var saveBtn = document.getElementById("saveBtn");
+            saveBtn.textContent = "Load Failed - Refresh";
             alert(
               "Could not load current settings from ESP32. Refresh before saving!",
             );
@@ -1526,9 +1606,22 @@
 
       function submitForm() {
         var saveBtn = document.getElementById("saveBtn");
-        if (saveBtn.disabled) return;
+        if (saveBtn.disabled || isSavingOrResetting) return;
 
         var form = document.getElementById("configForm");
+        var maxInput = document.querySelector("[name=maxLuxValue]");
+        var minInput = document.querySelector("[name=minLuxValue]");
+        maxInput.setCustomValidity("");
+
+        if (
+          document.getElementById("luxMode").value === "1" &&
+          maxInput.value !== "" &&
+          minInput.value !== "" &&
+          Number(maxInput.value) <= Number(minInput.value)
+        ) {
+          maxInput.setCustomValidity("Max LUX must be greater than Min LUX.");
+        }
+
         var invalidEl = form.querySelector(":invalid");
         if (invalidEl) {
           var parentPanel = invalidEl.closest(".panel");
@@ -1571,7 +1664,8 @@
         if (confirm("Do you want to reset to default settings?")) {
           isSavingOrResetting = true;
           fetch("/reset", { method: "POST" })
-            .then(function () {
+            .then(function (r) {
+              if (!r.ok) throw new Error("Reset failed");
               alert("Device reset to default successfully! Rebooting...");
               setTimeout(function () {
                 location.reload();
@@ -1589,6 +1683,7 @@
           isSavingOrResetting = true;
           fetch("/reset-lux", { method: "POST" })
             .then(function (r) {
+              if (!r.ok) throw new Error("LUX reset failed");
               return r.text();
             })
             .then(function (msg) {
@@ -1686,6 +1781,9 @@
             })
             .catch(function () {
               tryIpService(index + 1);
+            })
+            .finally(function () {
+              clearTimeout(ipTimer);
             });
         }
 
