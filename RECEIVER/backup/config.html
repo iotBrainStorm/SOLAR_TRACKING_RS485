@@ -660,10 +660,16 @@
       </div>
 
       <div class="sidebar-footer">
-        <button class="btn-save" onclick="submitForm()">
-          Save Configuration
+        <button
+          type="button"
+          id="saveBtn"
+          class="btn-save"
+          onclick="submitForm()"
+          disabled
+        >
+          Loading Settings...
         </button>
-        <button class="btn-reset" onclick="confirmReset()">
+        <button type="button" class="btn-reset" onclick="confirmReset()">
           Reset to Default
         </button>
       </div>
@@ -671,7 +677,15 @@
 
     <!-- Main Content -->
     <div class="main">
-      <form id="configForm" action="/save" method="POST">
+      <form
+        id="configForm"
+        action="/save"
+        method="POST"
+        onsubmit="
+          event.preventDefault();
+          submitForm();
+        "
+      >
         <!-- Temperature Panel -->
         <div class="panel active" id="panel-temperature">
           <div class="page-header">
@@ -724,7 +738,14 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Resistance at 25&deg;C (&Omega;)</label>
-                <input type="number" name="ntcResistance" placeholder="10000" />
+                <input
+                  type="number"
+                  name="ntcResistance"
+                  min="100"
+                  max="65535"
+                  placeholder="10000"
+                  required
+                />
               </div>
               <div class="form-group">
                 <label>Beta Constant</label>
@@ -1355,6 +1376,8 @@
         var section = document.getElementById("manualLuxSection");
         var maxInput = document.querySelector("[name=maxLuxValue]");
         var minInput = document.querySelector("[name=minLuxValue]");
+        maxInput.required = mode === "1";
+        minInput.required = mode === "1";
 
         if (mode === "1") {
           section.classList.remove("hidden");
@@ -1369,12 +1392,14 @@
 
       setInterval(function () {
         if (isPollingLux || isSavingOrResetting) return;
+        if (!document.getElementById("panel-lux").classList.contains("active"))
+          return;
         isPollingLux = true;
 
         var controller = new AbortController();
         var tId = setTimeout(function () {
           controller.abort();
-        }, 1800);
+        }, 2000);
 
         fetch("/sensor.json", { signal: controller.signal, cache: "no-store" })
           .then(function (r) {
@@ -1388,7 +1413,7 @@
             clearTimeout(tId);
             isPollingLux = false;
           });
-      }, 2000);
+      }, 2500);
 
       window.addEventListener("load", function () {
         fetch("/settings.json", { cache: "no-store" })
@@ -1491,6 +1516,24 @@
         });
 
       function submitForm() {
+        var saveBtn = document.getElementById("saveBtn");
+        if (saveBtn.disabled) return;
+
+        var form = document.getElementById("configForm");
+        var invalidEl = form.querySelector(":invalid");
+        if (invalidEl) {
+          var parentPanel = invalidEl.closest(".panel");
+          if (parentPanel && !parentPanel.classList.contains("active")) {
+            var panelName = parentPanel.id.replace("panel-", "");
+            var navItem = document.querySelector(
+              ".nav-item[onclick*=\"'" + panelName + "'\"]",
+            );
+            if (navItem) showPanel(panelName, navItem);
+          }
+          form.reportValidity();
+          return;
+        }
+
         if (!confirm("Do you want to save configuration?")) return;
 
         isSavingOrResetting = true;
@@ -1616,7 +1659,11 @@
             return;
           }
           var svc = ipServices[index];
-          fetch(svc.url)
+          var ctrl = new AbortController();
+          var ipTimer = setTimeout(function () {
+            ctrl.abort();
+          }, 4000);
+          fetch(svc.url, { signal: ctrl.signal })
             .then(function (r) {
               return r.json();
             })
@@ -1774,8 +1821,15 @@
       ["latitude", "longitude", "tzOffset"].forEach(function (fieldName) {
         var el = document.querySelector("[name=" + fieldName + "]");
         if (el) {
-          el.addEventListener("input", calculatePlacement);
-          el.addEventListener("change", calculatePlacement);
+          el.addEventListener("change", function () {
+            if (
+              document
+                .getElementById("panel-placement")
+                .classList.contains("active")
+            ) {
+              calculatePlacement();
+            }
+          });
         }
       });
 

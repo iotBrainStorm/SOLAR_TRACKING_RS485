@@ -10,10 +10,8 @@
 #include <HardwareSerial.h>  // Serial communication
 #include "time.h"            // Time management
 #include <U8g2lib.h>         // OLED display
-#include <ArduinoJson.h>     // make json format
 #include <Preferences.h>     // To store users' settings
 #include <Adafruit_AHT10.h>  // For temperature, humidity
-#include <BH1750.h>          // For LUX measurement of sunlight
 #include <Dusk2Dawn.h>       // For Sunset & Sunrise
 #include <esp_task_wdt.h>    // Hardware watchdog timer
 
@@ -26,6 +24,7 @@
 HardwareSerial rs485(1);
 unsigned long lastModbusPoll = 0;
 unsigned long lastValidModbus = 0;
+unsigned long lastModbusReset = 0;
 uint8_t modbusFailCount = 0;
 const uint8_t MODBUS_FAIL_LIMIT = 10;
 bool sensorDataStale = false;
@@ -33,14 +32,14 @@ bool sensorDataStale = false;
 // -- NTC Setup
 unsigned long lastNTCReadTime = 0;
 
-// -- Global variables for settings
+// -- Global variables for settings (No heap String members -> cross-core safe)
 Preferences preferences;
 struct DeviceSettings {
   uint8_t tempPrecision;      // 0,1,2
   uint8_t humidityPrecision;  // 0,1,2
   uint16_t ahtInterval;       // >=1
 
-  float ntcResistance;
+  float ntcResistance;  // 100..65535 (fits 16-bit Modbus register)
   float betaConstant;
   float ntcOffset;
   uint16_t ntcInterval;
@@ -53,13 +52,13 @@ struct DeviceSettings {
   uint32_t luxSaveInterval;
 
   uint8_t enableNodeRed;  // 0 or 1
-  String nodeRedIP;
+  char nodeRedIP[64];
   uint16_t nodeRedPort;
   uint16_t nodeRedInterval;
 
   uint8_t enableRS485;      // 0 = disabled, 1 = enabled
-  uint8_t modbusDeviceID;   // 1–247
-  uint32_t modbusBaudRate;  // 9600, 19200, 38400 etc
+  uint8_t modbusDeviceID;   // 1-247
+  uint32_t modbusBaudRate;  // 9600, 19200, 38400, 57600, 115200
   uint16_t modbusInterval;  // seconds (share interval)
 
   long gmtOffset;       // seconds
@@ -69,26 +68,30 @@ struct DeviceSettings {
   float longitude;
   float tzOffset;  // timezone offset in hours (e.g. 5.5 for +5:30)
 
-  String placeStart;
-  String placeEnd;
+  char placeStart[12];
+  char placeEnd[12];
 };
+
 DeviceSettings settings;
+DeviceSettings stagedSettings;
+portMUX_TYPE settingsMux = portMUX_INITIALIZER_UNLOCKED;
 
 // -- Deferred Action Flags (Safe execution outside async_tcp thread)
 volatile bool pendingSaveAndSync = false;
 volatile bool pendingLuxReset = false;
 volatile bool pendingFactoryReset = false;
+uint8_t prevEnableRS485 = 0;
 uint8_t prevSlaveDeviceID = 1;
 uint32_t prevSlaveBaudRate = 115200;
 
-// -- feedback LED Setup
+// -- Feedback LED Setup
 bool ledState = false;
 unsigned long ledStartTime = 0;
 unsigned long ledDuration = 50;
 const unsigned long ledDurationRX = 60;   // receive blink
 const unsigned long ledDurationTX = 120;  // transmit blink
 
-// -- Buzzer feedback
+// -- Buzzer Feedback
 bool buzzerState = false;
 unsigned long buzzerStartTime = 0;
 unsigned long buzzerDuration = 100;
@@ -124,9 +127,9 @@ float previousLux = 0;
 long luxDiff = 0;
 
 // -- Sensor Values Storage
-float ntcTemp = 0.0;
-float ahtTemp = 0.0;
-float humidity = 0.0;
+float ntcTemp = 0.0f;
+float ahtTemp = 0.0f;
+float humidity = 0.0f;
 uint32_t luxValue = 0;
 uint8_t sunlightPercentage = 0;
 
@@ -155,6 +158,23 @@ const char MSG_DEVELOPER[] PROGMEM = "developed by M.Maity";
 // Forward declarations
 void calculateSunriseSunset();
 void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate);
+
+//////////////////////   SAFE HELPERS   //////////////////////
+
+float safeJsonFloat(float v) {
+  return (isnan(v) || isinf(v)) ? 0.0f : v;
+}
+
+void sanitizeSafeStr(char *str, size_t maxLen) {
+  if (!str || maxLen == 0) return;
+  str[maxLen - 1] = '\0';
+  for (size_t i = 0; str[i] != '\0'; i++) {
+    if (str[i] == '"' || str[i] == '\\' || (uint8_t)str[i] < 32) {
+      str[i] = '\0';
+      break;
+    }
+  }
+}
 
 //////////////////////   BLINK FEEDBACK LED   //////////////////////
 
@@ -202,61 +222,82 @@ void updateBuzzer() {
 
 //////////////////////   DEFAULT SETTINGS   //////////////////////
 
-void setDefaultSettings() {
-  settings.tempPrecision = 1;
-  settings.humidityPrecision = 0;
-  settings.ahtInterval = 1;
+void setDefaultSettings(DeviceSettings &cfg) {
+  cfg.tempPrecision = 1;
+  cfg.humidityPrecision = 0;
+  cfg.ahtInterval = 1;
 
-  settings.ntcResistance = 10000.0;
-  settings.betaConstant = 3435.0;
-  settings.ntcOffset = 0.0;
-  settings.ntcInterval = 1;
+  cfg.ntcResistance = 10000.0f;
+  cfg.betaConstant = 3435.0f;
+  cfg.ntcOffset = 0.0f;
+  cfg.ntcInterval = 1;
 
-  settings.luxPercentageMode = 0;
-  settings.maxLuxValue = 100;
-  settings.minLuxValue = 1;
-  settings.luxInterval = 1;
-  settings.luxUpdateThreshold = 200;
-  settings.luxSaveInterval = 300;
+  cfg.luxPercentageMode = 0;
+  cfg.maxLuxValue = 100;
+  cfg.minLuxValue = 1;
+  cfg.luxInterval = 1;
+  cfg.luxUpdateThreshold = 200;
+  cfg.luxSaveInterval = 300;
 
-  settings.enableNodeRed = 0;
-  settings.nodeRedIP = "";
-  settings.nodeRedPort = 1880;
-  settings.nodeRedInterval = 10;
+  cfg.enableNodeRed = 0;
+  cfg.nodeRedIP[0] = '\0';
+  cfg.nodeRedPort = 1880;
+  cfg.nodeRedInterval = 10;
 
-  settings.enableRS485 = 0;
-  settings.modbusDeviceID = 1;
-  settings.modbusBaudRate = 115200;
-  settings.modbusInterval = 2;
+  cfg.enableRS485 = 0;
+  cfg.modbusDeviceID = 1;
+  cfg.modbusBaudRate = 115200;
+  cfg.modbusInterval = 2;
 
-  settings.gmtOffset = 19800;
-  settings.clockFormat = 24;
+  cfg.gmtOffset = 19800;
+  cfg.clockFormat = 24;
 
-  settings.latitude = 22.5726f;
-  settings.longitude = 88.3639f;
-  settings.tzOffset = 5.5f;
+  cfg.latitude = 22.5726f;
+  cfg.longitude = 88.3639f;
+  cfg.tzOffset = 5.5f;
 
-  settings.placeStart = "";
-  settings.placeEnd = "";
+  cfg.placeStart[0] = '\0';
+  cfg.placeEnd[0] = '\0';
 }
 
 //////////////////////   SANITIZE SETTINGS   //////////////////////
 
-void sanitizeSettings() {
-  if (settings.tempPrecision > 2) settings.tempPrecision = 1;
-  if (settings.humidityPrecision > 2) settings.humidityPrecision = 0;
-  if (settings.ahtInterval < 1) settings.ahtInterval = 1;
-  if (settings.ntcInterval < 1) settings.ntcInterval = 1;
-  if (settings.ntcResistance <= 0) settings.ntcResistance = 10000.0;
-  if (settings.betaConstant <= 0) settings.betaConstant = 3435.0;
-  if (settings.luxInterval < 1) settings.luxInterval = 1;
-  if (settings.luxUpdateThreshold < 10) settings.luxUpdateThreshold = 10;
-  if (settings.luxSaveInterval < 300) settings.luxSaveInterval = 300;
-  if (settings.nodeRedInterval < 1) settings.nodeRedInterval = 1;
-  if (settings.modbusDeviceID < 1 || settings.modbusDeviceID > 247) settings.modbusDeviceID = 1;
-  if (settings.modbusBaudRate == 0) settings.modbusBaudRate = 115200;
-  if (settings.modbusInterval < 1) settings.modbusInterval = 1;
-  if (settings.clockFormat != 12 && settings.clockFormat != 24) settings.clockFormat = 24;
+void sanitizeSettings(DeviceSettings &cfg) {
+  if (cfg.tempPrecision > 2) cfg.tempPrecision = 1;
+  if (cfg.humidityPrecision > 2) cfg.humidityPrecision = 0;
+  if (cfg.ahtInterval < 1) cfg.ahtInterval = 1;
+  if (cfg.ntcInterval < 1) cfg.ntcInterval = 1;
+
+  if (isnan(cfg.ntcResistance) || cfg.ntcResistance < 100.0f || cfg.ntcResistance > 65535.0f)
+    cfg.ntcResistance = 10000.0f;
+  if (isnan(cfg.betaConstant) || cfg.betaConstant <= 0.0f || cfg.betaConstant > 65535.0f)
+    cfg.betaConstant = 3435.0f;
+  if (isnan(cfg.ntcOffset) || cfg.ntcOffset < -50.0f || cfg.ntcOffset > 50.0f)
+    cfg.ntcOffset = 0.0f;
+
+  if (cfg.luxPercentageMode > 1) cfg.luxPercentageMode = 0;
+  if (cfg.luxInterval < 1) cfg.luxInterval = 1;
+  if (cfg.luxUpdateThreshold < 10) cfg.luxUpdateThreshold = 10;
+  if (cfg.luxSaveInterval < 300) cfg.luxSaveInterval = 300;
+  if (cfg.luxPercentageMode == 1 && cfg.maxLuxValue <= cfg.minLuxValue) {
+    cfg.maxLuxValue = cfg.minLuxValue + 100;
+  }
+
+  if (cfg.nodeRedPort == 0) cfg.nodeRedPort = 1880;
+  if (cfg.nodeRedInterval < 1) cfg.nodeRedInterval = 1;
+
+  if (cfg.modbusDeviceID < 1 || cfg.modbusDeviceID > 247) cfg.modbusDeviceID = 1;
+  if (cfg.modbusBaudRate == 0) cfg.modbusBaudRate = 115200;
+  if (cfg.modbusInterval < 1) cfg.modbusInterval = 1;
+
+  if (cfg.clockFormat != 12 && cfg.clockFormat != 24) cfg.clockFormat = 24;
+  if (isnan(cfg.latitude) || cfg.latitude < -90.0f || cfg.latitude > 90.0f) cfg.latitude = 22.5726f;
+  if (isnan(cfg.longitude) || cfg.longitude < -180.0f || cfg.longitude > 180.0f) cfg.longitude = 88.3639f;
+  if (isnan(cfg.tzOffset) || cfg.tzOffset < -12.0f || cfg.tzOffset > 14.0f) cfg.tzOffset = 5.5f;
+
+  sanitizeSafeStr(cfg.nodeRedIP, sizeof(cfg.nodeRedIP));
+  sanitizeSafeStr(cfg.placeStart, sizeof(cfg.placeStart));
+  sanitizeSafeStr(cfg.placeEnd, sizeof(cfg.placeEnd));
 }
 
 //////////////////////   LOAD SETTINGS   //////////////////////
@@ -264,47 +305,63 @@ void sanitizeSettings() {
 void loadSettings() {
   Serial.println("\n========== LOADING SETTINGS ==========");
 
+  DeviceSettings loaded;
+  setDefaultSettings(loaded);
+
   preferences.begin("device", true);  // read-only
 
-  settings.tempPrecision = preferences.getUChar("tPrec", 1);
-  settings.humidityPrecision = preferences.getUChar("hPrec", 0);
-  settings.ahtInterval = preferences.getUInt("ahtInt", 1);
+  loaded.tempPrecision = preferences.getUChar("tPrec", 1);
+  loaded.humidityPrecision = preferences.getUChar("hPrec", 0);
+  loaded.ahtInterval = preferences.getUInt("ahtInt", 1);
 
-  settings.ntcResistance = preferences.getFloat("ntcR", 10000.0);
-  settings.betaConstant = preferences.getFloat("beta", 3435.0);
-  settings.ntcOffset = preferences.getFloat("ntcOff", 0.0);
-  settings.ntcInterval = preferences.getUInt("ntcInt", 1);
+  loaded.ntcResistance = preferences.getFloat("ntcR", 10000.0f);
+  loaded.betaConstant = preferences.getFloat("beta", 3435.0f);
+  loaded.ntcOffset = preferences.getFloat("ntcOff", 0.0f);
+  loaded.ntcInterval = preferences.getUInt("ntcInt", 1);
 
-  settings.luxPercentageMode = preferences.getUChar("luxMode", 0);
-  settings.maxLuxValue = preferences.getULong("luxMax", 100);
-  settings.minLuxValue = preferences.getULong("luxMin", 1);
-  settings.luxInterval = preferences.getUInt("luxInt", 1);
-  settings.luxUpdateThreshold = preferences.getULong("luxThr", 200);
-  settings.luxSaveInterval = preferences.getULong("luxSave", 300);
+  loaded.luxPercentageMode = preferences.getUChar("luxMode", 0);
+  loaded.maxLuxValue = preferences.getULong("luxMax", 100);
+  loaded.minLuxValue = preferences.getULong("luxMin", 1);
+  loaded.luxInterval = preferences.getUInt("luxInt", 1);
+  loaded.luxUpdateThreshold = preferences.getULong("luxThr", 200);
+  loaded.luxSaveInterval = preferences.getULong("luxSave", 300);
 
-  settings.enableNodeRed = preferences.getUChar("nrEn", 0);
-  settings.nodeRedIP = preferences.getString("nrIP", "");
-  settings.nodeRedPort = preferences.getUInt("nrPort", 1880);
-  settings.nodeRedInterval = preferences.getUInt("nrInt", 10);
+  loaded.enableNodeRed = preferences.getUChar("nrEn", 0);
+  if (preferences.isKey("nrIP")) {
+    preferences.getString("nrIP", loaded.nodeRedIP, sizeof(loaded.nodeRedIP));
+  }
+  loaded.nodeRedPort = preferences.getUInt("nrPort", 1880);
+  loaded.nodeRedInterval = preferences.getUInt("nrInt", 10);
 
-  settings.enableRS485 = preferences.getUChar("rsEn", 0);
-  settings.modbusDeviceID = preferences.getUChar("rsID", 1);
-  settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
-  settings.modbusInterval = preferences.getUInt("rsInt", 2);
+  loaded.enableRS485 = preferences.getUChar("rsEn", 0);
+  loaded.modbusDeviceID = preferences.getUChar("rsID", 1);
+  loaded.modbusBaudRate = preferences.getULong("rsBaud", 115200);
+  loaded.modbusInterval = preferences.getUInt("rsInt", 2);
 
-  settings.gmtOffset = preferences.getLong("gmt", 19800);
-  settings.clockFormat = preferences.getUChar("clkFmt", 24);
+  loaded.gmtOffset = preferences.getLong("gmt", 19800);
+  loaded.clockFormat = preferences.getUChar("clkFmt", 24);
 
-  settings.latitude = preferences.getFloat("lat", 22.5726f);
-  settings.longitude = preferences.getFloat("lon", 88.3639f);
-  settings.tzOffset = preferences.getFloat("tzOff", 5.5f);
+  loaded.latitude = preferences.getFloat("lat", 22.5726f);
+  loaded.longitude = preferences.getFloat("lon", 88.3639f);
+  loaded.tzOffset = preferences.getFloat("tzOff", 5.5f);
 
-  settings.placeStart = preferences.getString("plStart", "");
-  settings.placeEnd = preferences.getString("plEnd", "");
+  if (preferences.isKey("plStart")) {
+    preferences.getString("plStart", loaded.placeStart, sizeof(loaded.placeStart));
+  }
+  if (preferences.isKey("plEnd")) {
+    preferences.getString("plEnd", loaded.placeEnd, sizeof(loaded.placeEnd));
+  }
 
   preferences.end();
 
-  sanitizeSettings();
+  sanitizeSettings(loaded);
+
+  portENTER_CRITICAL(&settingsMux);
+  settings = loaded;
+  stagedSettings = loaded;
+  portEXIT_CRITICAL(&settingsMux);
+
+  prevEnableRS485 = settings.enableRS485;
   prevSlaveDeviceID = settings.modbusDeviceID;
   prevSlaveBaudRate = settings.modbusBaudRate;
 
@@ -314,47 +371,64 @@ void loadSettings() {
 //////////////////////   SAVE SETTINGS   //////////////////////
 
 void saveSettings() {
-  sanitizeSettings();
+  portENTER_CRITICAL(&settingsMux);
+  sanitizeSettings(settings);
+  DeviceSettings snap = settings;
+  portEXIT_CRITICAL(&settingsMux);
+
   preferences.begin("device", false);  // write mode
 
-  preferences.putUChar("tPrec", settings.tempPrecision);
-  preferences.putUChar("hPrec", settings.humidityPrecision);
-  preferences.putUInt("ahtInt", settings.ahtInterval);
+  preferences.putUChar("tPrec", snap.tempPrecision);
+  preferences.putUChar("hPrec", snap.humidityPrecision);
+  preferences.putUInt("ahtInt", snap.ahtInterval);
 
-  preferences.putFloat("ntcR", settings.ntcResistance);
-  preferences.putFloat("beta", settings.betaConstant);
-  preferences.putFloat("ntcOff", settings.ntcOffset);
-  preferences.putUInt("ntcInt", settings.ntcInterval);
+  preferences.putFloat("ntcR", snap.ntcResistance);
+  preferences.putFloat("beta", snap.betaConstant);
+  preferences.putFloat("ntcOff", snap.ntcOffset);
+  preferences.putUInt("ntcInt", snap.ntcInterval);
 
-  preferences.putUChar("luxMode", settings.luxPercentageMode);
-  preferences.putULong("luxMax", settings.maxLuxValue);
-  preferences.putULong("luxMin", settings.minLuxValue);
-  preferences.putUInt("luxInt", settings.luxInterval);
-  preferences.putULong("luxThr", settings.luxUpdateThreshold);
-  preferences.putULong("luxSave", settings.luxSaveInterval);
+  preferences.putUChar("luxMode", snap.luxPercentageMode);
+  preferences.putULong("luxMax", snap.maxLuxValue);
+  preferences.putULong("luxMin", snap.minLuxValue);
+  preferences.putUInt("luxInt", snap.luxInterval);
+  preferences.putULong("luxThr", snap.luxUpdateThreshold);
+  preferences.putULong("luxSave", snap.luxSaveInterval);
 
-  preferences.putUChar("nrEn", settings.enableNodeRed);
-  preferences.putString("nrIP", settings.nodeRedIP);
-  preferences.putUInt("nrPort", settings.nodeRedPort);
-  preferences.putUInt("nrInt", settings.nodeRedInterval);
+  preferences.putUChar("nrEn", snap.enableNodeRed);
+  preferences.putString("nrIP", snap.nodeRedIP);
+  preferences.putUInt("nrPort", snap.nodeRedPort);
+  preferences.putUInt("nrInt", snap.nodeRedInterval);
 
-  preferences.putUChar("rsEn", settings.enableRS485);
-  preferences.putUChar("rsID", settings.modbusDeviceID);
-  preferences.putULong("rsBaud", settings.modbusBaudRate);
-  preferences.putUInt("rsInt", settings.modbusInterval);
+  preferences.putUChar("rsEn", snap.enableRS485);
+  preferences.putUChar("rsID", snap.modbusDeviceID);
+  preferences.putULong("rsBaud", snap.modbusBaudRate);
+  preferences.putUInt("rsInt", snap.modbusInterval);
 
-  preferences.putLong("gmt", settings.gmtOffset);
-  preferences.putUChar("clkFmt", settings.clockFormat);
+  preferences.putLong("gmt", snap.gmtOffset);
+  preferences.putUChar("clkFmt", snap.clockFormat);
 
-  preferences.putFloat("lat", settings.latitude);
-  preferences.putFloat("lon", settings.longitude);
-  preferences.putFloat("tzOff", settings.tzOffset);
+  preferences.putFloat("lat", snap.latitude);
+  preferences.putFloat("lon", snap.longitude);
+  preferences.putFloat("tzOff", snap.tzOffset);
 
-  preferences.putString("plStart", settings.placeStart);
-  preferences.putString("plEnd", settings.placeEnd);
+  preferences.putString("plStart", snap.placeStart);
+  preferences.putString("plEnd", snap.placeEnd);
 
   preferences.end();
   Serial.println("Settings Saved to NVS");
+}
+
+// Lightweight NVS helper so Auto-LUX calibration doesn't rewrite all 28 NVS keys
+void saveLuxBounds() {
+  portENTER_CRITICAL(&settingsMux);
+  uint32_t maxL = settings.maxLuxValue;
+  uint32_t minL = settings.minLuxValue;
+  portEXIT_CRITICAL(&settingsMux);
+
+  preferences.begin("device", false);
+  preferences.putULong("luxMax", maxL);
+  preferences.putULong("luxMin", minL);
+  preferences.end();
 }
 
 //////////////////////   I2C RECOVERY & AHT RE-INIT   //////////////////////
@@ -423,41 +497,38 @@ bool connectToSavedWiFi() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  WiFi.persistent(true);
   WiFi.begin();
 
-  int attempts = 0;
   const int MAX_ATTEMPTS = 5;
-
-  while (attempts < MAX_ATTEMPTS) {
+  for (int attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
     char attemptStr[16];
     snprintf(attemptStr, sizeof(attemptStr), "Attempt: %d/5", attempts + 1);
 
     u8g2.drawStr(0, 24, attemptStr);
     u8g2.sendBuffer();
-
     Serial.printf("[INFO] %s\n", attemptStr);
 
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("\n[SUCCESS] Connected to Saved WiFi");
-      Serial.printf("SSID       : %s\n", WiFi.SSID().c_str());
-      Serial.printf("IP Address : %s\n", WiFi.localIP().toString().c_str());
-      Serial.println("==============================\n");
+    // Poll every 250ms up to 2s per attempt so association is caught right through the end
+    for (int step = 0; step < 8; step++) {
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\n[SUCCESS] Connected to Saved WiFi");
+        Serial.printf("SSID       : %s\n", WiFi.SSID().c_str());
+        Serial.printf("IP Address : %s\n", WiFi.localIP().toString().c_str());
+        Serial.println("==============================\n");
 
-      u8g2.clearBuffer();
-      u8g2.drawStr(0, 12, "WiFi Connected!");
-      u8g2.drawStr(0, 24, "SSID:");
-      u8g2.drawStr(0, 36, WiFi.SSID().c_str());
-      u8g2.drawStr(0, 48, "IP:");
-      u8g2.drawStr(0, 60, WiFi.localIP().toString().c_str());
-      u8g2.sendBuffer();
+        u8g2.clearBuffer();
+        u8g2.drawStr(0, 12, "WiFi Connected!");
+        u8g2.drawStr(0, 24, "SSID:");
+        u8g2.drawStr(0, 36, WiFi.SSID().c_str());
+        u8g2.drawStr(0, 48, "IP:");
+        u8g2.drawStr(0, 60, WiFi.localIP().toString().c_str());
+        u8g2.sendBuffer();
 
-      delay(2000);
-      return true;
+        delay(2000);
+        return true;
+      }
+      delay(250);
     }
-
-    delay(2000);
-    attempts++;
   }
 
   // Failed to connect -> launch Config Portal
@@ -511,11 +582,12 @@ void syncNTPInBackground() {
   }
 }
 
+// Uses year 2024 as fallback so >= 2025 checks only pass after genuine NTP sync
 void applyFallbackTimeIfUnsynced() {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo, 10) || timeinfo.tm_year < (2024 - 1900)) {
     struct tm tm = { 0 };
-    tm.tm_year = 2025 - 1900;
+    tm.tm_year = 2024 - 1900;
     tm.tm_mon = 0;
     tm.tm_mday = 1;
     tm.tm_hour = 12;
@@ -526,7 +598,7 @@ void applyFallbackTimeIfUnsynced() {
     time_t t = mktime(&tm);
     struct timeval now = { .tv_sec = t, .tv_usec = 0 };
     settimeofday(&now, nullptr);
-    Serial.println("[TIME] Fallback time applied (01/01/2025 12:00:00).");
+    Serial.println("[TIME] Fallback time applied (01/01/2024 12:00:00).");
   }
 }
 
@@ -636,173 +708,181 @@ void setupWebServer() {
     request->send(response);
   });
 
+  // Zero-heap stack-allocated JSON response
   server.on("/sensor.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    StaticJsonDocument<384> doc;
-    doc["ntcTemp"] = serialized(String(ntcTemp, (int)settings.tempPrecision));
-    doc["ahtTemp"] = serialized(String(ahtTemp, (int)settings.tempPrecision));
-    doc["humidity"] = serialized(String(humidity, (int)settings.humidityPrecision));
-    doc["lux"] = luxValue;
-    doc["sunlight"] = sunlightPercentage;
-    doc["tempPrecision"] = settings.tempPrecision;
-    doc["humPrecision"] = settings.humidityPrecision;
-    doc["sunrise"] = sunriseStr;
-    doc["sunset"] = sunsetStr;
-    doc["sunriseMin"] = sunriseMinutes;
-    doc["sunsetMin"] = sunsetMinutes;
-    doc["latitude"] = serialized(String(settings.latitude, 4));
-    doc["longitude"] = serialized(String(settings.longitude, 4));
-    doc["tzOffset"] = serialized(String(settings.tzOffset, 2));
-    doc["sensorStale"] = sensorDataStale;
+    portENTER_CRITICAL(&settingsMux);
+    uint8_t tP = settings.tempPrecision;
+    uint8_t hP = settings.humidityPrecision;
+    float lat = settings.latitude;
+    float lon = settings.longitude;
+    float tz = settings.tzOffset;
+    float sNtc = safeJsonFloat(ntcTemp);
+    float sAht = safeJsonFloat(ahtTemp);
+    float sHum = safeJsonFloat(humidity);
+    uint32_t sLux = luxValue;
+    uint8_t sSun = sunlightPercentage;
+    bool sStale = sensorDataStale;
+    int srMin = sunriseMinutes;
+    int ssMin = sunsetMinutes;
+    char srBuf[6], ssBuf[6];
+    memcpy(srBuf, sunriseStr, sizeof(srBuf));
+    memcpy(ssBuf, sunsetStr, sizeof(ssBuf));
+    portEXIT_CRITICAL(&settingsMux);
 
-    String response;
-    serializeJson(doc, response);
-    request->send(200, "application/json", response);
+    char json[384];
+    snprintf(json, sizeof(json),
+             "{\"ntcTemp\":%.*f,\"ahtTemp\":%.*f,\"humidity\":%.*f,"
+             "\"lux\":%lu,\"sunlight\":%u,\"tempPrecision\":%u,\"humPrecision\":%u,"
+             "\"sunrise\":\"%s\",\"sunset\":\"%s\",\"sunriseMin\":%d,\"sunsetMin\":%d,"
+             "\"latitude\":%.4f,\"longitude\":%.4f,\"tzOffset\":%.2f,\"sensorStale\":%s}",
+             tP, sNtc, tP, sAht, hP, sHum,
+             (unsigned long)sLux, sSun, tP, hP,
+             srBuf, ssBuf, srMin, ssMin,
+             safeJsonFloat(lat), safeJsonFloat(lon), safeJsonFloat(tz),
+             sStale ? "true" : "false");
+
+    request->send(200, "application/json", json);
   });
 
+  // Thread-safe staged save (never mutates active settings directly on Core 0)
   server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
-    // Preserve current slave ID and baud rate so Master can still reach Slave to update it
-    prevSlaveDeviceID = settings.modbusDeviceID;
-    prevSlaveBaudRate = settings.modbusBaudRate;
+    DeviceSettings next;
+    portENTER_CRITICAL(&settingsMux);
+    next = pendingSaveAndSync ? stagedSettings : settings;
+    portEXIT_CRITICAL(&settingsMux);
 
     // -------- TEMPERATURE --------
     if (request->hasParam("tempPrecision", true))
-      settings.tempPrecision = request->getParam("tempPrecision", true)->value().toInt();
+      next.tempPrecision = request->getParam("tempPrecision", true)->value().toInt();
     if (request->hasParam("humidityPrecision", true))
-      settings.humidityPrecision = request->getParam("humidityPrecision", true)->value().toInt();
+      next.humidityPrecision = request->getParam("humidityPrecision", true)->value().toInt();
     if (request->hasParam("ahtInterval", true))
-      settings.ahtInterval = request->getParam("ahtInterval", true)->value().toInt();
+      next.ahtInterval = request->getParam("ahtInterval", true)->value().toInt();
 
     // -------- NTC --------
     if (request->hasParam("ntcResistance", true))
-      settings.ntcResistance = request->getParam("ntcResistance", true)->value().toFloat();
+      next.ntcResistance = request->getParam("ntcResistance", true)->value().toFloat();
     if (request->hasParam("betaConstant", true))
-      settings.betaConstant = request->getParam("betaConstant", true)->value().toFloat();
+      next.betaConstant = request->getParam("betaConstant", true)->value().toFloat();
     if (request->hasParam("ntcOffset", true))
-      settings.ntcOffset = request->getParam("ntcOffset", true)->value().toFloat();
+      next.ntcOffset = request->getParam("ntcOffset", true)->value().toFloat();
     if (request->hasParam("ntcInterval", true))
-      settings.ntcInterval = request->getParam("ntcInterval", true)->value().toInt();
+      next.ntcInterval = request->getParam("ntcInterval", true)->value().toInt();
 
     // -------- LUX --------
-    uint8_t previousLuxMode = settings.luxPercentageMode;
+    uint8_t previousLuxMode = next.luxPercentageMode;
     if (request->hasParam("luxMode", true))
-      settings.luxPercentageMode = request->getParam("luxMode", true)->value().toInt();
+      next.luxPercentageMode = request->getParam("luxMode", true)->value().toInt();
 
-    if (previousLuxMode == 1 && settings.luxPercentageMode == 0) {
-      settings.maxLuxValue = 0;
-      settings.minLuxValue = 0;
+    if (previousLuxMode == 1 && next.luxPercentageMode == 0) {
+      next.maxLuxValue = 0;
+      next.minLuxValue = 0;
     } else {
       if (request->hasParam("maxLuxValue", true))
-        settings.maxLuxValue = request->getParam("maxLuxValue", true)->value().toInt();
+        next.maxLuxValue = request->getParam("maxLuxValue", true)->value().toInt();
       if (request->hasParam("minLuxValue", true))
-        settings.minLuxValue = request->getParam("minLuxValue", true)->value().toInt();
+        next.minLuxValue = request->getParam("minLuxValue", true)->value().toInt();
     }
     if (request->hasParam("luxInterval", true))
-      settings.luxInterval = request->getParam("luxInterval", true)->value().toInt();
+      next.luxInterval = request->getParam("luxInterval", true)->value().toInt();
     if (request->hasParam("luxUpdateThreshold", true))
-      settings.luxUpdateThreshold = request->getParam("luxUpdateThreshold", true)->value().toInt();
+      next.luxUpdateThreshold = request->getParam("luxUpdateThreshold", true)->value().toInt();
     if (request->hasParam("luxSaveInterval", true))
-      settings.luxSaveInterval = request->getParam("luxSaveInterval", true)->value().toInt();
+      next.luxSaveInterval = request->getParam("luxSaveInterval", true)->value().toInt();
 
     // -------- NODE RED --------
-    settings.enableNodeRed = request->hasParam("enableNodeRed", true) ? 1 : 0;
-    if (request->hasParam("nodeRedIP", true))
-      settings.nodeRedIP = request->getParam("nodeRedIP", true)->value();
+    next.enableNodeRed = request->hasParam("enableNodeRed", true) ? 1 : 0;
+    if (request->hasParam("nodeRedIP", true)) {
+      strlcpy(next.nodeRedIP, request->getParam("nodeRedIP", true)->value().c_str(), sizeof(next.nodeRedIP));
+    }
     if (request->hasParam("nodeRedPort", true))
-      settings.nodeRedPort = request->getParam("nodeRedPort", true)->value().toInt();
+      next.nodeRedPort = request->getParam("nodeRedPort", true)->value().toInt();
     if (request->hasParam("nodeRedInterval", true))
-      settings.nodeRedInterval = request->getParam("nodeRedInterval", true)->value().toInt();
+      next.nodeRedInterval = request->getParam("nodeRedInterval", true)->value().toInt();
 
-    // -------- RS485 (All guarded with hasParam to prevent crash!) --------
-    settings.enableRS485 = request->hasParam("enableRS485", true) ? 1 : 0;
+    // -------- RS485 --------
+    next.enableRS485 = request->hasParam("enableRS485", true) ? 1 : 0;
     if (request->hasParam("modbusDeviceID", true))
-      settings.modbusDeviceID = request->getParam("modbusDeviceID", true)->value().toInt();
+      next.modbusDeviceID = request->getParam("modbusDeviceID", true)->value().toInt();
     if (request->hasParam("modbusBaudRate", true))
-      settings.modbusBaudRate = request->getParam("modbusBaudRate", true)->value().toInt();
+      next.modbusBaudRate = request->getParam("modbusBaudRate", true)->value().toInt();
     if (request->hasParam("modbusInterval", true))
-      settings.modbusInterval = request->getParam("modbusInterval", true)->value().toInt();
+      next.modbusInterval = request->getParam("modbusInterval", true)->value().toInt();
 
-    // -------- CLOCK --------
-    if (request->hasParam("gmtOffset", true))
-      settings.gmtOffset = request->getParam("gmtOffset", true)->value().toInt();
+    // -------- CLOCK & LOCATION --------
     if (request->hasParam("clockFormat", true))
-      settings.clockFormat = request->getParam("clockFormat", true)->value().toInt();
-
-    // -------- LOCATION (Sunrise/Sunset) --------
+      next.clockFormat = request->getParam("clockFormat", true)->value().toInt();
     if (request->hasParam("latitude", true))
-      settings.latitude = request->getParam("latitude", true)->value().toFloat();
+      next.latitude = request->getParam("latitude", true)->value().toFloat();
     if (request->hasParam("longitude", true))
-      settings.longitude = request->getParam("longitude", true)->value().toFloat();
+      next.longitude = request->getParam("longitude", true)->value().toFloat();
+
+    // Parse tzOffset first, then let explicit gmtOffset take precedence so custom offsets survive
     if (request->hasParam("tzOffset", true)) {
-      settings.tzOffset = request->getParam("tzOffset", true)->value().toFloat();
-      settings.gmtOffset = (long)round(settings.tzOffset * 3600.0f);
+      next.tzOffset = request->getParam("tzOffset", true)->value().toFloat();
+    }
+    if (request->hasParam("gmtOffset", true) && request->getParam("gmtOffset", true)->value().length() > 0) {
+      next.gmtOffset = request->getParam("gmtOffset", true)->value().toInt();
+      next.tzOffset = next.gmtOffset / 3600.0f;
+    } else {
+      next.gmtOffset = (long)round(next.tzOffset * 3600.0f);
     }
 
     // -------- PLACEMENT DATE RANGE --------
-    if (request->hasParam("placeStart", true))
-      settings.placeStart = request->getParam("placeStart", true)->value();
-    if (request->hasParam("placeEnd", true))
-      settings.placeEnd = request->getParam("placeEnd", true)->value();
+    if (request->hasParam("placeStart", true)) {
+      strlcpy(next.placeStart, request->getParam("placeStart", true)->value().c_str(), sizeof(next.placeStart));
+    }
+    if (request->hasParam("placeEnd", true)) {
+      strlcpy(next.placeEnd, request->getParam("placeEnd", true)->value().c_str(), sizeof(next.placeEnd));
+    }
 
-    sanitizeSettings();
-    pendingSaveAndSync = true;  // Handled safely in loop()
+    sanitizeSettings(next);
+
+    portENTER_CRITICAL(&settingsMux);
+    stagedSettings = next;
+    pendingSaveAndSync = true;  // Handled safely in loop() on Core 1
+    portEXIT_CRITICAL(&settingsMux);
 
     request->send(200, "text/plain", "Settings Saved");
   });
 
   server.on("/settings.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    StaticJsonDocument<1024> doc;
+    DeviceSettings snap;
+    portENTER_CRITICAL(&settingsMux);
+    snap = settings;
+    portEXIT_CRITICAL(&settingsMux);
 
-    doc["tempPrecision"] = settings.tempPrecision;
-    doc["humidityPrecision"] = settings.humidityPrecision;
-    doc["ahtInterval"] = settings.ahtInterval;
+    char json[768];
+    snprintf(json, sizeof(json),
+             "{\"tempPrecision\":%u,\"humidityPrecision\":%u,\"ahtInterval\":%u,"
+             "\"ntcResistance\":%lu,\"betaConstant\":%lu,\"ntcOffset\":%.2f,\"ntcInterval\":%u,"
+             "\"luxMode\":%u,\"maxLuxValue\":%lu,\"minLuxValue\":%lu,\"luxInterval\":%u,"
+             "\"luxUpdateThreshold\":%lu,\"luxSaveInterval\":%lu,"
+             "\"enableNodeRed\":%u,\"nodeRedIP\":\"%s\",\"nodeRedPort\":%u,\"nodeRedInterval\":%u,"
+             "\"enableRS485\":%u,\"modbusDeviceID\":%u,\"modbusBaudRate\":%lu,\"modbusInterval\":%u,"
+             "\"gmtOffset\":%ld,\"clockFormat\":%u,"
+             "\"latitude\":%.6f,\"longitude\":%.6f,\"tzOffset\":%.2f,"
+             "\"placeStart\":\"%s\",\"placeEnd\":\"%s\"}",
+             snap.tempPrecision, snap.humidityPrecision, snap.ahtInterval,
+             (unsigned long)round(snap.ntcResistance), (unsigned long)round(snap.betaConstant),
+             safeJsonFloat(snap.ntcOffset), snap.ntcInterval,
+             snap.luxPercentageMode, (unsigned long)snap.maxLuxValue, (unsigned long)snap.minLuxValue, snap.luxInterval,
+             (unsigned long)snap.luxUpdateThreshold, (unsigned long)snap.luxSaveInterval,
+             snap.enableNodeRed, snap.nodeRedIP, snap.nodeRedPort, snap.nodeRedInterval,
+             snap.enableRS485, snap.modbusDeviceID, (unsigned long)snap.modbusBaudRate, snap.modbusInterval,
+             snap.gmtOffset, snap.clockFormat,
+             safeJsonFloat(snap.latitude), safeJsonFloat(snap.longitude), safeJsonFloat(snap.tzOffset),
+             snap.placeStart, snap.placeEnd);
 
-    doc["ntcResistance"] = settings.ntcResistance;
-    doc["betaConstant"] = settings.betaConstant;
-    doc["ntcOffset"] = settings.ntcOffset;
-    doc["ntcInterval"] = settings.ntcInterval;
-
-    doc["luxMode"] = settings.luxPercentageMode;
-    doc["maxLuxValue"] = settings.maxLuxValue;
-    doc["minLuxValue"] = settings.minLuxValue;
-    doc["luxInterval"] = settings.luxInterval;
-    doc["luxUpdateThreshold"] = settings.luxUpdateThreshold;
-    doc["luxSaveInterval"] = settings.luxSaveInterval;
-
-    doc["enableNodeRed"] = settings.enableNodeRed;
-    doc["nodeRedIP"] = settings.nodeRedIP;
-    doc["nodeRedPort"] = settings.nodeRedPort;
-    doc["nodeRedInterval"] = settings.nodeRedInterval;
-
-    doc["enableRS485"] = settings.enableRS485;
-    doc["modbusDeviceID"] = settings.modbusDeviceID;
-    doc["modbusBaudRate"] = settings.modbusBaudRate;
-    doc["modbusInterval"] = settings.modbusInterval;
-
-    doc["gmtOffset"] = settings.gmtOffset;
-    doc["clockFormat"] = settings.clockFormat;
-
-    doc["latitude"] = serialized(String(settings.latitude, 6));
-    doc["longitude"] = serialized(String(settings.longitude, 6));
-    doc["tzOffset"] = serialized(String(settings.tzOffset, 2));
-
-    doc["placeStart"] = settings.placeStart;
-    doc["placeEnd"] = settings.placeEnd;
-
-    String response;
-    serializeJson(doc, response);
-    request->send(200, "application/json", response);
+    request->send(200, "application/json", json);
   });
 
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
-    prevSlaveDeviceID = settings.modbusDeviceID;
-    prevSlaveBaudRate = settings.modbusBaudRate;
     pendingFactoryReset = true;  // Handled safely in loop()
     request->send(200, "text/plain", "Factory Reset Successful");
   });
 
   server.on("/reset-lux", HTTP_POST, [](AsyncWebServerRequest *request) {
-    prevSlaveDeviceID = settings.modbusDeviceID;
-    prevSlaveBaudRate = settings.modbusBaudRate;
     pendingLuxReset = true;  // Handled safely in loop()
     request->send(200, "text/plain", "LUX Settings Reset Successfully!");
   });
@@ -829,13 +909,11 @@ void checkWiFiAndStartServer() {
     Serial.println("\n[WiFi] Connected!");
     Serial.printf("[WiFi] SSID: %s | IP: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
 
-    // Start Web Server once if it wasn't started at boot
     if (!webServerStarted) {
       Serial.println("[WiFi] Starting WebServer...");
       setupWebServer();
     }
 
-    // Trigger silent background NTP update (no OLED wipe, no blocking!)
     syncNTPInBackground();
   }
 
@@ -853,7 +931,7 @@ void checkWiFiAndStartServer() {
     }
   }
 
-  // Check if background NTP just finished syncing for the first time
+  // Confirm genuine background NTP sync (year >= 2025 ignores 2024 fallback time)
   if (isConnected && !ntpSynced && (millis() - lastNtpCheck > 5000UL)) {
     lastNtpCheck = millis();
     struct tm timeinfo;
@@ -871,9 +949,32 @@ void checkWiFiAndStartServer() {
 
 void processPendingWebActions() {
   if (pendingSaveAndSync) {
+    portENTER_CRITICAL(&settingsMux);
+    settings = stagedSettings;
     pendingSaveAndSync = false;
+    portEXIT_CRITICAL(&settingsMux);
+
     saveSettings();
-    sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
+
+    if (settings.enableRS485) {
+      if (!prevEnableRS485) {
+        // Freshly enabled RS485: reset timers so stale/watchdog don't falsely fire
+        lastValidModbus = millis();
+        lastModbusReset = millis();
+        lastModbusPoll = 0;
+        modbusFailCount = 0;
+        sensorDataStale = false;
+      }
+      sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
+    } else {
+      rs485.updateBaudRate(settings.modbusBaudRate);
+      prevSlaveDeviceID = settings.modbusDeviceID;
+      prevSlaveBaudRate = settings.modbusBaudRate;
+      sensorDataStale = false;
+      modbusFailCount = 0;
+    }
+    prevEnableRS485 = settings.enableRS485;
+
     syncNTPInBackground();
     calculateSunriseSunset();
     triggerLED(100);
@@ -883,15 +984,22 @@ void processPendingWebActions() {
 
   if (pendingLuxReset) {
     pendingLuxReset = false;
+
+    portENTER_CRITICAL(&settingsMux);
     settings.luxPercentageMode = 0;  // Auto
     settings.maxLuxValue = 0;        // 0 triggers auto-init on next sample
     settings.minLuxValue = 0;
     settings.luxInterval = 1;
     settings.luxUpdateThreshold = 200;
     settings.luxSaveInterval = 300;
+    portEXIT_CRITICAL(&settingsMux);
+
+    luxInitialized = false;  // Re-seed EMA filter cleanly on next sample
 
     saveSettings();
-    sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
+    if (settings.enableRS485) {
+      sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
+    }
     triggerLED(100);
     triggerBuzzer(100);
     Serial.println("[LUX] Settings Reset & Saved to NVS");
@@ -904,16 +1012,26 @@ void processPendingWebActions() {
     preferences.clear();
     preferences.end();
 
-    setDefaultSettings();
+    DeviceSettings defaults;
+    setDefaultSettings(defaults);
+    portENTER_CRITICAL(&settingsMux);
+    settings = defaults;
+    stagedSettings = defaults;
+    portEXIT_CRITICAL(&settingsMux);
+
     saveSettings();
-    sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
+    if (prevEnableRS485) {
+      sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
+    }
     triggerLED(100);
     triggerBuzzer(100);
 
-    // Wait 500ms while feeding WDT so HTTP response finishes cleanly before reboot
+    // Wait 500ms while feeding WDT + updating buzzer/LED so HTTP finishes before reboot
     unsigned long t = millis();
     while (millis() - t < 500) {
       esp_task_wdt_reset();
+      updateLED();
+      updateBuzzer();
       delay(10);
     }
     ESP.restart();
@@ -961,17 +1079,24 @@ void calculateSunriseSunset() {
   int sr = location.sunrise(year, month, day, false);
   int ss = location.sunset(year, month, day, false);
 
+  int newSrMin = -1;
+  int newSsMin = -1;
+  char newSrStr[6] = "--:--";
+  char newSsStr[6] = "--:--";
+
   if (sr >= 0 && ss >= 0) {
-    sunriseMinutes = (sr + tzRemainder + 1440) % 1440;
-    sunsetMinutes = (ss + tzRemainder + 1440) % 1440;
-    Dusk2Dawn::min2str(sunriseStr, sunriseMinutes);
-    Dusk2Dawn::min2str(sunsetStr, sunsetMinutes);
-  } else {
-    sunriseMinutes = -1;
-    sunsetMinutes = -1;
-    strncpy(sunriseStr, "--:--", sizeof(sunriseStr));
-    strncpy(sunsetStr, "--:--", sizeof(sunsetStr));
+    newSrMin = (sr + tzRemainder + 1440) % 1440;
+    newSsMin = (ss + tzRemainder + 1440) % 1440;
+    snprintf(newSrStr, sizeof(newSrStr), "%02d:%02d", newSrMin / 60, newSrMin % 60);
+    snprintf(newSsStr, sizeof(newSsStr), "%02d:%02d", newSsMin / 60, newSsMin % 60);
   }
+
+  portENTER_CRITICAL(&settingsMux);
+  sunriseMinutes = newSrMin;
+  sunsetMinutes = newSsMin;
+  memcpy(sunriseStr, newSrStr, sizeof(sunriseStr));
+  memcpy(sunsetStr, newSsStr, sizeof(sunsetStr));
+  portEXIT_CRITICAL(&settingsMux);
 
   lastCalcDay = day;
 }
@@ -1053,28 +1178,30 @@ void handleLUX() {
     uint32_t saveInterval = settings.luxSaveInterval * 1000UL;
     bool updated = false;
 
+    portENTER_CRITICAL(&settingsMux);
     // Initialize min/max on first valid reading or after reset
-    if ((settings.maxLuxValue <= 1 && settings.minLuxValue <= 1) && luxFiltered > 0) {
+    if ((settings.maxLuxValue <= 1 && settings.minLuxValue <= 1) && luxFiltered > 0.0f) {
       settings.maxLuxValue = (uint32_t)luxFiltered + 10;
       settings.minLuxValue = (uint32_t)luxFiltered;
       updated = true;
     }
 
     // Update MAX
-    if (luxFiltered > settings.maxLuxValue + threshold) {
+    if (luxFiltered > (float)(settings.maxLuxValue + threshold)) {
       settings.maxLuxValue = (uint32_t)luxFiltered;
       updated = true;
     }
 
-    // Update MIN
-    if (luxFiltered + threshold < settings.minLuxValue) {
+    // Update MIN (allows night readings near 0 lux without getting trapped at threshold=200)
+    if (luxFiltered < (float)settings.minLuxValue && (((float)settings.minLuxValue - luxFiltered >= (float)threshold) || luxFiltered <= 5.0f)) {
       settings.minLuxValue = (uint32_t)luxFiltered;
       updated = true;
     }
+    portEXIT_CRITICAL(&settingsMux);
 
-    // NVS Save Protection
+    // NVS Save Protection (writes only luxMin & luxMax)
     if (updated && (currentMillis - lastLuxSaveTime > saveInterval)) {
-      saveSettings();
+      saveLuxBounds();
       lastLuxSaveTime = currentMillis;
       Serial.println("[LUX] AUTO: Min/Max updated & saved");
     }
@@ -1085,7 +1212,7 @@ void handleLUX() {
   uint32_t maxLux = settings.maxLuxValue;
 
   if (maxLux > minLux) {
-    float percent = ((luxFiltered - minLux) * 100.0f) / (float)(maxLux - minLux);
+    float percent = ((luxFiltered - (float)minLux) * 100.0f) / (float)(maxLux - minLux);
     percent = constrain(percent, 0.0f, 100.0f);
     sunlightPercentage = (uint8_t)(percent + 0.5f);
   } else {
@@ -1123,11 +1250,15 @@ void resetRS485UART() {
 void sendDataToNodeRed() {
   static unsigned long lastUpdate = 0;
 
+  // Let any active 100ms buzzer/LED pulse finish cleanly before a potentially blocking HTTP call
+  if (buzzerState || (ledState && !sensorDataStale))
+    return;
+
   if (millis() - lastUpdate < (settings.nodeRedInterval * 1000UL))
     return;
   lastUpdate = millis();
 
-  if (!settings.enableNodeRed || settings.nodeRedIP.length() < 7) {
+  if (!settings.enableNodeRed || strlen(settings.nodeRedIP) < 7) {
     nodeRedConnected = false;
     return;
   }
@@ -1137,11 +1268,11 @@ void sendDataToNodeRed() {
     return;
   }
 
-  char url[96];
-  snprintf(url, sizeof(url), "http://%s:%u/solar-data", settings.nodeRedIP.c_str(), settings.nodeRedPort);
+  char url[112];
+  snprintf(url, sizeof(url), "http://%s:%u/solar-data", settings.nodeRedIP, settings.nodeRedPort);
 
   WiFiClient client;
-  client.setTimeout(1500);  // Short 1.5s LAN timeout prevents blocking loop()
+  client.setTimeout(1500);  // Short 1.5s LAN timeout prevents long loop() stalls
 
   HTTPClient http;
   http.setConnectTimeout(1500);
@@ -1156,28 +1287,20 @@ void sendDataToNodeRed() {
   http.addHeader("Content-Type", "application/json");
 
   char jsonPayload[200];
-  float safeLux = isnan((float)luxValue) ? 0.0f : (float)luxValue;
-  float safeSun = isnan((float)sunlightPercentage) ? 0.0f : (float)sunlightPercentage;
-
   snprintf(jsonPayload, sizeof(jsonPayload),
            "{\"ntcTemp\":%.*f,"
            "\"ahtTemp\":%.*f,"
            "\"humidity\":%.*f,"
            "\"lux\":%.1f,"
            "\"sunlight\":%.1f}",
-           settings.tempPrecision, ntcTemp,
-           settings.tempPrecision, ahtTemp,
-           settings.humidityPrecision, humidity,
-           safeLux,
-           safeSun);
+           settings.tempPrecision, safeJsonFloat(ntcTemp),
+           settings.tempPrecision, safeJsonFloat(ahtTemp),
+           settings.humidityPrecision, safeJsonFloat(humidity),
+           (float)luxValue,
+           (float)sunlightPercentage);
 
   httpResponseCode = http.POST((uint8_t *)jsonPayload, strlen(jsonPayload));
-
-  if (httpResponseCode == 200) {
-    nodeRedConnected = true;
-  } else {
-    nodeRedConnected = false;
-  }
+  nodeRedConnected = (httpResponseCode == 200);
 
   http.end();
 }
@@ -1197,7 +1320,7 @@ void serialOutput() {
   Serial.printf("AHT Temperature  : %.2f °C\n", ahtTemp);
   Serial.printf("Humidity         : %.2f %%\n", humidity);
   Serial.println("----------------------------------------");
-  Serial.printf("Light Intensity  : %lu lux\n", luxValue);
+  Serial.printf("Light Intensity  : %lu lux\n", (unsigned long)luxValue);
   Serial.printf("Filtered Lux     : %.2f lux\n", luxFiltered);
   Serial.printf("Sunlight Level   : %u %%\n", sunlightPercentage);
   Serial.printf("Sensor Stale     : %s\n", sensorDataStale ? "YES" : "No");
@@ -1278,19 +1401,18 @@ void displayLCD() {
   u8g2.drawStr(53, 36, noonRemStr);
 
   // ================= LEFT COLUMN (Clipped to x=0..49, y=1..39) =================
-  // Clip window guarantees text never bleeds over the x=50 vertical line!
   u8g2.setClipWindow(0, 1, 49, 39);
 
   char ntcStr[16];
-  snprintf(ntcStr, sizeof(ntcStr), "S:%.*f", settings.tempPrecision, ntcTemp);
+  snprintf(ntcStr, sizeof(ntcStr), "S:%.*f", settings.tempPrecision, safeJsonFloat(ntcTemp));
   u8g2.drawStr(0, 12, ntcStr);
 
   char ahtStr[16];
-  snprintf(ahtStr, sizeof(ahtStr), "R:%.*f", settings.tempPrecision, ahtTemp);
+  snprintf(ahtStr, sizeof(ahtStr), "R:%.*f", settings.tempPrecision, safeJsonFloat(ahtTemp));
   u8g2.drawStr(0, 24, ahtStr);
 
   char humStr[16];
-  snprintf(humStr, sizeof(humStr), "H:%.*f", settings.humidityPrecision, humidity);
+  snprintf(humStr, sizeof(humStr), "H:%.*f", settings.humidityPrecision, safeJsonFloat(humidity));
   u8g2.drawStr(0, 36, humStr);
 
   // Restore full screen clip window for bottom section
@@ -1298,7 +1420,7 @@ void displayLCD() {
 
   // ================= ROW 4: LUX, DIFF & WIFI BARS =================
   char luxStr[16];
-  snprintf(luxStr, sizeof(luxStr), "LX: %lu", luxValue);
+  snprintf(luxStr, sizeof(luxStr), "LX: %lu", (unsigned long)luxValue);
   u8g2.drawStr(0, 52, luxStr);
 
   char diffStr[12];
@@ -1330,12 +1452,11 @@ void displayLCD() {
   // ================= ROW 5: SUNLIGHT % PROGRESS BAR (y <= 63) =================
   char sunStr[16];
   snprintf(sunStr, sizeof(sunStr), "SUN: %u%%", sunlightPercentage);
-  u8g2.drawStr(0, 63, sunStr);  // y=63 keeps baseline inside 0..63 display bounds
+  u8g2.drawStr(0, 63, sunStr);
 
   int barWidth = map(constrain(sunlightPercentage, 0, 100), 0, 100, 0, 60);
-  u8g2.drawFrame(64, 55, 64, 8);  // Frame occupies y=55..62 (strictly within 0..63)
+  u8g2.drawFrame(64, 55, 64, 8);
   if (barWidth > 0) {
-    // Only drawBox when barWidth > 0 to prevent u8g2 zero-width underflow ghost pixels!
     u8g2.drawBox(66, 57, barWidth, 4);
   }
 
@@ -1390,9 +1511,11 @@ void sendModbusRequest(uint8_t id, uint16_t reg, uint16_t count) {
 }
 
 void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
+  uint32_t safeBaud = (targetBaudRate > 0) ? targetBaudRate : 115200;
+
   // Ensure Master transmits at the Slave's current baud rate first
-  if (targetBaudRate != settings.modbusBaudRate) {
-    rs485.updateBaudRate(targetBaudRate);
+  if (safeBaud != settings.modbusBaudRate) {
+    rs485.updateBaudRate(safeBaud);
     delay(10);
   }
 
@@ -1408,11 +1531,11 @@ void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
   int idx = 7;
   uint16_t val;
 
-  val = (uint16_t)settings.ntcResistance;
+  val = (uint16_t)constrain(round(settings.ntcResistance), 100.0f, 65535.0f);
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
-  val = (uint16_t)settings.betaConstant;
+  val = (uint16_t)constrain(round(settings.betaConstant), 1.0f, 65535.0f);
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
@@ -1469,10 +1592,12 @@ void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
   unsigned long startTime = millis();
   unsigned long lastByteTime = 0;
   const unsigned long RESPONSE_TIMEOUT = 800;
-  const unsigned long FRAME_TIMEOUT = max(10UL, 40000UL / targetBaudRate + 3);
+  const unsigned long FRAME_TIMEOUT = max(10UL, 40000UL / safeBaud + 3);
 
   while (millis() - startTime < RESPONSE_TIMEOUT) {
     esp_task_wdt_reset();
+    updateLED();
+    updateBuzzer();
     if (rs485.available()) {
       if (rIdx < (int)sizeof(buffer)) {
         buffer[rIdx++] = rs485.read();
@@ -1486,7 +1611,7 @@ void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
   }
 
   // Switch Master UART to the newly configured baud rate
-  if (settings.modbusBaudRate != targetBaudRate) {
+  if (settings.modbusBaudRate != safeBaud) {
     delay(20);
     rs485.updateBaudRate(settings.modbusBaudRate);
     delay(10);
@@ -1516,6 +1641,7 @@ void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
     Serial.println("[MODBUS] Slave confirmed settings saved successfully!");
     triggerLED(1000);
     lastValidModbus = millis();
+    sensorDataStale = false;
   } else {
     Serial.printf("[MODBUS] Settings ACK CRC error (got: %04X, calc: %04X)\n", crcR, crcC);
   }
@@ -1526,8 +1652,9 @@ void readModbusResponse() {
   int index = 0;
   unsigned long startTime = millis();
   unsigned long lastByteTime = 0;
+  uint32_t activeBaud = (settings.modbusBaudRate > 0) ? settings.modbusBaudRate : 115200;
   const unsigned long RESPONSE_TIMEOUT = 450;
-  const unsigned long FRAME_TIMEOUT = max(8UL, 40000UL / settings.modbusBaudRate + 2);
+  const unsigned long FRAME_TIMEOUT = max(8UL, 40000UL / activeBaud + 2);
 
   while (millis() - startTime < RESPONSE_TIMEOUT) {
     if (rs485.available()) {
@@ -1591,13 +1718,16 @@ void readModbusResponse() {
   sensorDataStale = false;
 
   if (byteCount >= 8) {
-    // Signed int16_t cast properly handles negative temperatures
     int16_t rawTemp = (int16_t)((frame[3] << 8) | frame[4]);
-    ntcTemp = rawTemp / 100.0f;
-
+    float parsedTemp = rawTemp / 100.0f;
     uint16_t luxHi = (frame[5] << 8) | frame[6];
     uint16_t luxLo = (frame[7] << 8) | frame[8];
-    luxValue = ((uint32_t)luxHi << 16) | luxLo;
+    uint32_t parsedLux = ((uint32_t)luxHi << 16) | luxLo;
+
+    portENTER_CRITICAL(&settingsMux);
+    ntcTemp = parsedTemp;
+    luxValue = parsedLux;
+    portEXIT_CRITICAL(&settingsMux);
   }
   if (byteCount >= 10) {
     luxConnected = ((frame[9] << 8) | frame[10]) > 0;
@@ -1605,29 +1735,25 @@ void readModbusResponse() {
 }
 
 void handleModbus() {
-  if (!settings.enableRS485)
+  if (!settings.enableRS485) {
+    sensorDataStale = false;
+    modbusFailCount = 0;
     return;
+  }
 
   uint32_t staleTimeout = max((uint32_t)15000, (uint32_t)(settings.modbusInterval * 3000UL));
   uint32_t watchdogTimeout = max((uint32_t)30000, (uint32_t)(settings.modbusInterval * 6000UL));
 
-  if (lastValidModbus > 0 && millis() - lastValidModbus > staleTimeout && !sensorDataStale) {
+  if (lastValidModbus > 0 && (millis() - lastValidModbus > staleTimeout) && !sensorDataStale) {
     sensorDataStale = true;
     Serial.println("[RS485] Sensor data is STALE - transmitter not responding");
   }
 
-  if (lastValidModbus > 0 && millis() - lastValidModbus > watchdogTimeout) {
-    Serial.printf("[RS485] No valid response for %lums -> resetting bus\n", watchdogTimeout);
+  // Separate lastModbusReset from lastValidModbus so UART resets never mask stale detection!
+  if ((modbusFailCount >= MODBUS_FAIL_LIMIT) || (lastValidModbus > 0 && (millis() - lastValidModbus > watchdogTimeout) && (millis() - lastModbusReset > watchdogTimeout))) {
+    Serial.println("[RS485] Bus recovery triggered -> resetting UART");
     resetRS485UART();
-    lastValidModbus = millis();
-    lastModbusPoll = millis();
-    return;
-  }
-
-  if (modbusFailCount >= MODBUS_FAIL_LIMIT) {
-    Serial.printf("[RS485] %u consecutive failures -> resetting bus\n", modbusFailCount);
-    resetRS485UART();
-    lastValidModbus = millis();
+    lastModbusReset = millis();
     lastModbusPoll = millis();
     return;
   }
@@ -1691,6 +1817,7 @@ void setup() {
   rs485.begin(settings.modbusBaudRate, SERIAL_8N1, RXD2, TXD2);
   rs485.setTimeout(2);
   lastValidModbus = millis();
+  lastModbusReset = millis();
 
   // --- AHT Sensor Init ---
   u8g2.clearBuffer();
@@ -1710,7 +1837,7 @@ void setup() {
   connectToSavedWiFi();
   delay(500);
 
-  // --- Server Setup (Can start regardless, or on WiFi connect) ---
+  // --- Server Setup ---
   setupWebServer();
   if (WiFi.status() == WL_CONNECTED) {
     u8g2.clearBuffer();
@@ -1751,13 +1878,15 @@ void setup() {
   delay(1000);
   u8g2.clearBuffer();
 
-  // --- Enable Hardware Watchdog (12s timeout) ---
+  // --- Enable Hardware Watchdog (12s timeout + Core 0 idle supervision) ---
   esp_task_wdt_config_t wdt_config = {
     .timeout_ms = 12000,
-    .idle_core_mask = 0,
+    .idle_core_mask = (1 << 0),
     .trigger_panic = true
   };
-  esp_task_wdt_reconfigure(&wdt_config);
+  if (esp_task_wdt_reconfigure(&wdt_config) != ESP_OK) {
+    esp_task_wdt_init(&wdt_config);
+  }
   esp_task_wdt_add(NULL);
 }
 
