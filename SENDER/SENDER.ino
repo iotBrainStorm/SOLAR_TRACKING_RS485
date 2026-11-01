@@ -70,12 +70,12 @@ struct DeviceSettings {
   float ntcResistance;
   float betaConstant;
   float ntcOffset;
-  uint16_t ntcInterval;
-  uint16_t luxInterval;
+  uint32_t ntcInterval;
+  uint32_t luxInterval;
   uint8_t enableRS485;
   uint8_t modbusDeviceID;
   uint32_t modbusBaudRate;
-  uint16_t modbusInterval;
+  uint32_t modbusInterval;
 };
 DeviceSettings settings;
 
@@ -103,11 +103,11 @@ void blinkLuxLED() {
 void sanitizeSettings() {
   if (settings.ntcResistance <= 0) settings.ntcResistance = 10000.0f;
   if (settings.betaConstant <= 0) settings.betaConstant = 3435.0f;
-  if (settings.ntcInterval < 1) settings.ntcInterval = 1;
-  if (settings.luxInterval < 1) settings.luxInterval = 1;
+  if (settings.ntcInterval < 100) settings.ntcInterval = 100;
+  if (settings.luxInterval < 100) settings.luxInterval = 100;
   if (settings.modbusDeviceID < 1 || settings.modbusDeviceID > 247) settings.modbusDeviceID = 1;
   if (settings.modbusBaudRate == 0) settings.modbusBaudRate = 115200;
-  if (settings.modbusInterval < 1) settings.modbusInterval = 1;
+  if (settings.modbusInterval < 100) settings.modbusInterval = 100;
   settings.enableRS485 = 1;
 }
 
@@ -115,12 +115,12 @@ void setDefaultSettings() {
   settings.ntcResistance = 10000.0f;
   settings.betaConstant = 3435.0f;
   settings.ntcOffset = 0.0f;
-  settings.ntcInterval = 1;
-  settings.luxInterval = 1;
+  settings.ntcInterval = 1000;
+  settings.luxInterval = 1000;
   settings.enableRS485 = 1;
   settings.modbusDeviceID = 1;
   settings.modbusBaudRate = 115200;
-  settings.modbusInterval = 2;
+  settings.modbusInterval = 2000;
 }
 
 void loadSettings() {
@@ -130,12 +130,12 @@ void loadSettings() {
   settings.ntcResistance = preferences.getFloat("ntcR", 10000.0f);
   settings.betaConstant = preferences.getFloat("beta", 3435.0f);
   settings.ntcOffset = preferences.getFloat("ntcOff", 0.0f);
-  settings.ntcInterval = preferences.getUInt("ntcInt", 1);
-  settings.luxInterval = preferences.getUInt("luxInt", 1);
+  settings.ntcInterval = preferences.getULong("ntcMs", 1000);
+  settings.luxInterval = preferences.getULong("luxMs", 1000);
   settings.enableRS485 = 1;
   settings.modbusDeviceID = preferences.getUChar("rsID", 1);
   settings.modbusBaudRate = preferences.getULong("rsBaud", 115200);
-  settings.modbusInterval = preferences.getUInt("rsInt", 2);
+  settings.modbusInterval = preferences.getULong("rsMs", 2000);
 
   preferences.end();
   sanitizeSettings();
@@ -149,12 +149,12 @@ void saveSettings() {
   preferences.putFloat("ntcR", settings.ntcResistance);
   preferences.putFloat("beta", settings.betaConstant);
   preferences.putFloat("ntcOff", settings.ntcOffset);
-  preferences.putUInt("ntcInt", settings.ntcInterval);
-  preferences.putUInt("luxInt", settings.luxInterval);
+  preferences.putULong("ntcMs", settings.ntcInterval);
+  preferences.putULong("luxMs", settings.luxInterval);
   preferences.putUChar("rsEn", 1);
   preferences.putUChar("rsID", settings.modbusDeviceID);
   preferences.putULong("rsBaud", settings.modbusBaudRate);
-  preferences.putUInt("rsInt", settings.modbusInterval);
+  preferences.putULong("rsMs", settings.modbusInterval);
 
   preferences.end();
   Serial.println("Settings Saved to NVS");
@@ -219,7 +219,7 @@ void updateRegisters() {
   holdingRegisters[1] = (luxValue >> 16) & 0xFFFF;  // lux high word
   holdingRegisters[2] = luxValue & 0xFFFF;          // lux low word
   holdingRegisters[3] = luxConnected ? 1 : 0;
-  holdingRegisters[4] = settings.modbusInterval;
+  holdingRegisters[4] = (uint16_t)constrain(settings.modbusInterval / 100UL, 1UL, 65535UL);
 }
 
 void handleModbus() {
@@ -348,9 +348,9 @@ void handleModbus() {
       di += 2;
       settings.ntcOffset = (int16_t)((pkt[di] << 8) | pkt[di + 1]) / 100.0f;
       di += 2;
-      settings.ntcInterval = (pkt[di] << 8) | pkt[di + 1];
+      settings.ntcInterval = (uint32_t)((pkt[di] << 8) | pkt[di + 1]) * 100UL;
       di += 2;
-      settings.luxInterval = (pkt[di] << 8) | pkt[di + 1];
+      settings.luxInterval = (uint32_t)((pkt[di] << 8) | pkt[di + 1]) * 100UL;
       di += 2;
       settings.modbusDeviceID = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
@@ -359,7 +359,7 @@ void handleModbus() {
       uint16_t baudLo = (pkt[di] << 8) | pkt[di + 1];
       di += 2;
       settings.modbusBaudRate = ((uint32_t)baudHi << 16) | baudLo;
-      settings.modbusInterval = (pkt[di] << 8) | pkt[di + 1];
+      settings.modbusInterval = (uint32_t)((pkt[di] << 8) | pkt[di + 1]) * 100UL;
       settings.enableRS485 = 1;
 
       saveSettings();
@@ -438,7 +438,7 @@ void calculateNTCFromADC() {
 
 void handleNTC() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
+  if (currentMillis - lastNTCReadTime >= settings.ntcInterval) {
     lastNTCReadTime = currentMillis;
     calculateNTCFromADC();
   }
@@ -494,8 +494,7 @@ void reinitBH1750() {
 void handleLUX() {
   unsigned long currentMillis = millis();
 
-  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL)
-    return;
+  if (currentMillis - lastLuxReadTime < settings.luxInterval) return;
   lastLuxReadTime = currentMillis;
 
   if (luxConnected) {

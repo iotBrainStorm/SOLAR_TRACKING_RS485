@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <math.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <WiFiManager.h>        // To save wifi password, instead of hard coding
 #include <ESPAsyncWebServer.h>  // For web server
 #include <HTTPClient.h>         // Node-Red
@@ -37,29 +38,32 @@ Preferences preferences;
 struct DeviceSettings {
   uint8_t tempPrecision;      // 0,1,2
   uint8_t humidityPrecision;  // 0,1,2
-  uint16_t ahtInterval;       // >=1
+  uint32_t ahtInterval;       // >=1
 
   float ntcResistance;  // 100..65535 (fits 16-bit Modbus register)
   float betaConstant;
   float ntcOffset;
-  uint16_t ntcInterval;
+  uint32_t ntcInterval;
 
   uint8_t luxPercentageMode;  // 0 auto, 1 manual
   uint32_t maxLuxValue;
   uint32_t minLuxValue;
-  uint16_t luxInterval;
+  uint32_t luxInterval;
   uint32_t luxUpdateThreshold;
   uint32_t luxSaveInterval;
+
+  uint8_t enableMDNS;  // 1 = ON (default), 0 = deleted/off
+  char mdnsHost[36];   // Hostname without ".local
 
   uint8_t enableNodeRed;  // 0 or 1
   char nodeRedIP[64];
   uint16_t nodeRedPort;
-  uint16_t nodeRedInterval;
+  uint32_t nodeRedInterval;
 
   uint8_t enableRS485;      // 0 = disabled, 1 = enabled
   uint8_t modbusDeviceID;   // 1-247
   uint32_t modbusBaudRate;  // 9600, 19200, 38400, 57600, 115200
-  uint16_t modbusInterval;  // seconds (share interval)
+  uint32_t modbusInterval;  // seconds (share interval)
 
   long gmtOffset;       // seconds
   uint8_t clockFormat;  // 12 or 24
@@ -80,6 +84,7 @@ portMUX_TYPE settingsMux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool pendingSaveAndSync = false;
 volatile bool pendingLuxReset = false;
 volatile bool pendingFactoryReset = false;
+volatile bool pendingMdnsUpdate = false;
 uint8_t prevEnableRS485 = 0;
 uint8_t prevSlaveDeviceID = 1;
 uint32_t prevSlaveBaudRate = 115200;
@@ -156,8 +161,13 @@ const char MSG_SUBTITLE[] PROGMEM = "SOLAR - TEM";
 const char MSG_DEVELOPER[] PROGMEM = "developed by M.Maity";
 
 // Forward declarations
+uint32_t spiffsTotalBytes = 0;
+uint32_t spiffsUsedBytes = 0;
+
+// Forward declarations
 void calculateSunriseSunset();
 void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate);
+void applyMDNS();
 
 //////////////////////   SAFE HELPERS   //////////////////////
 
@@ -174,6 +184,29 @@ void sanitizeSafeStr(char *str, size_t maxLen) {
       break;
     }
   }
+}
+
+void getDefaultMDNS(char *out, size_t len) {
+  uint64_t mac = ESP.getEfuseMac();  // Built into Arduino core, works before WiFi.begin()
+  snprintf(out, len, "mysolar-%02x%02x", (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
+}
+
+void sanitizeMDNSHost(char *str, size_t maxLen) {
+  if (!str || maxLen == 0) return;
+  str[maxLen - 1] = '\0';
+  // Strip ".local" suffix if user typed it
+  char *dot = strcasestr(str, ".local");
+  if (dot) *dot = '\0';
+
+  size_t w = 0;
+  for (size_t r = 0; str[r] != '\0' && w < 32; r++) {
+    char c = tolower((unsigned char)str[r]);
+    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c == '-' && w > 0)) {
+      str[w++] = c;
+    }
+  }
+  while (w > 0 && str[w - 1] == '-') w--;  // No trailing hyphen
+  str[w] = '\0';
 }
 
 //////////////////////   BLINK FEEDBACK LED   //////////////////////
@@ -225,29 +258,32 @@ void updateBuzzer() {
 void setDefaultSettings(DeviceSettings &cfg) {
   cfg.tempPrecision = 1;
   cfg.humidityPrecision = 0;
-  cfg.ahtInterval = 1;
+  cfg.ahtInterval = 1000;
 
   cfg.ntcResistance = 10000.0f;
   cfg.betaConstant = 3435.0f;
   cfg.ntcOffset = 0.0f;
-  cfg.ntcInterval = 1;
+  cfg.ntcInterval = 1000;
 
   cfg.luxPercentageMode = 0;
   cfg.maxLuxValue = 100;
   cfg.minLuxValue = 1;
-  cfg.luxInterval = 1;
+  cfg.luxInterval = 1000;
   cfg.luxUpdateThreshold = 200;
   cfg.luxSaveInterval = 300;
+
+  cfg.enableMDNS = 1;
+  getDefaultMDNS(cfg.mdnsHost, sizeof(cfg.mdnsHost));
 
   cfg.enableNodeRed = 0;
   cfg.nodeRedIP[0] = '\0';
   cfg.nodeRedPort = 1880;
-  cfg.nodeRedInterval = 10;
+  cfg.nodeRedInterval = 10000;
 
   cfg.enableRS485 = 0;
   cfg.modbusDeviceID = 1;
   cfg.modbusBaudRate = 115200;
-  cfg.modbusInterval = 2;
+  cfg.modbusInterval = 2000;
 
   cfg.gmtOffset = 19800;
   cfg.clockFormat = 24;
@@ -265,8 +301,8 @@ void setDefaultSettings(DeviceSettings &cfg) {
 void sanitizeSettings(DeviceSettings &cfg) {
   if (cfg.tempPrecision > 2) cfg.tempPrecision = 1;
   if (cfg.humidityPrecision > 2) cfg.humidityPrecision = 0;
-  if (cfg.ahtInterval < 1) cfg.ahtInterval = 1;
-  if (cfg.ntcInterval < 1) cfg.ntcInterval = 1;
+  if (cfg.ahtInterval < 100) cfg.ahtInterval = 100;
+  if (cfg.ntcInterval < 100) cfg.ntcInterval = 100;
 
   if (isnan(cfg.ntcResistance) || cfg.ntcResistance < 100.0f || cfg.ntcResistance > 65535.0f)
     cfg.ntcResistance = 10000.0f;
@@ -276,7 +312,7 @@ void sanitizeSettings(DeviceSettings &cfg) {
     cfg.ntcOffset = 0.0f;
 
   if (cfg.luxPercentageMode > 1) cfg.luxPercentageMode = 0;
-  if (cfg.luxInterval < 1) cfg.luxInterval = 1;
+  if (cfg.luxInterval < 100) cfg.luxInterval = 100;
   if (cfg.luxUpdateThreshold < 10) cfg.luxUpdateThreshold = 10;
   if (cfg.luxSaveInterval < 300) cfg.luxSaveInterval = 300;
   if (cfg.luxPercentageMode == 1 && cfg.maxLuxValue <= cfg.minLuxValue) {
@@ -284,17 +320,22 @@ void sanitizeSettings(DeviceSettings &cfg) {
   }
 
   if (cfg.nodeRedPort == 0) cfg.nodeRedPort = 1880;
-  if (cfg.nodeRedInterval < 1) cfg.nodeRedInterval = 1;
+  if (cfg.nodeRedInterval < 100) cfg.nodeRedInterval = 100;
 
   if (cfg.modbusDeviceID < 1 || cfg.modbusDeviceID > 247) cfg.modbusDeviceID = 1;
   if (cfg.modbusBaudRate == 0) cfg.modbusBaudRate = 115200;
-  if (cfg.modbusInterval < 1) cfg.modbusInterval = 1;
+  if (cfg.modbusInterval < 100) cfg.modbusInterval = 100;
 
   if (cfg.clockFormat != 12 && cfg.clockFormat != 24) cfg.clockFormat = 24;
   if (isnan(cfg.latitude) || cfg.latitude < -90.0f || cfg.latitude > 90.0f) cfg.latitude = 22.5726f;
   if (isnan(cfg.longitude) || cfg.longitude < -180.0f || cfg.longitude > 180.0f) cfg.longitude = 88.3639f;
   if (isnan(cfg.tzOffset) || cfg.tzOffset < -12.0f || cfg.tzOffset > 14.0f) cfg.tzOffset = 5.5f;
 
+  if (cfg.enableMDNS > 1) cfg.enableMDNS = 1;
+  sanitizeMDNSHost(cfg.mdnsHost, sizeof(cfg.mdnsHost));
+  if (cfg.enableMDNS && cfg.mdnsHost[0] == '\0') {
+    getDefaultMDNS(cfg.mdnsHost, sizeof(cfg.mdnsHost));
+  }
   sanitizeSafeStr(cfg.nodeRedIP, sizeof(cfg.nodeRedIP));
   sanitizeSafeStr(cfg.placeStart, sizeof(cfg.placeStart));
   sanitizeSafeStr(cfg.placeEnd, sizeof(cfg.placeEnd));
@@ -312,31 +353,36 @@ void loadSettings() {
 
   loaded.tempPrecision = preferences.getUChar("tPrec", 1);
   loaded.humidityPrecision = preferences.getUChar("hPrec", 0);
-  loaded.ahtInterval = preferences.getUInt("ahtInt", 1);
+  loaded.ahtInterval = preferences.getULong("ahtMs", 1000);
 
   loaded.ntcResistance = preferences.getFloat("ntcR", 10000.0f);
   loaded.betaConstant = preferences.getFloat("beta", 3435.0f);
   loaded.ntcOffset = preferences.getFloat("ntcOff", 0.0f);
-  loaded.ntcInterval = preferences.getUInt("ntcInt", 1);
+  loaded.ntcInterval = preferences.getULong("ntcMs", 1000);
 
   loaded.luxPercentageMode = preferences.getUChar("luxMode", 0);
   loaded.maxLuxValue = preferences.getULong("luxMax", 100);
   loaded.minLuxValue = preferences.getULong("luxMin", 1);
-  loaded.luxInterval = preferences.getUInt("luxInt", 1);
+  loaded.luxInterval = preferences.getULong("luxMs", 1000);
   loaded.luxUpdateThreshold = preferences.getULong("luxThr", 200);
   loaded.luxSaveInterval = preferences.getULong("luxSave", 300);
+
+  loaded.enableMDNS = preferences.getUChar("mdnsEn", 1);
+  if (preferences.isKey("mdnsHost")) {
+    preferences.getString("mdnsHost", loaded.mdnsHost, sizeof(loaded.mdnsHost));
+  }
 
   loaded.enableNodeRed = preferences.getUChar("nrEn", 0);
   if (preferences.isKey("nrIP")) {
     preferences.getString("nrIP", loaded.nodeRedIP, sizeof(loaded.nodeRedIP));
   }
   loaded.nodeRedPort = preferences.getUInt("nrPort", 1880);
-  loaded.nodeRedInterval = preferences.getUInt("nrInt", 10);
+  loaded.nodeRedInterval = preferences.getULong("nrMs", 10000);
 
   loaded.enableRS485 = preferences.getUChar("rsEn", 0);
   loaded.modbusDeviceID = preferences.getUChar("rsID", 1);
   loaded.modbusBaudRate = preferences.getULong("rsBaud", 115200);
-  loaded.modbusInterval = preferences.getUInt("rsInt", 2);
+  loaded.modbusInterval = preferences.getULong("rsMs", 2000);
 
   loaded.gmtOffset = preferences.getLong("gmt", 19800);
   loaded.clockFormat = preferences.getUChar("clkFmt", 24);
@@ -380,29 +426,32 @@ void saveSettings() {
 
   preferences.putUChar("tPrec", snap.tempPrecision);
   preferences.putUChar("hPrec", snap.humidityPrecision);
-  preferences.putUInt("ahtInt", snap.ahtInterval);
+  preferences.putULong("ahtMs", snap.ahtInterval);
 
   preferences.putFloat("ntcR", snap.ntcResistance);
   preferences.putFloat("beta", snap.betaConstant);
   preferences.putFloat("ntcOff", snap.ntcOffset);
-  preferences.putUInt("ntcInt", snap.ntcInterval);
+  preferences.putULong("ntcMs", snap.ntcInterval);
 
   preferences.putUChar("luxMode", snap.luxPercentageMode);
   preferences.putULong("luxMax", snap.maxLuxValue);
   preferences.putULong("luxMin", snap.minLuxValue);
-  preferences.putUInt("luxInt", snap.luxInterval);
+  preferences.putULong("luxMs", snap.luxInterval);
   preferences.putULong("luxThr", snap.luxUpdateThreshold);
   preferences.putULong("luxSave", snap.luxSaveInterval);
+
+  preferences.putUChar("mdnsEn", snap.enableMDNS);
+  preferences.putString("mdnsHost", snap.mdnsHost);
 
   preferences.putUChar("nrEn", snap.enableNodeRed);
   preferences.putString("nrIP", snap.nodeRedIP);
   preferences.putUInt("nrPort", snap.nodeRedPort);
-  preferences.putUInt("nrInt", snap.nodeRedInterval);
+  preferences.putULong("nrMs", snap.nodeRedInterval);
 
   preferences.putUChar("rsEn", snap.enableRS485);
   preferences.putUChar("rsID", snap.modbusDeviceID);
   preferences.putULong("rsBaud", snap.modbusBaudRate);
-  preferences.putUInt("rsInt", snap.modbusInterval);
+  preferences.putULong("rsMs", snap.modbusInterval);
 
   preferences.putLong("gmt", snap.gmtOffset);
   preferences.putUChar("clkFmt", snap.clockFormat);
@@ -757,7 +806,7 @@ void setupWebServer() {
     if (request->hasParam("humidityPrecision", true))
       next.humidityPrecision = request->getParam("humidityPrecision", true)->value().toInt();
     if (request->hasParam("ahtInterval", true))
-      next.ahtInterval = request->getParam("ahtInterval", true)->value().toInt();
+      next.ahtInterval = strtoul(request->getParam("ahtInterval", true)->value().c_str(), nullptr, 10);
 
     // -------- NTC --------
     if (request->hasParam("ntcResistance", true))
@@ -767,7 +816,7 @@ void setupWebServer() {
     if (request->hasParam("ntcOffset", true))
       next.ntcOffset = request->getParam("ntcOffset", true)->value().toFloat();
     if (request->hasParam("ntcInterval", true))
-      next.ntcInterval = request->getParam("ntcInterval", true)->value().toInt();
+      next.ntcInterval = strtoul(request->getParam("ntcInterval", true)->value().c_str(), nullptr, 10);
 
     // -------- LUX --------
     uint8_t previousLuxMode = next.luxPercentageMode;
@@ -779,16 +828,22 @@ void setupWebServer() {
       next.minLuxValue = 0;
     } else {
       if (request->hasParam("maxLuxValue", true))
-        next.maxLuxValue = request->getParam("maxLuxValue", true)->value().toInt();
+        next.maxLuxValue = strtoul(request->getParam("maxLuxValue", true)->value().c_str(), nullptr, 10);
       if (request->hasParam("minLuxValue", true))
-        next.minLuxValue = request->getParam("minLuxValue", true)->value().toInt();
+        next.minLuxValue = strtoul(request->getParam("minLuxValue", true)->value().c_str(), nullptr, 10);
     }
     if (request->hasParam("luxInterval", true))
-      next.luxInterval = request->getParam("luxInterval", true)->value().toInt();
+      next.luxInterval = strtoul(request->getParam("luxInterval", true)->value().c_str(), nullptr, 10);
     if (request->hasParam("luxUpdateThreshold", true))
-      next.luxUpdateThreshold = request->getParam("luxUpdateThreshold", true)->value().toInt();
+      next.luxUpdateThreshold = strtoul(request->getParam("luxUpdateThreshold", true)->value().c_str(), nullptr, 10);
     if (request->hasParam("luxSaveInterval", true))
-      next.luxSaveInterval = request->getParam("luxSaveInterval", true)->value().toInt();
+      next.luxSaveInterval = strtoul(request->getParam("luxSaveInterval", true)->value().c_str(), nullptr, 10);
+
+    // -------- MDNS --------
+    next.enableMDNS = request->hasParam("enableMDNS", true) ? 1 : 0;
+    if (request->hasParam("mdnsHost", true)) {
+      strlcpy(next.mdnsHost, request->getParam("mdnsHost", true)->value().c_str(), sizeof(next.mdnsHost));
+    }
 
     // -------- NODE RED --------
     next.enableNodeRed = request->hasParam("enableNodeRed", true) ? 1 : 0;
@@ -798,16 +853,16 @@ void setupWebServer() {
     if (request->hasParam("nodeRedPort", true))
       next.nodeRedPort = request->getParam("nodeRedPort", true)->value().toInt();
     if (request->hasParam("nodeRedInterval", true))
-      next.nodeRedInterval = request->getParam("nodeRedInterval", true)->value().toInt();
+      next.nodeRedInterval = strtoul(request->getParam("nodeRedInterval", true)->value().c_str(), nullptr, 10);
 
     // -------- RS485 --------
     next.enableRS485 = request->hasParam("enableRS485", true) ? 1 : 0;
     if (request->hasParam("modbusDeviceID", true))
       next.modbusDeviceID = request->getParam("modbusDeviceID", true)->value().toInt();
     if (request->hasParam("modbusBaudRate", true))
-      next.modbusBaudRate = request->getParam("modbusBaudRate", true)->value().toInt();
+      next.modbusBaudRate = strtoul(request->getParam("modbusBaudRate", true)->value().c_str(), nullptr, 10);
     if (request->hasParam("modbusInterval", true))
-      next.modbusInterval = request->getParam("modbusInterval", true)->value().toInt();
+      next.modbusInterval = strtoul(request->getParam("modbusInterval", true)->value().c_str(), nullptr, 10);
 
     // -------- CLOCK & LOCATION --------
     if (request->hasParam("clockFormat", true))
@@ -817,7 +872,6 @@ void setupWebServer() {
     if (request->hasParam("longitude", true))
       next.longitude = request->getParam("longitude", true)->value().toFloat();
 
-    // Parse tzOffset first, then let explicit gmtOffset take precedence so custom offsets survive
     if (request->hasParam("tzOffset", true)) {
       next.tzOffset = request->getParam("tzOffset", true)->value().toFloat();
     }
@@ -852,24 +906,29 @@ void setupWebServer() {
     snap = settings;
     portEXIT_CRITICAL(&settingsMux);
 
-    char json[768];
+    char defMdns[36];
+    getDefaultMDNS(defMdns, sizeof(defMdns));
+
+    char json[960];
     snprintf(json, sizeof(json),
-             "{\"tempPrecision\":%u,\"humidityPrecision\":%u,\"ahtInterval\":%u,"
-             "\"ntcResistance\":%lu,\"betaConstant\":%lu,\"ntcOffset\":%.2f,\"ntcInterval\":%u,"
-             "\"luxMode\":%u,\"maxLuxValue\":%lu,\"minLuxValue\":%lu,\"luxInterval\":%u,"
+             "{\"tempPrecision\":%u,\"humidityPrecision\":%u,\"ahtInterval\":%lu,"
+             "\"ntcResistance\":%lu,\"betaConstant\":%lu,\"ntcOffset\":%.2f,\"ntcInterval\":%lu,"
+             "\"luxMode\":%u,\"maxLuxValue\":%lu,\"minLuxValue\":%lu,\"luxInterval\":%lu,"
              "\"luxUpdateThreshold\":%lu,\"luxSaveInterval\":%lu,"
-             "\"enableNodeRed\":%u,\"nodeRedIP\":\"%s\",\"nodeRedPort\":%u,\"nodeRedInterval\":%u,"
-             "\"enableRS485\":%u,\"modbusDeviceID\":%u,\"modbusBaudRate\":%lu,\"modbusInterval\":%u,"
+             "\"enableMDNS\":%u,\"mdnsHost\":\"%s\",\"defaultMdns\":\"%s\","
+             "\"enableNodeRed\":%u,\"nodeRedIP\":\"%s\",\"nodeRedPort\":%u,\"nodeRedInterval\":%lu,"
+             "\"enableRS485\":%u,\"modbusDeviceID\":%u,\"modbusBaudRate\":%lu,\"modbusInterval\":%lu,"
              "\"gmtOffset\":%ld,\"clockFormat\":%u,"
              "\"latitude\":%.6f,\"longitude\":%.6f,\"tzOffset\":%.2f,"
              "\"placeStart\":\"%s\",\"placeEnd\":\"%s\"}",
-             snap.tempPrecision, snap.humidityPrecision, snap.ahtInterval,
+             snap.tempPrecision, snap.humidityPrecision, (unsigned long)snap.ahtInterval,
              (unsigned long)round(snap.ntcResistance), (unsigned long)round(snap.betaConstant),
-             safeJsonFloat(snap.ntcOffset), snap.ntcInterval,
-             snap.luxPercentageMode, (unsigned long)snap.maxLuxValue, (unsigned long)snap.minLuxValue, snap.luxInterval,
+             safeJsonFloat(snap.ntcOffset), (unsigned long)snap.ntcInterval,
+             snap.luxPercentageMode, (unsigned long)snap.maxLuxValue, (unsigned long)snap.minLuxValue, (unsigned long)snap.luxInterval,
              (unsigned long)snap.luxUpdateThreshold, (unsigned long)snap.luxSaveInterval,
-             snap.enableNodeRed, snap.nodeRedIP, snap.nodeRedPort, snap.nodeRedInterval,
-             snap.enableRS485, snap.modbusDeviceID, (unsigned long)snap.modbusBaudRate, snap.modbusInterval,
+             snap.enableMDNS, snap.mdnsHost, defMdns,
+             snap.enableNodeRed, snap.nodeRedIP, snap.nodeRedPort, (unsigned long)snap.nodeRedInterval,
+             snap.enableRS485, snap.modbusDeviceID, (unsigned long)snap.modbusBaudRate, (unsigned long)snap.modbusInterval,
              snap.gmtOffset, snap.clockFormat,
              safeJsonFloat(snap.latitude), safeJsonFloat(snap.longitude), safeJsonFloat(snap.tzOffset),
              snap.placeStart, snap.placeEnd);
@@ -877,13 +936,63 @@ void setupWebServer() {
     request->send(200, "application/json", json);
   });
 
+  // mDNS Modify / Reset / Delete endpoint
+  server.on("/mdns", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("action", true)) {
+      request->send(400, "text/plain", "Missing action");
+      return;
+    }
+    String act = request->getParam("action", true)->value();
+    DeviceSettings next;
+    portENTER_CRITICAL(&settingsMux);
+    next = pendingMdnsUpdate ? stagedSettings : settings;
+    portEXIT_CRITICAL(&settingsMux);
+
+    if (act == "modify") {
+      next.enableMDNS = request->hasParam("enableMDNS", true) ? 1 : 0;
+      if (request->hasParam("mdnsHost", true)) {
+        strlcpy(next.mdnsHost, request->getParam("mdnsHost", true)->value().c_str(), sizeof(next.mdnsHost));
+      }
+      sanitizeSettings(next);
+    } else if (act == "reset") {
+      next.enableMDNS = 1;
+      getDefaultMDNS(next.mdnsHost, sizeof(next.mdnsHost));
+    } else if (act == "delete") {
+      next.enableMDNS = 0;
+      next.mdnsHost[0] = '\0';
+    }
+
+    portENTER_CRITICAL(&settingsMux);
+    stagedSettings = next;
+    pendingMdnsUpdate = true;
+    portEXIT_CRITICAL(&settingsMux);
+
+    request->send(200, "text/plain", "mDNS Updated Successfully");
+  });
+
+  // Real-Time CPU Temp, RAM & SPIFFS Stats endpoint
+  server.on("/stats.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+    float cpuTemp = safeJsonFloat(temperatureRead());
+    uint32_t ramTotal = ESP.getHeapSize();
+    uint32_t ramFree = ESP.getFreeHeap();
+    uint32_t ramUsed = (ramTotal > ramFree) ? (ramTotal - ramFree) : 0;
+
+    char json[192];
+    snprintf(json, sizeof(json),
+             "{\"cpuTemp\":%.1f,\"ramUsed\":%lu,\"ramTotal\":%lu,"
+             "\"spiffsUsed\":%lu,\"spiffsTotal\":%lu}",
+             cpuTemp, (unsigned long)ramUsed, (unsigned long)ramTotal,
+             (unsigned long)spiffsUsedBytes, (unsigned long)spiffsTotalBytes);
+    request->send(200, "application/json", json);
+  });
+
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
-    pendingFactoryReset = true;  // Handled safely in loop()
+    pendingFactoryReset = true;
     request->send(200, "text/plain", "Factory Reset Successful");
   });
 
   server.on("/reset-lux", HTTP_POST, [](AsyncWebServerRequest *request) {
-    pendingLuxReset = true;  // Handled safely in loop()
+    pendingLuxReset = true;
     request->send(200, "text/plain", "LUX Settings Reset Successfully!");
   });
 
@@ -913,6 +1022,7 @@ void checkWiFiAndStartServer() {
       Serial.println("[WiFi] Starting WebServer...");
       setupWebServer();
     }
+    applyMDNS();
 
     syncNTPInBackground();
   }
@@ -975,11 +1085,25 @@ void processPendingWebActions() {
     }
     prevEnableRS485 = settings.enableRS485;
 
+    applyMDNS();
     syncNTPInBackground();
     calculateSunriseSunset();
     triggerLED(100);
     triggerBuzzer(100);
     Serial.println("[SYSTEM] Settings Saved & Synced Successfully");
+  }
+
+  if (pendingMdnsUpdate) {
+    portENTER_CRITICAL(&settingsMux);
+    settings = stagedSettings;
+    pendingMdnsUpdate = false;
+    portEXIT_CRITICAL(&settingsMux);
+
+    saveSettings();
+    applyMDNS();
+    triggerLED(100);
+    triggerBuzzer(100);
+    Serial.println("[mDNS] Updated & Saved to NVS");
   }
 
   if (pendingLuxReset) {
@@ -989,7 +1113,7 @@ void processPendingWebActions() {
     settings.luxPercentageMode = 0;  // Auto
     settings.maxLuxValue = 0;        // 0 triggers auto-init on next sample
     settings.minLuxValue = 0;
-    settings.luxInterval = 1;
+    settings.luxInterval = 1000;
     settings.luxUpdateThreshold = 200;
     settings.luxSaveInterval = 300;
     portEXIT_CRITICAL(&settingsMux);
@@ -1116,7 +1240,7 @@ float applyPrecision(float value, uint8_t precision) {
 
 void handleNTC() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastNTCReadTime >= settings.ntcInterval * 1000UL) {
+  if (currentMillis - lastNTCReadTime >= settings.ntcInterval) {
     lastNTCReadTime = currentMillis;
     ntcTemp = applyPrecision(ntcTemp, settings.tempPrecision);
   }
@@ -1126,7 +1250,7 @@ void handleNTC() {
 
 void handleAHT() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastAHTReadTime < settings.ahtInterval * 1000UL)
+  if (currentMillis - lastAHTReadTime < settings.ahtInterval)
     return;
   lastAHTReadTime = currentMillis;
 
@@ -1157,7 +1281,7 @@ void handleAHT() {
 void handleLUX() {
   unsigned long currentMillis = millis();
 
-  if (currentMillis - lastLuxReadTime < settings.luxInterval * 1000UL)
+  if (currentMillis - lastLuxReadTime < settings.luxInterval)
     return;
   lastLuxReadTime = currentMillis;
 
@@ -1254,7 +1378,7 @@ void sendDataToNodeRed() {
   if (buzzerState || (ledState && !sensorDataStale))
     return;
 
-  if (millis() - lastUpdate < (settings.nodeRedInterval * 1000UL))
+  if (millis() - lastUpdate < (settings.nodeRedInterval))
     return;
   lastUpdate = millis();
 
@@ -1543,11 +1667,11 @@ void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
-  val = settings.ntcInterval;
+  val = (uint16_t)constrain(settings.ntcInterval / 100UL, 1UL, 65535UL);
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
-  val = settings.luxInterval;
+  val = (uint16_t)constrain(settings.luxInterval / 100UL, 1UL, 65535UL);
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
@@ -1563,7 +1687,7 @@ void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate) {
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
-  val = settings.modbusInterval;
+  val = (uint16_t)constrain(settings.modbusInterval / 100UL, 1UL, 65535UL);
   frame[idx++] = val >> 8;
   frame[idx++] = val & 0xFF;
 
@@ -1741,8 +1865,8 @@ void handleModbus() {
     return;
   }
 
-  uint32_t staleTimeout = max((uint32_t)15000, (uint32_t)(settings.modbusInterval * 3000UL));
-  uint32_t watchdogTimeout = max((uint32_t)30000, (uint32_t)(settings.modbusInterval * 6000UL));
+  uint32_t staleTimeout = max(15000UL, settings.modbusInterval * 3UL);
+  uint32_t watchdogTimeout = max(30000UL, settings.modbusInterval * 6UL);
 
   if (lastValidModbus > 0 && (millis() - lastValidModbus > staleTimeout) && !sensorDataStale) {
     sensorDataStale = true;
@@ -1758,7 +1882,7 @@ void handleModbus() {
     return;
   }
 
-  if (millis() - lastModbusPoll >= settings.modbusInterval * 1000UL) {
+  if (millis() - lastModbusPoll >= settings.modbusInterval) {
     lastModbusPoll = millis();
     setReceiveMode();
     while (rs485.available())
@@ -1766,6 +1890,19 @@ void handleModbus() {
 
     sendModbusRequest(settings.modbusDeviceID, 0, 5);
     readModbusResponse();
+  }
+}
+
+void applyMDNS() {
+  MDNS.end();
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (settings.enableMDNS && settings.mdnsHost[0] != '\0') {
+    if (MDNS.begin(settings.mdnsHost)) {
+      MDNS.addService("http", "tcp", 80);
+      Serial.printf("[mDNS] Active: http://%s.local\n", settings.mdnsHost);
+    }
+  } else {
+    Serial.println("[mDNS] Disabled / Deleted");
   }
 }
 
@@ -1806,6 +1943,8 @@ void setup() {
     u8g2.drawStr(0, 18, "SPIFFS: ERROR");
     Serial.println("[ERROR] SPIFFS Mount Failed!");
   } else {
+    spiffsTotalBytes = SPIFFS.totalBytes();
+    spiffsUsedBytes = SPIFFS.usedBytes();
     u8g2.drawStr(0, 18, "SPIFFS: OK");
     Serial.println("[SUCCESS] SPIFFS Mounted Successfully.");
   }
@@ -1839,6 +1978,7 @@ void setup() {
 
   // --- Server Setup ---
   setupWebServer();
+  applyMDNS();
   if (WiFi.status() == WL_CONNECTED) {
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_6x12_tf);
