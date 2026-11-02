@@ -308,6 +308,9 @@
       }
 
       .sun-stat-item {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
         text-align: center;
         flex: 1;
       }
@@ -315,7 +318,9 @@
       .sun-stat-item .stat-value {
         font-size: 20px;
         font-weight: 700;
+        line-height: 1.2;
         letter-spacing: 0.5px;
+        white-space: nowrap;
       }
 
       .sun-stat-item .stat-label {
@@ -333,21 +338,26 @@
       }
 
       .lux-arrow {
-        display: inline-block;
-        font-size: 0.9em;
-        font-weight: 900;
-        -webkit-text-stroke: 0.6px currentColor;
-        margin-left: 3px;
-        vertical-align: baseline;
+        display: inline;
         transition: opacity 0.25s ease;
       }
 
+      .lux-arrow svg {
+        display: inline-block;
+        height: 0.7em; /* Fallback for older browsers */
+        height: 1cap; /* Exact height of numerals 0-9 */
+        width: auto;
+        vertical-align: baseline;
+      }
+
       .lux-arrow.up {
+        margin-left: 5px;
         color: #2ecc71;
       }
 
       .lux-arrow.down {
-        color: #fc513e;
+        margin-left: 5px;
+        color: #ff9f43;
       }
 
       /* Responsive: Tablet */
@@ -1054,7 +1064,7 @@
             <div class="sun-stat-divider"></div>
             <div class="sun-stat-item">
               <div class="stat-value" id="sunMapLux" style="color: #6dd3fc">
-                <span id="sunMapLuxVal">-- lx</span
+                <span id="sunMapLuxVal">--</span
                 ><span id="luxArrow" class="lux-arrow"></span>
               </div>
               <div class="stat-label">Lux</div>
@@ -1491,21 +1501,27 @@
           sunPercent != null ? Math.round(sunPercent) + "%" : "--%";
         var curLux = lux != null ? Math.round(lux) : null;
         document.getElementById("sunMapLuxVal").textContent =
-          curLux !== null ? curLux + " lx" : "-- lx";
+          curLux !== null ? curLux : "--";
 
         var arrowEl = document.getElementById("luxArrow");
         if (curLux !== null && prevLux !== null) {
           if (curLux > prevLux) {
-            arrowEl.textContent = "\u2191"; // Bold normal Up arrow ↑
-            arrowEl.className = "lux-arrow up";
+            if (arrowEl.className !== "lux-arrow up") {
+              arrowEl.innerHTML =
+                '<svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.9V1.5M1.3 4.8L5 1.1l3.7 3.7"/></svg>';
+              arrowEl.className = "lux-arrow up";
+            }
             arrowEl.style.opacity = "1";
           } else if (curLux < prevLux) {
-            arrowEl.textContent = "\u2193"; // Bold normal Down arrow ↓
-            arrowEl.className = "lux-arrow down";
+            if (arrowEl.className !== "lux-arrow down") {
+              arrowEl.innerHTML =
+                '<svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 1.1v11.4M1.3 9.2L5 12.9l3.7-3.7"/></svg>';
+              arrowEl.className = "lux-arrow down";
+            }
             arrowEl.style.opacity = "1";
           } else {
             // Unchanged value -> hide arrow
-            arrowEl.textContent = "";
+            if (arrowEl.innerHTML !== "") arrowEl.innerHTML = "";
             arrowEl.className = "lux-arrow";
             arrowEl.style.opacity = "0";
           }
