@@ -11,6 +11,31 @@
         box-sizing: border-box;
         margin: 0;
         padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button,
+      select,
+      input,
+      label,
+      .nav-item {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button {
+        outline: none;
+        font-family: inherit;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      button:focus {
+        outline: none;
+      }
+
+      button:active:not(:disabled),
+      .sidebar-footer .btn-save:active:not(:disabled) {
+        transform: scale(0.98);
       }
 
       body {
@@ -24,17 +49,31 @@
       /* ====== SIDEBAR ====== */
       .sidebar {
         width: 240px;
-        min-height: 100vh;
+        height: 100vh;
+        height: 100dvh;
         background: #151f2b;
         border-right: 1px solid rgba(255, 255, 255, 0.06);
         padding: 20px 0;
         position: fixed;
         top: 0;
         left: 0;
+        bottom: 0;
         overflow-y: auto;
-        z-index: 100;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        z-index: 150;
         display: flex;
         flex-direction: column;
+      }
+
+      .sidebar::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
       }
 
       .sidebar-brand {
@@ -45,6 +84,7 @@
         color: #4facfe;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         margin-bottom: 10px;
+        flex-shrink: 0;
       }
 
       .sidebar-brand span {
@@ -69,6 +109,7 @@
         transition: all 0.2s ease;
         border-left: 3px solid transparent;
         user-select: none;
+        flex-shrink: 0;
       }
 
       .nav-item:hover {
@@ -93,6 +134,7 @@
         margin-top: auto;
         padding: 15px 20px;
         border-top: 1px solid rgba(255, 255, 255, 0.06);
+        flex-shrink: 0;
       }
 
       .sidebar-footer .btn-save {
@@ -420,12 +462,19 @@
 
       @media (max-width: 768px) {
         .sidebar {
+          top: 56px;
+          height: calc(100vh - 56px);
+          height: calc(100dvh - 56px);
           transform: translateX(-100%);
           transition: transform 0.3s ease;
         }
 
         .sidebar.open {
           transform: translateX(0);
+        }
+
+        .overlay {
+          z-index: 140;
         }
 
         .overlay.active {
@@ -675,6 +724,440 @@
         background: linear-gradient(90deg, #4facfe, #00f2fe);
         border-radius: 6px;
         transition: width 0.4s ease;
+      }
+
+      /* ====== PRO SYSTEM STATS UI ====== */
+      .telemetry-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgba(79, 172, 254, 0.06);
+        border: 1px solid rgba(79, 172, 254, 0.16);
+        margin-bottom: 20px;
+        font-size: 12px;
+      }
+
+      .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #2ecc71;
+        letter-spacing: 0.5px;
+      }
+
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #2ecc71;
+        box-shadow: 0 0 8px #2ecc71;
+        animation: livePulse 1.8s infinite;
+      }
+
+      @keyframes livePulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: scale(0.85);
+        }
+      }
+
+      .telemetry-pills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .t-pill {
+        padding: 4px 10px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.75);
+        font-weight: 500;
+      }
+
+      .stats-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      @media (max-width: 1024px) {
+        .stats-cards-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .pro-stat-card {
+        background: linear-gradient(
+          160deg,
+          rgba(255, 255, 255, 0.045),
+          rgba(255, 255, 255, 0.015)
+        );
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px 14px;
+        position: relative;
+        overflow: hidden;
+        transition:
+          transform 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .pro-stat-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(79, 172, 254, 0.28);
+      }
+
+      .pro-stat-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .pro-stat-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pro-stat-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .pro-stat-icon svg {
+        width: 15px;
+        height: 15px;
+        fill: currentColor;
+      }
+
+      .pro-stat-icon.cpu {
+        background: rgba(255, 159, 67, 0.14);
+        color: #ff9f43;
+      }
+      .pro-stat-icon.ram {
+        background: rgba(79, 172, 254, 0.14);
+        color: #4facfe;
+      }
+      .pro-stat-icon.flash {
+        background: rgba(46, 204, 113, 0.14);
+        color: #2ecc71;
+      }
+
+      .pro-stat-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      .pro-stat-badge {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 10px;
+        background: rgba(46, 204, 113, 0.14);
+        color: #2ecc71;
+      }
+
+      .pro-stat-badge.warn {
+        background: rgba(255, 159, 67, 0.16);
+        color: #ff9f43;
+      }
+      .pro-stat-badge.crit {
+        background: rgba(255, 71, 87, 0.16);
+        color: #ff4757;
+      }
+
+      .pro-stat-value {
+        font-size: 21px;
+        font-weight: 700;
+        line-height: 1.15;
+        color: #fff;
+        letter-spacing: -0.3px;
+      }
+
+      .pro-stat-track {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.07);
+        border-radius: 6px;
+        overflow: hidden;
+        margin: 8px 0 6px;
+      }
+
+      .pro-stat-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 6px;
+        transition: width 0.45s ease;
+      }
+
+      .pro-stat-fill.cpu {
+        background: linear-gradient(90deg, #ff9f43, #ff6b6b);
+      }
+      .pro-stat-fill.ram {
+        background: linear-gradient(90deg, #4facfe, #00f2fe);
+      }
+      .pro-stat-fill.flash {
+        background: linear-gradient(90deg, #2ecc71, #00f2fe);
+      }
+
+      .pro-stat-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.45);
+      }
+
+      .power-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        background: rgba(255, 159, 67, 0.05);
+        border: 1px solid rgba(255, 159, 67, 0.2);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 16px;
+      }
+
+      .power-card h3 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+
+      .power-card p {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .btn-restart-dev {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 159, 67, 0.45);
+        background: rgba(255, 159, 67, 0.14);
+        color: #ff9f43;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .btn-restart-dev:hover {
+        background: #ff9f43;
+        color: #0f1923;
+        box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35);
+      }
+
+      /* ====== WIFI SIGNAL & CONTROLS ====== */
+      .wifi-signal-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-bottom: 12px;
+      }
+
+      .wifi-pct {
+        font-size: 26px;
+        font-weight: 700;
+        color: #4facfe;
+      }
+
+      .wifi-meta {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .wifi-btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .btn-wifi {
+        flex: 1;
+        min-width: 140px;
+        padding: 11px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .btn-wifi.connect {
+        border: 1px solid rgba(79, 172, 254, 0.45);
+        background: rgba(79, 172, 254, 0.12);
+        color: #4facfe;
+      }
+
+      .btn-wifi.connect:hover {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        color: #0f1923;
+      }
+
+      .btn-wifi.forget {
+        border: 1px solid rgba(255, 71, 87, 0.45);
+        background: rgba(255, 71, 87, 0.1);
+        color: #ff4757;
+      }
+
+      .btn-wifi.forget:hover {
+        background: #ff4757;
+        color: #fff;
+      }
+
+      /* ====== TIME SYNC ROW ====== */
+      .sync-time-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .sync-feedback {
+        font-size: 12px;
+        color: #2ecc71;
+        margin-top: 4px;
+        font-weight: 500;
+      }
+
+      .btn-sync-time {
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: 1px solid rgba(79, 172, 254, 0.4);
+        background: rgba(79, 172, 254, 0.12);
+        color: #4facfe;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .btn-sync-time:hover:not(:disabled) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        color: #0f1923;
+      }
+
+      .btn-sync-time:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+
+      /* ====== FULL-SCREEN BLUR OVERLAY + 60s COUNTDOWN ====== */
+      body.screen-locked > *:not(#screenLockModal) {
+        filter: blur(10px);
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .screen-lock-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(15, 25, 35, 0.72);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .screen-lock-backdrop.active {
+        display: flex;
+      }
+
+      .screen-lock-card {
+        max-width: 380px;
+        width: 100%;
+        background: #151f2b;
+        border: 1px solid rgba(79, 172, 254, 0.25);
+        border-radius: 16px;
+        padding: 28px 24px;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+      }
+
+      .timer-ring-box {
+        position: relative;
+        width: 110px;
+        height: 110px;
+        margin: 0 auto 16px;
+      }
+
+      .timer-ring-box svg {
+        width: 110px;
+        height: 110px;
+        transform: rotate(-90deg);
+      }
+
+      .timer-ring-bg {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.08);
+        stroke-width: 7;
+      }
+
+      .timer-ring-fg {
+        fill: none;
+        stroke: #00f2fe;
+        stroke-width: 7;
+        stroke-linecap: round;
+        stroke-dasharray: 289;
+        stroke-dashoffset: 0;
+        transition: stroke-dashoffset 1s linear;
+      }
+
+      .timer-ring-num {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      .screen-lock-card h2 {
+        font-size: 18px;
+        color: #fff;
+        margin-bottom: 6px;
+      }
+
+      .screen-lock-card p {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.55);
+        line-height: 1.5;
       }
     </style>
   </head>
@@ -1099,6 +1582,28 @@
               </div>
             </div>
           </div>
+
+          <div class="sub-section">
+            <div class="sub-section-title">NTP Synchronization</div>
+            <div class="sync-time-box">
+              <div>
+                <div style="font-size: 14px; color: rgba(255, 255, 255, 0.8)">
+                  Background Time Sync
+                </div>
+                <div class="sync-feedback" id="timeSyncFeedback">
+                  Last Synced: Checking...
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-sync-time"
+                id="syncTimeBtn"
+                onclick="syncTimeNow()"
+              >
+                Sync Time
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Location Panel -->
@@ -1313,13 +1818,13 @@
           </div>
 
           <div class="sub-section">
-            <div class="sub-section-title">Recommended Solar Plate Setup</div>
+            <div class="sub-section-title">Recommended SPV Setup</div>
 
             <div class="placement-grid">
               <!-- Azimuth / Direction Card -->
               <div class="placement-card">
                 <div>
-                  <div class="p-label">Plate Direction (Azimuth)</div>
+                  <div class="p-label">Plate Direction</div>
                   <div class="p-val" id="recAzimuthVal">180.0&deg;</div>
                   <div class="p-sub" id="recAzimuthDir">True South (S)</div>
                 </div>
@@ -1390,9 +1895,7 @@
                 <div>
                   <div class="p-label">Plate Tilt Angle</div>
                   <div class="p-val" id="recTiltVal">22.6&deg;</div>
-                  <div class="p-sub" id="recTiltSub">
-                    From Horizontal Ground
-                  </div>
+                  <div class="p-sub" id="recTiltSub">From Gnd Label</div>
                 </div>
                 <svg class="placement-svg" viewBox="0 0 120 100">
                   <!-- Ground line -->
@@ -1441,19 +1944,19 @@
 
             <div class="sun-stats-grid">
               <div class="sun-stat-box">
-                <div class="s-title">Solar Noon Sun Elevation</div>
+                <div class="s-title">Avg. Sun Elevation</div>
                 <div class="s-val" id="statNoonElev">--</div>
               </div>
               <div class="sun-stat-box">
-                <div class="s-title">Avg. Sunrise &rarr; Sunset Bearing</div>
+                <div class="s-title">Avg. Sun Azimuth</div>
                 <div class="s-val" id="statSunBearing">--</div>
               </div>
               <div class="sun-stat-box">
-                <div class="s-title">Avg. Daylight &amp; Solar Noon</div>
+                <div class="s-title">Avg. Daylight</div>
                 <div class="s-val" id="statDaylight">--</div>
               </div>
               <div class="sun-stat-box">
-                <div class="s-title">Output Gain vs. Flat (0&deg;)</div>
+                <div class="s-title">Output Gain</div>
                 <div class="s-val" id="statTiltGain">--</div>
               </div>
             </div>
@@ -1478,8 +1981,50 @@
           </div>
 
           <div class="sub-section">
+            <div class="sub-section-title">Wi-Fi Connection</div>
+            <div class="wifi-signal-row">
+              <div>
+                <div class="wifi-pct" id="wifiSignalPct">--%</div>
+                <div class="wifi-meta" id="wifiRssiLabel">
+                  Checking signal...
+                </div>
+              </div>
+              <div style="text-align: right">
+                <div
+                  style="font-size: 13px; font-weight: 600; color: #e0e6ed"
+                  id="wifiSsidLabel"
+                >
+                  SSID: --
+                </div>
+                <div class="wifi-meta" id="wifiIpLabel">IP: --</div>
+              </div>
+            </div>
+
+            <div class="pro-stat-track">
+              <div class="pro-stat-fill ram" id="wifiSignalBar"></div>
+            </div>
+
+            <div class="wifi-btn-row">
+              <button
+                type="button"
+                class="btn-wifi connect"
+                onclick="triggerWiFiAction('connect')"
+              >
+                Connect WiFi
+              </button>
+              <button
+                type="button"
+                class="btn-wifi forget"
+                onclick="triggerWiFiAction('forget')"
+              >
+                Forget WiFi
+              </button>
+            </div>
+          </div>
+
+          <div class="sub-section">
             <div class="toggle-row">
-              <span class="toggle-label">Enable mDNS (.local)</span>
+              <span class="toggle-label">Enable mDNS</span>
               <label class="switch">
                 <input
                   type="checkbox"
@@ -1532,54 +2077,138 @@
         <div class="panel" id="panel-stats">
           <div class="page-header">
             <h1>Real-Time System Stats</h1>
-            <p>
-              Live ESP32 CPU temperature, heap memory, and SPIFFS storage usage
-            </p>
+            <p>Live ESP32 processor telemetry, memory diagnostics</p>
           </div>
 
-          <div class="sub-section">
-            <div class="sub-section-title">CPU Temperature</div>
-            <div
-              style="font-size: 26px; font-weight: 700; color: #ff9f43"
-              id="statCpuVal"
-            >
-              -- &deg;C
+          <div class="telemetry-strip">
+            <div class="live-indicator">
+              <span class="live-dot"></span> LIVE TELEMETRY
             </div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" id="statCpuBar"></div>
+            <div class="telemetry-pills">
+              <span class="t-pill" id="statCpuFreq">Clock: -- MHz</span>
+              <span class="t-pill" id="statUptime">Uptime: --</span>
             </div>
           </div>
 
-          <div class="sub-section">
-            <div class="sub-section-title">RAM (Heap) Usage</div>
-            <div
-              style="font-size: 20px; font-weight: 700; color: #4facfe"
-              id="statRamVal"
-            >
-              -- / -- KB (--%)
+          <div class="stats-cards-grid">
+            <!-- CPU Temp Card -->
+            <div class="pro-stat-card">
+              <div class="pro-stat-top">
+                <div class="pro-stat-title-wrap">
+                  <div class="pro-stat-icon cpu">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-1v1h1v2h-1v1h1v2h-2V5z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="pro-stat-label">CPU Thermal</span>
+                </div>
+                <span class="pro-stat-badge" id="statCpuBadge">Normal</span>
+              </div>
+              <div class="pro-stat-value" id="statCpuVal">-- &deg;C</div>
+              <div class="pro-stat-track">
+                <div class="pro-stat-fill cpu" id="statCpuBar"></div>
+              </div>
+              <div class="pro-stat-meta">
+                <span>Core Die Sensor</span>
+                <span id="statCpuHeadroom">Max Safe: 85&deg;C</span>
+              </div>
             </div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" id="statRamBar"></div>
+
+            <!-- RAM Heap Card -->
+            <div class="pro-stat-card">
+              <div class="pro-stat-top">
+                <div class="pro-stat-title-wrap">
+                  <div class="pro-stat-icon ram">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="pro-stat-label">RAM (Heap)</span>
+                </div>
+                <span class="pro-stat-badge" id="statRamBadge">Optimal</span>
+              </div>
+              <div class="pro-stat-value" id="statRamPct">--%</div>
+              <div class="pro-stat-track">
+                <div class="pro-stat-fill ram" id="statRamBar"></div>
+              </div>
+              <div class="pro-stat-meta">
+                <span id="statRamVal">Used: -- KB</span>
+                <span id="statRamFree">Free: -- KB</span>
+              </div>
+            </div>
+
+            <!-- SPIFFS Storage Card -->
+            <div class="pro-stat-card">
+              <div class="pro-stat-top">
+                <div class="pro-stat-title-wrap">
+                  <div class="pro-stat-icon flash">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"
+                      />
+                    </svg>
+                  </div>
+                  <span class="pro-stat-label">SPIFFS Flash</span>
+                </div>
+                <span class="pro-stat-badge" id="statSpiffsBadge">Mounted</span>
+              </div>
+              <div class="pro-stat-value" id="statSpiffsPct">--%</div>
+              <div class="pro-stat-track">
+                <div class="pro-stat-fill flash" id="statSpiffsBar"></div>
+              </div>
+              <div class="pro-stat-meta">
+                <span id="statSpiffsVal">Used: -- KB</span>
+                <span id="statSpiffsFree">Free: -- KB</span>
+              </div>
             </div>
           </div>
 
-          <div class="sub-section">
-            <div class="sub-section-title">SPIFFS Flash Usage</div>
-            <div
-              style="font-size: 20px; font-weight: 700; color: #2ecc71"
-              id="statSpiffsVal"
+          <div class="power-card">
+            <div>
+              <h3>Safe Device Restart</h3>
+              <p>Idles RS485, Unmounts flash and Reboots</p>
+            </div>
+            <button
+              type="button"
+              class="btn-restart-dev"
+              onclick="confirmRestart()"
             >
-              -- / -- KB (--%)
-            </div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" id="statSpiffsBar"></div>
-            </div>
+              &#8635; Restart Device
+            </button>
           </div>
         </div>
       </form>
 
       <div class="footer">
         ESP32 Web Configuration Dashboard | Developer &copy; M.Maity
+      </div>
+    </div>
+
+    <!-- Full-Screen Blur Countdown Modal -->
+    <div class="screen-lock-backdrop" id="screenLockModal">
+      <div class="screen-lock-card">
+        <div class="timer-ring-box">
+          <svg viewBox="0 0 100 100">
+            <circle class="timer-ring-bg" cx="50" cy="50" r="46"></circle>
+            <circle
+              class="timer-ring-fg"
+              id="lockRingFg"
+              cx="50"
+              cy="50"
+              r="46"
+            ></circle>
+          </svg>
+          <div class="timer-ring-num" id="lockTimerNum">60s</div>
+        </div>
+        <h2 id="lockModalTitle">Restarting Device...</h2>
+        <p id="lockModalSub">
+          Please wait while ESP32 reboots safely. This page will refresh
+          automatically.
+        </p>
       </div>
     </div>
 
@@ -1603,6 +2232,12 @@
         }
         if (name === "stats") {
           pollStats();
+        }
+        if (name === "mdns") {
+          pollWiFi();
+        }
+        if (name === "time") {
+          fetchTimeStatus();
         }
 
         if (window.innerWidth <= 768) {
@@ -1851,24 +2486,6 @@
           .finally(function () {
             isSavingOrResetting = false;
           });
-      }
-
-      function confirmReset() {
-        if (confirm("Do you want to reset to default settings?")) {
-          isSavingOrResetting = true;
-          fetch("/reset", { method: "POST" })
-            .then(function (r) {
-              if (!r.ok) throw new Error("Reset failed");
-              alert("Device reset to default successfully! Rebooting...");
-              setTimeout(function () {
-                location.reload();
-              }, 2000);
-            })
-            .catch(function () {
-              isSavingOrResetting = false;
-              alert("Reset failed!");
-            });
-        }
       }
 
       function confirmLuxReset() {
@@ -2540,9 +3157,7 @@
         document.getElementById("recTiltVal").innerHTML =
           bestTilt.toFixed(1) + "&deg;";
         document.getElementById("recTiltSub").innerText =
-          bestTilt < 10.0
-            ? "Low Tilt (10°+ advised for rain cleaning)"
-            : "From Horizontal Ground";
+          bestTilt < 10.0 ? "Low Tilt Angle" : "From Gnd Label";
 
         // Update Compass SVG
         document
@@ -2685,6 +3300,224 @@
           });
       }
 
+      function startScreenCountdown(seconds, title, subtitle) {
+        isSavingOrResetting = true;
+        document.body.classList.add("screen-locked");
+        var modal = document.getElementById("screenLockModal");
+        var numEl = document.getElementById("lockTimerNum");
+        var ringEl = document.getElementById("lockRingFg");
+        document.getElementById("lockModalTitle").textContent = title;
+        document.getElementById("lockModalSub").textContent = subtitle;
+        modal.classList.add("active");
+
+        var total = seconds;
+        var rem = seconds;
+        var circumference = 289;
+        numEl.textContent = rem + "s";
+        ringEl.style.strokeDashoffset = "0";
+
+        var iv = setInterval(function () {
+          rem--;
+          if (rem <= 0) {
+            clearInterval(iv);
+            numEl.textContent = "0s";
+            ringEl.style.strokeDashoffset = String(circumference);
+            window.location.reload();
+            return;
+          }
+          numEl.textContent = rem + "s";
+          var offset = circumference * (1 - rem / total);
+          ringEl.style.strokeDashoffset = offset.toFixed(1);
+        }, 1000);
+      }
+
+      function confirmRestart() {
+        if (!confirm("Do you want to restart the device safely?")) return;
+        isSavingOrResetting = true;
+        fetch("/restart", { method: "POST" })
+          .then(function (r) {
+            if (!r.ok) throw new Error();
+            startScreenCountdown(
+              60,
+              "Restarting Device...",
+              "ESP32 is rebooting safely. Page will refresh automatically when timer ends.",
+            );
+          })
+          .catch(function () {
+            isSavingOrResetting = false;
+            alert("Failed to send restart command!");
+          });
+      }
+
+      function confirmReset() {
+        if (
+          confirm(
+            "Reset all settings to default? (Saved Wi-Fi will NOT be erased). Device will restart safely.",
+          )
+        ) {
+          isSavingOrResetting = true;
+          fetch("/reset", { method: "POST" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("Reset failed");
+              startScreenCountdown(
+                60,
+                "Resetting & Restarting...",
+                "Default settings restored (Wi-Fi preserved). Refreshing page after safe reboot...",
+              );
+            })
+            .catch(function () {
+              isSavingOrResetting = false;
+              alert("Reset failed!");
+            });
+        }
+      }
+
+      // ====== WIFI SIGNAL POLLING & AP ACTIONS ======
+      var isPollingWiFi = false;
+      function pollWiFi() {
+        if (isPollingWiFi || isSavingOrResetting) return;
+        var panel = document.getElementById("panel-mdns");
+        if (!panel || !panel.classList.contains("active")) return;
+
+        isPollingWiFi = true;
+        fetch("/wifi.json", { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw new Error();
+            return r.json();
+          })
+          .then(function (w) {
+            var pct = w.connected ? w.signal : 0;
+            var qual =
+              pct >= 75
+                ? "Excellent"
+                : pct >= 50
+                  ? "Good"
+                  : pct >= 25
+                    ? "Fair"
+                    : "Weak";
+            document.getElementById("wifiSignalPct").textContent = pct + "%";
+            document.getElementById("wifiRssiLabel").textContent = w.connected
+              ? qual + " (" + w.rssi + " dBm)"
+              : "Disconnected";
+            document.getElementById("wifiSsidLabel").textContent =
+              "SSID: " + (w.connected && w.ssid ? w.ssid : "Not Connected");
+            document.getElementById("wifiIpLabel").textContent =
+              "IP: " + (w.connected ? w.ip : "--");
+            document.getElementById("wifiSignalBar").style.width = pct + "%";
+          })
+          .catch(function () {})
+          .finally(function () {
+            isPollingWiFi = false;
+          });
+      }
+      setInterval(pollWiFi, 2000);
+
+      function triggerWiFiAction(mode) {
+        var msg =
+          mode === "forget"
+            ? "Wipe saved Wi-Fi credentials and start 'Solar Weather' AP (192.168.4.1) for 300s?\nAfter connecting to Wi-Fi, the device will restart automatically."
+            : "Start 'Solar Weather' AP (192.168.4.1) for 300s to connect a Wi-Fi network?\nAfter connecting, the device will restart automatically.";
+        if (!confirm(msg)) return;
+
+        var fd = new FormData();
+        fd.append("action", mode);
+        isSavingOrResetting = true;
+
+        fetch("/wifi-action", { method: "POST", body: fd })
+          .then(function (r) {
+            if (!r.ok) throw new Error();
+            startScreenCountdown(
+              300,
+              mode === "forget"
+                ? "Wi-Fi Forgotten • AP Active"
+                : "Wi-Fi AP Mode Active",
+              "Connect to Wi-Fi 'Solar Weather' (http://192.168.4.1). Device will restart automatically once connected.",
+            );
+          })
+          .catch(function () {
+            isSavingOrResetting = false;
+            alert("Could not start Wi-Fi AP mode!");
+          });
+      }
+
+      // ====== SILENT TIME SYNC & FEEDBACK ======
+      function fetchTimeStatus() {
+        fetch("/time-status.json", { cache: "no-store" })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (t) {
+            var fb = document.getElementById("timeSyncFeedback");
+            fb.textContent = "Last Synced: " + t.lastSync;
+            fb.style.color = t.synced ? "#2ecc71" : "rgba(255,255,255,0.45)";
+          })
+          .catch(function () {});
+      }
+      fetchTimeStatus();
+
+      function syncTimeNow() {
+        var btn = document.getElementById("syncTimeBtn");
+        var fb = document.getElementById("timeSyncFeedback");
+        btn.disabled = true;
+        btn.textContent = "Syncing...";
+
+        var prevCount = 0;
+        fetch("/sync-time", { method: "POST" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("WiFi offline");
+            return r.json();
+          })
+          .then(function (res) {
+            prevCount = res.syncCount;
+            var checks = 0;
+            var pollId = setInterval(function () {
+              checks++;
+              fetch("/time-status.json", { cache: "no-store" })
+                .then(function (r) {
+                  return r.json();
+                })
+                .then(function (st) {
+                  if (st.syncCount > prevCount) {
+                    clearInterval(pollId);
+                    fb.textContent = "Last Synced: " + st.lastSync;
+                    fb.style.color = "#2ecc71";
+                    btn.disabled = false;
+                    btn.innerHTML = "Sync Time";
+                  } else if (checks >= 6) {
+                    clearInterval(pollId);
+                    fb.textContent =
+                      "Sync timeout (Check Internet) • Last: " + st.lastSync;
+                    fb.style.color = "#ff9f43";
+                    btn.disabled = false;
+                    btn.innerHTML = "Sync Time";
+                  }
+                })
+                .catch(function () {});
+            }, 800);
+          })
+          .catch(function () {
+            fb.textContent = "Sync failed: Wi-Fi not connected";
+            fb.style.color = "#ff4757";
+            btn.disabled = false;
+            btn.innerHTML = "Sync Time";
+          });
+      }
+
+      // ====== PRO SYSTEM STATS POLLING ======
+      function formatUptime(sec) {
+        var d = Math.floor(sec / 86400);
+        var h = Math.floor((sec % 86400) / 3600);
+        var m = Math.floor((sec % 3600) / 60);
+        var s = sec % 60;
+        var hms =
+          String(h).padStart(2, "0") +
+          ":" +
+          String(m).padStart(2, "0") +
+          ":" +
+          String(s).padStart(2, "0");
+        return d > 0 ? d + "d " + hms : hms;
+      }
+
       var isPollingStats = false;
       function pollStats() {
         if (isPollingStats || isSavingOrResetting) return;
@@ -2706,23 +3539,59 @@
               s.spiffsTotal > 0
                 ? ((s.spiffsUsed * 100) / s.spiffsTotal).toFixed(1)
                 : "0.0";
+            var ramFreeKB = Math.max(
+              0,
+              (s.ramTotal - s.ramUsed) / 1024,
+            ).toFixed(1);
+            var spiffsFreeKB = Math.max(
+              0,
+              (s.spiffsTotal - s.spiffsUsed) / 1024,
+            ).toFixed(1);
 
             document.getElementById("statCpuVal").innerHTML =
               s.cpuTemp.toFixed(1) + " &deg;C";
+            document.getElementById("statRamPct").textContent = ramPct + "%";
+            document.getElementById("statSpiffsPct").textContent =
+              spiffsPct + "%";
+
             document.getElementById("statRamVal").textContent =
+              "Used: " +
               (s.ramUsed / 1024).toFixed(1) +
               " / " +
-              (s.ramTotal / 1024).toFixed(1) +
-              " KB (" +
-              ramPct +
-              "%)";
+              (s.ramTotal / 1024).toFixed(0) +
+              " KB";
+            document.getElementById("statRamFree").textContent =
+              "Free: " + ramFreeKB + " KB";
+
             document.getElementById("statSpiffsVal").textContent =
+              "Used: " +
               (s.spiffsUsed / 1024).toFixed(1) +
               " / " +
-              (s.spiffsTotal / 1024).toFixed(1) +
-              " KB (" +
-              spiffsPct +
-              "%)";
+              (s.spiffsTotal / 1024).toFixed(0) +
+              " KB";
+            document.getElementById("statSpiffsFree").textContent =
+              "Free: " + spiffsFreeKB + " KB";
+
+            if (s.cpuFreq !== undefined) {
+              document.getElementById("statCpuFreq").textContent =
+                "Clock: " + s.cpuFreq + " MHz";
+            }
+            if (s.uptime !== undefined) {
+              document.getElementById("statUptime").textContent =
+                "Uptime: " + formatUptime(s.uptime);
+            }
+
+            var cpuBadge = document.getElementById("statCpuBadge");
+            if (s.cpuTemp >= 75) {
+              cpuBadge.textContent = "Hot";
+              cpuBadge.className = "pro-stat-badge crit";
+            } else if (s.cpuTemp >= 62) {
+              cpuBadge.textContent = "Warm";
+              cpuBadge.className = "pro-stat-badge warn";
+            } else {
+              cpuBadge.textContent = "Normal";
+              cpuBadge.className = "pro-stat-badge";
+            }
 
             document.getElementById("statCpuBar").style.width =
               Math.min(100, Math.max(0, s.cpuTemp)) + "%";

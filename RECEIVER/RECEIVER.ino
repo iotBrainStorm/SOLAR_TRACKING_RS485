@@ -10,6 +10,7 @@
 #include <SPIFFS.h>          // File system
 #include <HardwareSerial.h>  // Serial communication
 #include "time.h"            // Time management
+#include <esp_sntp.h>        // Silent background SNTP sync callback
 #include <U8g2lib.h>         // OLED display
 #include <Preferences.h>     // To store users' settings
 #include <Adafruit_AHT10.h>  // For temperature, humidity
@@ -85,6 +86,16 @@ volatile bool pendingSaveAndSync = false;
 volatile bool pendingLuxReset = false;
 volatile bool pendingFactoryReset = false;
 volatile bool pendingMdnsUpdate = false;
+volatile bool pendingRestart = false;
+volatile bool pendingWiFiConnect = false;
+volatile bool pendingWiFiForget = false;
+volatile bool pendingTimeSync = false;
+
+// -- Silent NTP Sync Tracking
+time_t lastNtpSyncEpoch = 0;
+uint32_t ntpSyncCounter = 0;
+uint32_t lastHandledNtpSync = 0;
+
 uint8_t prevEnableRS485 = 0;
 uint8_t prevSlaveDeviceID = 1;
 uint32_t prevSlaveBaudRate = 115200;
@@ -168,6 +179,8 @@ uint32_t spiffsUsedBytes = 0;
 void calculateSunriseSunset();
 void sendSettingsToSlave(uint8_t targetDeviceID, uint32_t targetBaudRate);
 void applyMDNS();
+void setReceiveMode();
+void drawCenteredStr(int y, const char *str, const uint8_t *font);
 
 //////////////////////   SAFE HELPERS   //////////////////////
 
@@ -621,7 +634,149 @@ bool connectToSavedWiFi() {
   }
 }
 
+void safeReboot(const char *oledMsg) {
+  Serial.printf("\n[SYSTEM] %s\n", oledMsg);
+  triggerLED(100);
+  triggerBuzzer(100);
+
+  // Wait 500ms while feeding WDT so AsyncWebServer flushes HTTP 200 OK cleanly
+  unsigned long t = millis();
+  while (millis() - t < 500) {
+    esp_task_wdt_reset();
+    updateLED();
+    updateBuzzer();
+    delay(10);
+  }
+
+  // Safely idle RS485 transceiver and GPIO outputs
+  setReceiveMode();
+  rs485.flush();
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(BUZZER, LOW);
+
+  u8g2.clearBuffer();
+  drawCenteredStr(35, oledMsg, u8g2_font_t0_14_tr);
+  u8g2.sendBuffer();
+
+  // Unmount file system & mDNS cleanly (Wi-Fi NVS credentials untouched)
+  MDNS.end();
+  SPIFFS.end();
+  delay(100);
+  ESP.restart();
+}
+
+void startSafeWiFiPortal(bool wipeCredentials) {
+  Serial.printf("\n[WiFi] Starting AP Portal for 300s (Forget=%s)\n", wipeCredentials ? "YES" : "NO");
+  triggerLED(100);
+  triggerBuzzer(100);
+
+  // Allow HTTP 200 response to reach browser before stopping AsyncWebServer
+  unsigned long t = millis();
+  while (millis() - t < 600) {
+    esp_task_wdt_reset();
+    updateLED();
+    updateBuzzer();
+    delay(10);
+  }
+
+  setReceiveMode();
+  rs485.flush();
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(BUZZER, LOW);
+
+  // Pause 12s loopTask WDT during the 300s captive portal window
+  esp_task_wdt_delete(NULL);
+
+  // Release Port 80 so WiFiManager's portal server has zero port conflicts
+  MDNS.end();
+  if (webServerStarted) {
+    server.end();
+  }
+  delay(100);
+
+  WiFiManager wm;
+  WiFi.setAutoReconnect(false);
+
+  if (wipeCredentials) {
+    wm.resetSettings();
+    WiFi.disconnect(false, true);  // Erase saved SSID & password from NVS
+  } else {
+    WiFi.disconnect(false, false);  // Disconnect current session only; preserve NVS
+  }
+  delay(200);
+
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x12_tf);
+  u8g2.drawStr(0, 12, wipeCredentials ? "WiFi Forgotten!" : "Connect WiFi AP");
+  u8g2.drawStr(0, 24, "AP: Solar Weather");
+  u8g2.drawStr(0, 36, "IP: 192.168.4.1");
+  u8g2.drawStr(0, 48, "Timeout: 300s");
+  u8g2.drawStr(0, 60, "Connect & Setup");
+  u8g2.sendBuffer();
+
+  wm.setConfigPortalTimeout(300);
+  bool connected = wm.startConfigPortal("Solar Weather");
+
+  if (connected && WiFi.status() == WL_CONNECTED) {
+    Serial.println("[WiFi] Connected via Portal! Restarting automatically...");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_6x12_tf);
+    u8g2.drawStr(0, 20, "WiFi Connected!");
+    u8g2.drawStr(0, 36, WiFi.SSID().c_str());
+    u8g2.drawStr(0, 52, "Restarting...");
+    u8g2.sendBuffer();
+    delay(1000);
+    SPIFFS.end();
+    delay(100);
+    ESP.restart();
+  } else {
+    Serial.println("[WiFi] 300s AP Timeout. Returning to normal mode...");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_6x12_tf);
+    u8g2.drawStr(0, 24, "AP Timeout (300s)");
+    u8g2.drawStr(0, 42, wipeCredentials ? "Offline Mode" : "Reconnecting...");
+    u8g2.sendBuffer();
+    delay(1000);
+
+    WiFi.mode(WIFI_STA);
+    if (!wipeCredentials) {
+      WiFi.setAutoReconnect(true);
+      WiFi.begin();
+    }
+    if (webServerStarted) {
+      server.begin();
+    }
+    applyMDNS();
+
+    lastValidModbus = millis();
+    lastModbusReset = millis();
+
+    esp_task_wdt_add(NULL);
+    esp_task_wdt_reset();
+  }
+}
+
 //////////////////////   TIME SETUP (BOOT & SILENT BACKGROUND)   //////////////////////
+
+// Runs silently in lwIP background thread whenever NTP server replies
+void onNtpSyncCallback(struct timeval *tv) {
+  time_t syncedNow = (tv && tv->tv_sec > 0) ? tv->tv_sec : time(nullptr);
+  portENTER_CRITICAL(&settingsMux);
+  lastNtpSyncEpoch = syncedNow;
+  ntpSyncCounter++;
+  ntpSynced = true;
+  portEXIT_CRITICAL(&settingsMux);
+}
+
+void formatSyncTimestamp(time_t ep, char *out, size_t len) {
+  if (ep < 1735689600) {  // Before 2025 -> ignore unsynced / 2024 fallback time
+    strlcpy(out, "Not synced yet", len);
+    return;
+  }
+  struct tm ti;
+  localtime_r(&ep, &ti);
+  strftime(out, len, "%d %b %Y %H:%M:%S", &ti);  // e.g. 03 Oct 2026 16:32:56
+}
 
 // Silent background NTP trigger - never blocks loop() or touches OLED
 void syncNTPInBackground() {
@@ -970,25 +1125,111 @@ void setupWebServer() {
     request->send(200, "text/plain", "mDNS Updated Successfully");
   });
 
-  // Real-Time CPU Temp, RAM & SPIFFS Stats endpoint
+  // Real-Time CPU Temp, RAM, SPIFFS, Uptime & CPU Clock endpoint
   server.on("/stats.json", HTTP_GET, [](AsyncWebServerRequest *request) {
     float cpuTemp = safeJsonFloat(temperatureRead());
     uint32_t ramTotal = ESP.getHeapSize();
     uint32_t ramFree = ESP.getFreeHeap();
     uint32_t ramUsed = (ramTotal > ramFree) ? (ramTotal - ramFree) : 0;
+    uint32_t uptimeSec = millis() / 1000UL;
+    uint32_t cpuFreq = ESP.getCpuFreqMHz();
+
+    char json[256];
+    snprintf(json, sizeof(json),
+             "{\"cpuTemp\":%.1f,\"ramUsed\":%lu,\"ramTotal\":%lu,"
+             "\"spiffsUsed\":%lu,\"spiffsTotal\":%lu,\"uptime\":%lu,\"cpuFreq\":%lu}",
+             cpuTemp, (unsigned long)ramUsed, (unsigned long)ramTotal,
+             (unsigned long)spiffsUsedBytes, (unsigned long)spiffsTotalBytes,
+             (unsigned long)uptimeSec, (unsigned long)cpuFreq);
+    request->send(200, "application/json", json);
+  });
+
+  // Safe Device Restart endpoint
+  server.on("/restart", HTTP_POST, [](AsyncWebServerRequest *request) {
+    pendingRestart = true;
+    request->send(200, "text/plain", "Restarting Device Safely");
+  });
+
+  // Real-Time Wi-Fi Signal % & Status endpoint (matches OLED % formula)
+  server.on("/wifi.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+    bool isConn = (WiFi.status() == WL_CONNECTED);
+    int rssi = isConn ? WiFi.RSSI() : -100;
+    int pct = isConn ? constrain(2 * (rssi + 100), 0, 100) : 0;
+
+    char ssidBuf[36] = "";
+    char ipBuf[20] = "0.0.0.0";
+    if (isConn) {
+      strlcpy(ssidBuf, WiFi.SSID().c_str(), sizeof(ssidBuf));
+      sanitizeSafeStr(ssidBuf, sizeof(ssidBuf));
+      strlcpy(ipBuf, WiFi.localIP().toString().c_str(), sizeof(ipBuf));
+    }
 
     char json[192];
     snprintf(json, sizeof(json),
-             "{\"cpuTemp\":%.1f,\"ramUsed\":%lu,\"ramTotal\":%lu,"
-             "\"spiffsUsed\":%lu,\"spiffsTotal\":%lu}",
-             cpuTemp, (unsigned long)ramUsed, (unsigned long)ramTotal,
-             (unsigned long)spiffsUsedBytes, (unsigned long)spiffsTotalBytes);
+             "{\"connected\":%s,\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d,\"signal\":%d}",
+             isConn ? "true" : "false", ssidBuf, ipBuf, rssi, pct);
+    request->send(200, "application/json", json);
+  });
+
+  // Connect WiFi / Forget WiFi AP trigger endpoint
+  server.on("/wifi-action", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("action", true)) {
+      request->send(400, "text/plain", "Missing action");
+      return;
+    }
+    String act = request->getParam("action", true)->value();
+    if (act == "connect") {
+      pendingWiFiConnect = true;
+      request->send(200, "text/plain", "AP Started for 300s");
+    } else if (act == "forget") {
+      pendingWiFiForget = true;
+      request->send(200, "text/plain", "WiFi Wiped & AP Started for 300s");
+    } else {
+      request->send(400, "text/plain", "Invalid action");
+    }
+  });
+
+  // Silent Background Time Sync trigger & status endpoints
+  server.on("/sync-time", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (WiFi.status() != WL_CONNECTED) {
+      request->send(503, "application/json", "{\"ok\":false,\"msg\":\"WiFi disconnected\"}");
+      return;
+    }
+    uint32_t curCount;
+    portENTER_CRITICAL(&settingsMux);
+    curCount = ntpSyncCounter;
+    portEXIT_CRITICAL(&settingsMux);
+
+    pendingTimeSync = true;  // Triggers non-blocking SNTP in loop()
+
+    char json[64];
+    snprintf(json, sizeof(json), "{\"ok\":true,\"syncCount\":%lu}", (unsigned long)curCount);
+    request->send(200, "application/json", json);
+  });
+
+  server.on("/time-status.json", HTTP_GET, [](AsyncWebServerRequest *request) {
+    time_t syncEp;
+    uint32_t sCount;
+    bool synced;
+    portENTER_CRITICAL(&settingsMux);
+    syncEp = lastNtpSyncEpoch;
+    sCount = ntpSyncCounter;
+    synced = ntpSynced;
+    portEXIT_CRITICAL(&settingsMux);
+
+    char lastSyncStr[32];
+    formatSyncTimestamp(syncEp, lastSyncStr, sizeof(lastSyncStr));
+
+    char json[128];
+    snprintf(json, sizeof(json),
+             "{\"synced\":%s,\"syncCount\":%lu,\"lastSync\":\"%s\"}",
+             synced ? "true" : "false", (unsigned long)sCount, lastSyncStr);
     request->send(200, "application/json", json);
   });
 
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
     pendingFactoryReset = true;
-    request->send(200, "text/plain", "Factory Reset Successful");
+    request->send(200, "text/plain", "Reset to Default Successful");
   });
 
   server.on("/reset-lux", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -1129,9 +1370,31 @@ void processPendingWebActions() {
     Serial.println("[LUX] Settings Reset & Saved to NVS");
   }
 
+  if (pendingTimeSync) {
+    pendingTimeSync = false;
+    syncNTPInBackground();  // Zero blocking, zero OLED interruption
+  }
+
+  if (pendingRestart) {
+    pendingRestart = false;
+    safeReboot("Restarting...");
+  }
+
+  if (pendingWiFiConnect) {
+    pendingWiFiConnect = false;
+    startSafeWiFiPortal(false);
+  }
+
+  if (pendingWiFiForget) {
+    pendingWiFiForget = false;
+    startSafeWiFiPortal(true);
+  }
+
   if (pendingFactoryReset) {
     pendingFactoryReset = false;
-    Serial.println("\n===== EXECUTING FACTORY RESET =====");
+    Serial.println("\n===== EXECUTING SETTINGS RESET (WIFI PRESERVED) =====");
+
+    // Clears ONLY "device" settings namespace — Wi-Fi NVS credentials stay intact
     preferences.begin("device", false);
     preferences.clear();
     preferences.end();
@@ -1147,18 +1410,8 @@ void processPendingWebActions() {
     if (prevEnableRS485) {
       sendSettingsToSlave(prevSlaveDeviceID, prevSlaveBaudRate);
     }
-    triggerLED(100);
-    triggerBuzzer(100);
 
-    // Wait 500ms while feeding WDT + updating buzzer/LED so HTTP finishes before reboot
-    unsigned long t = millis();
-    while (millis() - t < 500) {
-      esp_task_wdt_reset();
-      updateLED();
-      updateBuzzer();
-      delay(10);
-    }
-    ESP.restart();
+    safeReboot("Resetting...");
   }
 }
 
@@ -1995,6 +2248,7 @@ void setup() {
   }
 
   // --- Time Setup ---
+  sntp_set_time_sync_notification_cb(onNtpSyncCallback);
   configDateTimeBoot();
 
   // --- Sunrise & Sunset Calculation ---
@@ -2041,7 +2295,17 @@ void loop() {
   handleAHT();
   handleLUX();
 
-  // Recalculate sunrise/sunset when date changes (non-blocking 5ms check)
+  // 1. Recalculate sunrise/sunset immediately after any silent background NTP sync
+  uint32_t curSync;
+  portENTER_CRITICAL(&settingsMux);
+  curSync = ntpSyncCounter;
+  portEXIT_CRITICAL(&settingsMux);
+  if (curSync != lastHandledNtpSync) {
+    lastHandledNtpSync = curSync;
+    calculateSunriseSunset();
+  }
+
+  // 2. Also recalculate at midnight when the calendar day rolls over (even if offline)
   struct tm timeinfo;
   if (getLocalTime(&timeinfo, 5) && timeinfo.tm_mday != lastCalcDay) {
     if (timeinfo.tm_year >= (2025 - 1900)) {
