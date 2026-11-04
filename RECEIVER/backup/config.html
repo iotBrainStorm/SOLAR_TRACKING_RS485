@@ -2009,7 +2009,6 @@
               </div>
 
               <!-- Tilt Angle Card -->
-              <di<!-- Tilt Angle Card -->
               <div class="placement-card">
                 <div>
                   <div class="p-label">Plate Tilt Angle</div>
@@ -2022,12 +2021,12 @@
                       id="pvPlateGrad"
                       gradientUnits="userSpaceOnUse"
                       x1="14"
-                      y1="86"
-                      x2="72"
-                      y2="28"
+                      y1="36"
+                      x2="64"
+                      y2="86"
                     >
-                      <stop offset="0%" stop-color="#4facfe" />
-                      <stop offset="100%" stop-color="#00f2fe" />
+                      <stop offset="0%" stop-color="#00f2fe" />
+                      <stop offset="100%" stop-color="#4facfe" />
                     </linearGradient>
                     <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stop-color="rgba(79,172,254,0.16)" />
@@ -2070,55 +2069,68 @@
                     stroke-width="2"
                     stroke-linecap="round"
                   />
-                  <!-- Dynamic angle arc -->
+                  <!-- Dynamic tilt angle fill & arc (at ground hinge) -->
+                  <path
+                    id="tiltWedge"
+                    d="M 60.2 86 L 43.2 86 A 17 17 0 0 1 44.5 79.5 Z"
+                    fill="rgba(0,242,254,0.12)"
+                  />
                   <path
                     id="tiltArc"
-                    d="M 38 86 A 24 24 0 0 0 36.2 76.8"
+                    d="M 43.2 86 A 17 17 0 0 1 44.5 79.5"
                     fill="none"
                     stroke="#00f2fe"
                     stroke-width="2"
                     stroke-linecap="round"
                   />
-                  <!-- Dynamic support strut -->
+                  <!-- Dynamic rear support strut -->
                   <line
                     id="tiltStrut"
-                    x1="50"
+                    x1="14"
                     y1="86"
-                    x2="50"
-                    y2="71"
-                    stroke="rgba(224,230,237,0.45)"
+                    x2="14"
+                    y2="66.8"
+                    stroke="rgba(224,230,237,0.5)"
                     stroke-width="2"
                     stroke-dasharray="3,2"
                     stroke-linecap="round"
                   />
-                  <!-- Dynamic solar plate -->
+                  <!-- Dynamic incident sun ray hitting panel face -->
+                  <line
+                    id="sunRay"
+                    x1="39.0"
+                    y1="27.1"
+                    x2="22.2"
+                    y2="66.7"
+                    stroke="rgba(255,190,59,0.5)"
+                    stroke-width="1.4"
+                    stroke-dasharray="2.5,2.5"
+                    stroke-linecap="round"
+                  />
+                  <!-- Dynamic solar plate (facing the sun arc) -->
                   <line
                     id="tiltPlate"
                     x1="14"
-                    y1="86"
-                    x2="67.5"
-                    y2="63.7"
+                    y1="66.8"
+                    x2="60.2"
+                    y2="86"
                     stroke="url(#pvPlateGrad)"
                     stroke-width="4.5"
                     stroke-linecap="round"
                   />
-                  <!-- Hinge pin -->
+                  <!-- Dynamic ground hinge pin -->
                   <circle
-                    cx="14"
+                    id="tiltHinge"
+                    cx="60.2"
                     cy="86"
-                    r="4"
+                    r="3.8"
                     fill="#0f1923"
                     stroke="#00f2fe"
                     stroke-width="2"
                   />
                   <!-- Sun cue positioned dynamically on 0-90 deg protractor guide -->
-                  <g id="sunCue" transform="translate(42.4 17.7)">
-                    <circle
-                      cx="0"
-                      cy="0"
-                      r="8"
-                      fill="rgba(255,190,59,0.2)"
-                    />
+                  <g id="sunCue" transform="translate(42.9 17.9)">
+                    <circle cx="0" cy="0" r="8" fill="rgba(255,190,59,0.2)" />
                     <circle cx="0" cy="0" r="4" fill="#ffbe3b" />
                   </g>
                 </svg>
@@ -3350,33 +3362,94 @@
 
         // Update Tilt Profile SVG & Sun Elevation on Protractor
         var avgNoon = sumNoonElev / validDays;
-
         var pRad = bestTilt * DEG2RAD;
-        var x2 = 14 + 58 * Math.cos(pRad);
-        var y2 = 86 - 58 * Math.sin(pRad);
-        var sx = 14 + 39 * Math.cos(pRad);
-        var sy = 86 - 39 * Math.sin(pRad);
-        var ax = 14 + 24 * Math.cos(pRad);
-        var ay = 86 - 24 * Math.sin(pRad);
+        var plateLen = 50.0;
+
+        // Panel slopes down-right (\) to face the sun: raised rear at x=14, hinge at (x2, 86)
+        var y1 = 86.0 - plateLen * Math.sin(pRad);
+        var x2 = 14.0 + plateLen * Math.cos(pRad);
 
         var plateEl = document.getElementById("tiltPlate");
+        plateEl.setAttribute("x1", "14");
+        plateEl.setAttribute("y1", y1.toFixed(1));
         plateEl.setAttribute("x2", x2.toFixed(1));
-        plateEl.setAttribute("y2", y2.toFixed(1));
+        plateEl.setAttribute("y2", "86");
+
+        var hingeEl = document.getElementById("tiltHinge");
+        hingeEl.setAttribute("cx", x2.toFixed(1));
 
         var strutEl = document.getElementById("tiltStrut");
-        strutEl.setAttribute("x1", sx.toFixed(1));
-        strutEl.setAttribute("x2", sx.toFixed(1));
-        strutEl.setAttribute("y2", sy.toFixed(1));
+        strutEl.setAttribute("x1", "14");
+        strutEl.setAttribute("y1", "86");
+        strutEl.setAttribute("x2", "14");
+        strutEl.setAttribute("y2", y1.toFixed(1));
 
+        // Tilt angle arc & shaded wedge at ground hinge (x2, 86)
+        var baseW = plateLen * Math.cos(pRad);
+        var arcR = Math.min(17.0, baseW * 0.55);
         var arcEl = document.getElementById("tiltArc");
-        if (bestTilt > 2.0) {
+        var wedgeEl = document.getElementById("tiltWedge");
+
+        if (bestTilt > 2.0 && arcR >= 4.0) {
+          var arcStartX = x2 - arcR;
+          var ax = x2 - arcR * Math.cos(pRad);
+          var ay = 86.0 - arcR * Math.sin(pRad);
+          var arcSpec =
+            arcR.toFixed(1) +
+            " " +
+            arcR.toFixed(1) +
+            " 0 0 1 " +
+            ax.toFixed(1) +
+            " " +
+            ay.toFixed(1);
+
           arcEl.setAttribute(
             "d",
-            "M 38 86 A 24 24 0 0 0 " + ax.toFixed(1) + " " + ay.toFixed(1),
+            "M " + arcStartX.toFixed(1) + " 86 A " + arcSpec,
+          );
+          wedgeEl.setAttribute(
+            "d",
+            "M " +
+              x2.toFixed(1) +
+              " 86 L " +
+              arcStartX.toFixed(1) +
+              " 86 A " +
+              arcSpec +
+              " Z",
           );
         } else {
           arcEl.setAttribute("d", "");
+          wedgeEl.setAttribute("d", "");
         }
+
+        // Place Sun on the r=74 protractor arc & draw perpendicular incident ray to plate face
+        var sunElevDeg = Math.max(0.0, Math.min(90.0, avgNoon));
+        var sunElevRad = sunElevDeg * DEG2RAD;
+        var cosSun = Math.cos(sunElevRad);
+        var sinSun = Math.sin(sunElevRad);
+
+        var sunX = 14.0 + 74.0 * cosSun;
+        var sunY = 86.0 - 74.0 * sinSun;
+        document
+          .getElementById("sunCue")
+          .setAttribute(
+            "transform",
+            "translate(" + sunX.toFixed(1) + " " + sunY.toFixed(1) + ")",
+          );
+
+        var sinSum = Math.sin((sunElevDeg + bestTilt) * DEG2RAD);
+        var rHit =
+          sinSum > 1e-4
+            ? (plateLen * Math.sin(pRad) * Math.cos(pRad)) / sinSum
+            : 0.0;
+        var rRayStart = 64.0;
+        var rRayEnd = Math.min(rRayStart - 6.0, rHit + 3.5);
+
+        var rayEl = document.getElementById("sunRay");
+        rayEl.setAttribute("x1", (14.0 + rRayStart * cosSun).toFixed(1));
+        rayEl.setAttribute("y1", (86.0 - rRayStart * sinSun).toFixed(1));
+        rayEl.setAttribute("x2", (14.0 + rRayEnd * cosSun).toFixed(1));
+        rayEl.setAttribute("y2", (86.0 - rRayEnd * sinSun).toFixed(1));
 
         // Place Sun on the r=74 protractor arc at actual Avg. Sun Elevation
         var sunElevRad = Math.max(0.0, Math.min(90.0, avgNoon)) * DEG2RAD;
