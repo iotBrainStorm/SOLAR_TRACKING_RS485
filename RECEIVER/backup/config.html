@@ -2009,21 +2009,22 @@
               </div>
 
               <!-- Tilt Angle Card -->
+              <di<!-- Tilt Angle Card -->
               <div class="placement-card">
                 <div>
                   <div class="p-label">Plate Tilt Angle</div>
                   <div class="p-val" id="recTiltVal">22.6&deg;</div>
                   <div class="p-sub" id="recTiltSub">From Gnd Label</div>
                 </div>
-                <svg class="placement-svg" viewBox="0 0 120 100">
+                <svg class="placement-svg" viewBox="0 0 100 100">
                   <defs>
                     <linearGradient
                       id="pvPlateGrad"
                       gradientUnits="userSpaceOnUse"
-                      x1="20"
-                      y1="80"
-                      x2="92"
-                      y2="20"
+                      x1="14"
+                      y1="86"
+                      x2="72"
+                      y2="28"
                     >
                       <stop offset="0%" stop-color="#4facfe" />
                       <stop offset="100%" stop-color="#00f2fe" />
@@ -2033,36 +2034,38 @@
                       <stop offset="100%" stop-color="rgba(79,172,254,0)" />
                     </linearGradient>
                   </defs>
-                  <!-- Sun cue & incident ray -->
-                  <circle
-                    cx="98"
-                    cy="20"
-                    r="8.5"
-                    fill="rgba(255,190,59,0.16)"
-                  />
-                  <circle cx="98" cy="20" r="4.2" fill="#ffbe3b" />
-                  <!-- 0 to 90 deg reference protractor guide -->
-                  <path
-                    d="M 78 80 A 58 58 0 0 0 20 22"
-                    fill="none"
+                  <!-- 90 deg vertical axis guide -->
+                  <line
+                    x1="14"
+                    y1="86"
+                    x2="14"
+                    y2="12"
                     stroke="rgba(255,255,255,0.08)"
-                    stroke-width="1.2"
+                    stroke-width="1"
                     stroke-dasharray="2,3"
+                  />
+                  <!-- Enlarged 0 to 90 deg reference protractor guide (radius = 74) -->
+                  <path
+                    d="M 88 86 A 74 74 0 0 0 14 12"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.18)"
+                    stroke-width="1.3"
+                    stroke-dasharray="2.5,3"
                   />
                   <!-- Ground base & horizon -->
                   <rect
-                    x="8"
-                    y="80"
-                    width="104"
-                    height="8"
+                    x="6"
+                    y="86"
+                    width="88"
+                    height="7"
                     rx="2"
                     fill="url(#groundGrad)"
                   />
                   <line
-                    x1="8"
-                    y1="80"
-                    x2="112"
-                    y2="80"
+                    x1="6"
+                    y1="86"
+                    x2="94"
+                    y2="86"
                     stroke="rgba(255,255,255,0.3)"
                     stroke-width="2"
                     stroke-linecap="round"
@@ -2070,7 +2073,7 @@
                   <!-- Dynamic angle arc -->
                   <path
                     id="tiltArc"
-                    d="M 48 80 A 28 28 0 0 0 45 68"
+                    d="M 38 86 A 24 24 0 0 0 36.2 76.8"
                     fill="none"
                     stroke="#00f2fe"
                     stroke-width="2"
@@ -2079,35 +2082,45 @@
                   <!-- Dynamic support strut -->
                   <line
                     id="tiltStrut"
-                    x1="65"
-                    y1="80"
-                    x2="65"
-                    y2="62"
+                    x1="50"
+                    y1="86"
+                    x2="50"
+                    y2="71"
                     stroke="rgba(224,230,237,0.45)"
-                    stroke-width="2.2"
+                    stroke-width="2"
                     stroke-dasharray="3,2"
                     stroke-linecap="round"
                   />
                   <!-- Dynamic solar plate -->
                   <line
                     id="tiltPlate"
-                    x1="20"
-                    y1="80"
-                    x2="90"
-                    y2="51"
+                    x1="14"
+                    y1="86"
+                    x2="67.5"
+                    y2="63.7"
                     stroke="url(#pvPlateGrad)"
-                    stroke-width="5"
+                    stroke-width="4.5"
                     stroke-linecap="round"
                   />
                   <!-- Hinge pin -->
                   <circle
-                    cx="20"
-                    cy="80"
+                    cx="14"
+                    cy="86"
                     r="4"
                     fill="#0f1923"
                     stroke="#00f2fe"
                     stroke-width="2"
                   />
+                  <!-- Sun cue positioned dynamically on 0-90 deg protractor guide -->
+                  <g id="sunCue" transform="translate(42.4 17.7)">
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r="8"
+                      fill="rgba(255,190,59,0.2)"
+                    />
+                    <circle cx="0" cy="0" r="4" fill="#ffbe3b" />
+                  </g>
                 </svg>
               </div>
             </div>
@@ -3335,14 +3348,16 @@
           .getElementById("compassArrow")
           .setAttribute("transform", "rotate(" + bestAz.toFixed(1) + " 50 50)");
 
-        // Update Tilt Profile SVG
+        // Update Tilt Profile SVG & Sun Elevation on Protractor
+        var avgNoon = sumNoonElev / validDays;
+
         var pRad = bestTilt * DEG2RAD;
-        var x2 = 20 + 72 * Math.cos(pRad);
-        var y2 = 80 - 72 * Math.sin(pRad);
-        var sx = 20 + 48 * Math.cos(pRad);
-        var sy = 80 - 48 * Math.sin(pRad);
-        var ax = 20 + 28 * Math.cos(pRad);
-        var ay = 80 - 28 * Math.sin(pRad);
+        var x2 = 14 + 58 * Math.cos(pRad);
+        var y2 = 86 - 58 * Math.sin(pRad);
+        var sx = 14 + 39 * Math.cos(pRad);
+        var sy = 86 - 39 * Math.sin(pRad);
+        var ax = 14 + 24 * Math.cos(pRad);
+        var ay = 86 - 24 * Math.sin(pRad);
 
         var plateEl = document.getElementById("tiltPlate");
         plateEl.setAttribute("x2", x2.toFixed(1));
@@ -3357,11 +3372,22 @@
         if (bestTilt > 2.0) {
           arcEl.setAttribute(
             "d",
-            "M 48 80 A 28 28 0 0 0 " + ax.toFixed(1) + " " + ay.toFixed(1),
+            "M 38 86 A 24 24 0 0 0 " + ax.toFixed(1) + " " + ay.toFixed(1),
           );
         } else {
           arcEl.setAttribute("d", "");
         }
+
+        // Place Sun on the r=74 protractor arc at actual Avg. Sun Elevation
+        var sunElevRad = Math.max(0.0, Math.min(90.0, avgNoon)) * DEG2RAD;
+        var sunX = 14 + 74 * Math.cos(sunElevRad);
+        var sunY = 86 - 74 * Math.sin(sunElevRad);
+        document
+          .getElementById("sunCue")
+          .setAttribute(
+            "transform",
+            "translate(" + sunX.toFixed(1) + " " + sunY.toFixed(1) + ")",
+          );
 
         // Update Summary Stats
         var avgNoon = sumNoonElev / validDays;
