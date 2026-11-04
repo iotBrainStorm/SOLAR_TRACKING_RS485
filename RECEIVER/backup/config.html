@@ -642,9 +642,18 @@
       }
 
       .placement-svg {
-        width: 92px;
-        height: 92px;
+        width: 96px;
+        height: 96px;
         flex-shrink: 0;
+        background: radial-gradient(
+          circle at center,
+          rgba(79, 172, 254, 0.1),
+          rgba(15, 25, 35, 0.55)
+        );
+        border: 1px solid rgba(79, 172, 254, 0.2);
+        border-radius: 12px;
+        padding: 6px;
+        box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
       }
 
       .sun-stats-grid {
@@ -656,13 +665,27 @@
       .sun-stat-box {
         background: rgba(255, 255, 255, 0.025);
         border: 1px solid rgba(255, 255, 255, 0.06);
+        border-left: 3px solid rgba(255, 255, 255, 0.15);
         border-radius: 8px;
         padding: 12px 14px;
       }
 
+      .sun-stat-box:has(#statNoonElev) {
+        border-left-color: #ff9f43;
+      }
+      .sun-stat-box:has(#statSunBearing) {
+        border-left-color: #00f2fe;
+      }
+      .sun-stat-box:has(#statDaylight) {
+        border-left-color: #a78bfa;
+      }
+      .sun-stat-box:has(#statTiltGain) {
+        border-left-color: #2ecc71;
+      }
+
       .sun-stat-box .s-title {
         font-size: 11px;
-        color: rgba(255, 255, 255, 0.4);
+        color: rgba(255, 255, 255, 0.45);
         text-transform: uppercase;
         letter-spacing: 0.8px;
         margin-bottom: 4px;
@@ -672,6 +695,19 @@
         font-size: 15px;
         font-weight: 600;
         color: #e0e6ed;
+      }
+
+      #statNoonElev {
+        color: #ff9f43;
+      }
+      #statSunBearing {
+        color: #00f2fe;
+      }
+      #statDaylight {
+        color: #a78bfa;
+      }
+      #statTiltGain {
+        color: #2ecc71;
       }
 
       @media (max-width: 768px) {
@@ -1860,17 +1896,61 @@
                   <div class="p-sub" id="recAzimuthDir">True South (S)</div>
                 </div>
                 <svg class="placement-svg" viewBox="0 0 100 100">
+                  <!-- Outer & inner compass rings -->
                   <circle
                     cx="50"
                     cy="50"
-                    r="40"
+                    r="44"
                     fill="none"
-                    stroke="rgba(255,255,255,0.12)"
-                    stroke-width="2"
+                    stroke="rgba(79,172,254,0.25)"
+                    stroke-width="1.5"
                   />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="31"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.1)"
+                    stroke-width="1"
+                    stroke-dasharray="2,3"
+                  />
+                  <!-- Intercardinal bezel ticks (NE, SE, SW, NW) -->
+                  <line
+                    x1="77.6"
+                    y1="22.4"
+                    x2="80.4"
+                    y2="19.6"
+                    stroke="rgba(255,255,255,0.22)"
+                    stroke-width="1.2"
+                  />
+                  <line
+                    x1="77.6"
+                    y1="77.6"
+                    x2="80.4"
+                    y2="80.4"
+                    stroke="rgba(255,255,255,0.22)"
+                    stroke-width="1.2"
+                  />
+                  <line
+                    x1="22.4"
+                    y1="77.6"
+                    x2="19.6"
+                    y2="80.4"
+                    stroke="rgba(255,255,255,0.22)"
+                    stroke-width="1.2"
+                  />
+                  <line
+                    x1="22.4"
+                    y1="22.4"
+                    x2="19.6"
+                    y2="19.6"
+                    stroke="rgba(255,255,255,0.22)"
+                    stroke-width="1.2"
+                  />
+                  <!-- Cardinal labels -->
                   <text
                     x="50"
-                    y="18"
+                    y="16"
                     text-anchor="middle"
                     fill="#ff4757"
                     font-size="10"
@@ -1879,45 +1959,52 @@
                     N
                   </text>
                   <text
-                    x="86"
-                    y="53"
+                    x="87"
+                    y="53.5"
                     text-anchor="middle"
-                    fill="rgba(255,255,255,0.45)"
+                    fill="rgba(255,255,255,0.6)"
                     font-size="9"
+                    font-weight="600"
                   >
                     E
                   </text>
                   <text
                     x="50"
-                    y="90"
+                    y="91"
                     text-anchor="middle"
-                    fill="rgba(255,255,255,0.45)"
+                    fill="rgba(255,255,255,0.6)"
                     font-size="9"
+                    font-weight="600"
                   >
                     S
                   </text>
                   <text
-                    x="14"
-                    y="53"
+                    x="13"
+                    y="53.5"
                     text-anchor="middle"
-                    fill="rgba(255,255,255,0.45)"
+                    fill="rgba(255,255,255,0.6)"
                     font-size="9"
+                    font-weight="600"
                   >
                     W
                   </text>
+                  <!-- Two-facet rotating needle -->
                   <g id="compassArrow" transform="rotate(180 50 50)">
-                    <line
-                      x1="50"
-                      y1="50"
-                      x2="50"
-                      y2="23"
-                      stroke="#4facfe"
-                      stroke-width="3"
-                      stroke-linecap="round"
+                    <polygon
+                      points="50,68 46.5,50 53.5,50"
+                      fill="rgba(255,255,255,0.18)"
                     />
-                    <polygon points="50,17 44,27 56,27" fill="#00f2fe" />
+                    <polygon points="50,19 45,50 50,46" fill="#00f2fe" />
+                    <polygon points="50,19 55,50 50,46" fill="#4facfe" />
                   </g>
-                  <circle cx="50" cy="50" r="4" fill="#e0e6ed" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="4"
+                    fill="#0f1923"
+                    stroke="#00f2fe"
+                    stroke-width="2"
+                  />
                 </svg>
               </div>
 
@@ -1929,46 +2016,98 @@
                   <div class="p-sub" id="recTiltSub">From Gnd Label</div>
                 </div>
                 <svg class="placement-svg" viewBox="0 0 120 100">
-                  <!-- Ground line -->
-                  <line
-                    x1="10"
-                    y1="80"
-                    x2="110"
-                    y2="80"
-                    stroke="rgba(255,255,255,0.25)"
-                    stroke-width="2"
+                  <defs>
+                    <linearGradient
+                      id="pvPlateGrad"
+                      gradientUnits="userSpaceOnUse"
+                      x1="20"
+                      y1="80"
+                      x2="92"
+                      y2="20"
+                    >
+                      <stop offset="0%" stop-color="#4facfe" />
+                      <stop offset="100%" stop-color="#00f2fe" />
+                    </linearGradient>
+                    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(79,172,254,0.16)" />
+                      <stop offset="100%" stop-color="rgba(79,172,254,0)" />
+                    </linearGradient>
+                  </defs>
+                  <!-- Sun cue & incident ray -->
+                  <circle
+                    cx="98"
+                    cy="20"
+                    r="8.5"
+                    fill="rgba(255,190,59,0.16)"
                   />
-                  <!-- Angle arc -->
+                  <circle cx="98" cy="20" r="4.2" fill="#ffbe3b" />
+                  <!-- 0 to 90 deg reference protractor guide -->
+                  <path
+                    d="M 78 80 A 58 58 0 0 0 20 22"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.08)"
+                    stroke-width="1.2"
+                    stroke-dasharray="2,3"
+                  />
+                  <!-- Ground base & horizon -->
+                  <rect
+                    x="8"
+                    y="80"
+                    width="104"
+                    height="8"
+                    rx="2"
+                    fill="url(#groundGrad)"
+                  />
+                  <line
+                    x1="8"
+                    y1="80"
+                    x2="112"
+                    y2="80"
+                    stroke="rgba(255,255,255,0.3)"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                  <!-- Dynamic angle arc -->
                   <path
                     id="tiltArc"
                     d="M 48 80 A 28 28 0 0 0 45 68"
                     fill="none"
-                    stroke="rgba(0,242,254,0.5)"
-                    stroke-width="1.8"
+                    stroke="#00f2fe"
+                    stroke-width="2"
+                    stroke-linecap="round"
                   />
-                  <!-- Support strut -->
+                  <!-- Dynamic support strut -->
                   <line
                     id="tiltStrut"
                     x1="65"
                     y1="80"
                     x2="65"
                     y2="62"
-                    stroke="rgba(255,255,255,0.35)"
-                    stroke-width="2"
+                    stroke="rgba(224,230,237,0.45)"
+                    stroke-width="2.2"
                     stroke-dasharray="3,2"
+                    stroke-linecap="round"
                   />
-                  <!-- Solar Plate -->
+                  <!-- Dynamic solar plate -->
                   <line
                     id="tiltPlate"
                     x1="20"
                     y1="80"
                     x2="90"
                     y2="51"
-                    stroke="#4facfe"
-                    stroke-width="4"
+                    stroke="url(#pvPlateGrad)"
+                    stroke-width="5"
                     stroke-linecap="round"
                   />
-                  <circle cx="20" cy="80" r="3.5" fill="#00f2fe" />
+                  <!-- Hinge pin -->
+                  <circle
+                    cx="20"
+                    cy="80"
+                    r="4"
+                    fill="#0f1923"
+                    stroke="#00f2fe"
+                    stroke-width="2"
+                  />
                 </svg>
               </div>
             </div>
