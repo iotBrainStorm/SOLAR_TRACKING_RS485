@@ -1221,10 +1221,264 @@
         margin-bottom: 6px;
       }
 
+      /* ====== STRUCTURE HEIGHT CALCULATOR ====== */
       .screen-lock-card p {
         font-size: 13px;
         color: rgba(255, 255, 255, 0.55);
         line-height: 1.5;
+      }
+
+      /* ====== COMPACT MOBILE-FRIENDLY STRUCTURE CALCULATOR ====== */
+      .struct-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .struct-mode-group {
+        display: inline-flex;
+        background: rgba(15, 25, 35, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 7px;
+        padding: 2px;
+        gap: 3px;
+      }
+
+      .struct-mode-btn {
+        padding: 5px 10px;
+        border: none;
+        border-radius: 5px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 11.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .struct-mode-btn.active {
+        background: rgba(79, 172, 254, 0.16);
+        color: #4facfe;
+        box-shadow: inset 0 0 0 1px rgba(79, 172, 254, 0.35);
+      }
+
+      .struct-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .struct-action-btn {
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(79, 172, 254, 0.28);
+        background: rgba(79, 172, 254, 0.08);
+        color: #4facfe;
+        font-size: 11.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .struct-action-btn:hover {
+        background: rgba(79, 172, 254, 0.18);
+        border-color: #4facfe;
+      }
+
+      .struct-action-btn.sync-needed {
+        border-color: rgba(167, 139, 250, 0.55);
+        background: rgba(167, 139, 250, 0.15);
+        color: #c4b5fd;
+      }
+
+      .struct-stage-wrap {
+        width: 100%;
+        max-width: 540px;
+        margin: 0 auto;
+        border-radius: 10px;
+        border: 1px solid rgba(79, 172, 254, 0.18);
+        background: radial-gradient(
+          circle at 50% 45%,
+          rgba(79, 172, 254, 0.06),
+          rgba(12, 20, 29, 0.94)
+        );
+        box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+
+      .struct-stage {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 520 / 320;
+        user-select: none;
+      }
+
+      .struct-svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .struct-chip {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        background: rgba(15, 25, 35, 0.92);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        padding: 3px 6px 4px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+        transition:
+          border-color 0.18s,
+          box-shadow 0.18s;
+        z-index: 5;
+      }
+
+      .struct-chip:focus-within {
+        transform: translate(-50%, -50%) scale(1.04);
+        z-index: 12;
+      }
+
+      .struct-chip .c-lbl {
+        display: block;
+        font-size: 8px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 1px;
+        white-space: nowrap;
+        line-height: 1.1;
+      }
+
+      .struct-chip .c-row {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .struct-chip input.struct-input {
+        width: 48px;
+        padding: 1px 3px;
+        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: right;
+        outline: none;
+        -moz-appearance: textfield;
+      }
+
+      .struct-chip input.struct-input::-webkit-outer-spin-button,
+      .struct-chip input.struct-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      .struct-chip .c-unit {
+        font-size: 10px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.55);
+      }
+
+      /* Color coding per geometry element */
+      .struct-chip.plate {
+        border-color: rgba(0, 242, 254, 0.4);
+      }
+      .struct-chip.plate .c-lbl {
+        color: #00f2fe;
+      }
+      .struct-chip.plate:focus-within {
+        border-color: #00f2fe;
+        box-shadow: 0 0 0 2px rgba(0, 242, 254, 0.2);
+      }
+
+      .struct-chip.tilt {
+        border-color: rgba(167, 139, 250, 0.45);
+      }
+      .struct-chip.tilt .c-lbl {
+        color: #a78bfa;
+      }
+      .struct-chip.tilt:focus-within {
+        border-color: #a78bfa;
+        box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.22);
+      }
+
+      .struct-chip.top-h {
+        border-color: rgba(255, 159, 67, 0.45);
+      }
+      .struct-chip.top-h .c-lbl {
+        color: #ff9f43;
+      }
+      .struct-chip.top-h:focus-within {
+        border-color: #ff9f43;
+        box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.22);
+      }
+
+      .struct-chip.bot-h {
+        border-color: rgba(46, 204, 113, 0.45);
+      }
+      .struct-chip.bot-h .c-lbl {
+        color: #2ecc71;
+      }
+      .struct-chip.bot-h:focus-within {
+        border-color: #2ecc71;
+        box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.22);
+      }
+
+      .struct-chip.base-d {
+        border-color: rgba(79, 172, 254, 0.45);
+      }
+      .struct-chip.base-d .c-lbl {
+        color: #4facfe;
+      }
+      .struct-chip.base-d:focus-within {
+        border-color: #4facfe;
+        box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.22);
+      }
+
+      .struct-chip.base-a {
+        border-color: rgba(254, 202, 87, 0.45);
+      }
+      .struct-chip.base-a .c-lbl {
+        color: #feca57;
+      }
+      .struct-chip.base-a:focus-within {
+        border-color: #feca57;
+        box-shadow: 0 0 0 2px rgba(254, 202, 87, 0.22);
+      }
+
+      .struct-footer-bar {
+        max-width: 540px;
+        margin: 8px auto 14px;
+        text-align: center;
+      }
+
+      @media (max-width: 560px) {
+        .struct-stage {
+          aspect-ratio: 520 / 370;
+        }
+        .struct-chip {
+          padding: 2px 4px 3px;
+          border-radius: 5px;
+        }
+        .struct-chip .c-lbl {
+          font-size: 7.5px;
+          letter-spacing: 0.3px;
+        }
+        .struct-chip input.struct-input {
+          width: 42px;
+          font-size: 11px;
+          padding: 1px 2px;
+        }
+        .struct-chip .c-unit {
+          font-size: 9px;
+        }
       }
     </style>
   </head>
@@ -2153,6 +2407,496 @@
               <div class="sun-stat-box">
                 <div class="s-title">Output Gain</div>
                 <div class="s-val" id="statTiltGain">--</div>
+              </div>
+            </div>
+          </div>
+          <!-- Structure Height Calculation Sub-Section -->
+          <div class="sub-section" id="structureCalcSection">
+            <div class="sub-section-title">
+              Mounting Structure Height Calculation
+            </div>
+
+            <div class="struct-toolbar">
+              <div class="struct-mode-group">
+                <button
+                  type="button"
+                  class="struct-mode-btn active"
+                  id="modeOverhangBtn"
+                  onclick="setStructMode('overhang')"
+                  title="Pillars sit inset under the plate; changing Base Distance preserves Tilt Angle"
+                >
+                  Inset Pillars
+                </button>
+                <button
+                  type="button"
+                  class="struct-mode-btn"
+                  id="modeEndBtn"
+                  onclick="setStructMode('end')"
+                  title="Pillars attach at plate ends; changing Base Distance adjusts Tilt Angle"
+                >
+                  End Pillars
+                </button>
+              </div>
+
+              <div class="struct-actions">
+                <button
+                  type="button"
+                  class="struct-action-btn"
+                  id="syncTiltBtn"
+                  onclick="applyCalculatedTilt()"
+                >
+                  &#8635; Target: <span id="syncTiltVal">22.6&deg;</span>
+                </button>
+                <button
+                  type="button"
+                  class="struct-action-btn"
+                  onclick="resetStructureDefaults()"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <div class="struct-stage-wrap">
+              <div class="struct-stage" id="structStage">
+                <svg
+                  class="struct-svg"
+                  id="structSvg"
+                  viewBox="0 0 520 320"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <pattern
+                      id="structGrid"
+                      width="20"
+                      height="20"
+                      patternUnits="userSpaceOnUse"
+                    >
+                      <path
+                        d="M 20 0 L 0 0 0 20"
+                        fill="none"
+                        stroke="rgba(79,172,254,0.04)"
+                        stroke-width="1"
+                      />
+                    </pattern>
+                    <linearGradient
+                      id="structPlateGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop offset="0%" stop-color="#00f2fe" />
+                      <stop offset="100%" stop-color="#4facfe" />
+                    </linearGradient>
+
+                    <marker
+                      id="arrCyan"
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#00f2fe" />
+                    </marker>
+                    <marker
+                      id="arrAmber"
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#ff9f43" />
+                    </marker>
+                    <marker
+                      id="arrGreen"
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#2ecc71" />
+                    </marker>
+                    <marker
+                      id="arrBlue"
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#4facfe" />
+                    </marker>
+                  </defs>
+
+                  <!-- Subtle Blueprint Grid -->
+                  <rect width="520" height="320" fill="url(#structGrid)" />
+
+                  <!-- True Horizontal Datum (0 deg Reference) -->
+                  <line
+                    id="svgHorizDatum"
+                    stroke="rgba(254,202,87,0.38)"
+                    stroke-width="1.3"
+                    stroke-dasharray="4,3"
+                  />
+
+                  <!-- Base Angle Wedge, Arc & Leader (Gold) -->
+                  <path id="svgBaseWedge" fill="rgba(254,202,87,0.14)" />
+                  <path
+                    id="svgBaseArc"
+                    fill="none"
+                    stroke="#feca57"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                  <line
+                    id="svgBaseLeader"
+                    stroke="rgba(254,202,87,0.45)"
+                    stroke-width="1"
+                    stroke-dasharray="2,2"
+                  />
+                  <circle id="svgBaseHinge" r="3" fill="#feca57" />
+
+                  <!-- Tilted Mounting Base Surface -->
+                  <line
+                    id="svgBaseSub"
+                    stroke="rgba(79,172,254,0.14)"
+                    stroke-width="7"
+                    stroke-linecap="round"
+                  />
+                  <line
+                    id="svgBaseLine"
+                    stroke="rgba(224,230,237,0.55)"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                  />
+
+                  <!-- 90-deg Perpendicular Markers on Base -->
+                  <path
+                    id="svgRightAngTop"
+                    fill="none"
+                    stroke="rgba(255,159,67,0.45)"
+                    stroke-width="1.2"
+                  />
+                  <path
+                    id="svgRightAngBot"
+                    fill="none"
+                    stroke="rgba(46,204,113,0.45)"
+                    stroke-width="1.2"
+                  />
+
+                  <!-- Base-Parallel Reference at Bottom Joint & Actual Tilt Arc (Purple) -->
+                  <line
+                    id="svgTrigBaseRef"
+                    stroke="rgba(167,139,250,0.4)"
+                    stroke-width="1.2"
+                    stroke-dasharray="3,3"
+                  />
+                  <path id="svgTiltWedge" fill="rgba(167,139,250,0.15)" />
+                  <path
+                    id="svgTiltArc"
+                    fill="none"
+                    stroke="#a78bfa"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                  <line
+                    id="svgTiltLeader"
+                    stroke="rgba(167,139,250,0.45)"
+                    stroke-width="1"
+                    stroke-dasharray="2,2"
+                  />
+                  <circle id="svgTiltDot" r="2.6" fill="#a78bfa" />
+
+                  <!-- Support Pillars & Footings -->
+                  <line
+                    id="svgTopPillar"
+                    stroke="#ff9f43"
+                    stroke-width="4.2"
+                    stroke-linecap="butt"
+                  />
+                  <line
+                    id="svgBotPillar"
+                    stroke="#2ecc71"
+                    stroke-width="4.2"
+                    stroke-linecap="butt"
+                  />
+                  <line
+                    id="svgTopFooting"
+                    stroke="#ff9f43"
+                    stroke-width="2.8"
+                    stroke-linecap="round"
+                  />
+                  <line
+                    id="svgBotFooting"
+                    stroke="#2ecc71"
+                    stroke-width="2.8"
+                    stroke-linecap="round"
+                  />
+
+                  <!-- Solar Plate -->
+                  <line
+                    id="svgPlateBack"
+                    stroke="rgba(224,230,237,0.3)"
+                    stroke-width="7"
+                    stroke-linecap="round"
+                  />
+                  <line
+                    id="svgPlateFace"
+                    stroke="url(#structPlateGrad)"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                  />
+
+                  <!-- Joints -->
+                  <circle
+                    id="svgJointTop"
+                    r="3.5"
+                    fill="#0f1923"
+                    stroke="#ff9f43"
+                    stroke-width="1.8"
+                  />
+                  <circle
+                    id="svgJointBot"
+                    r="3.5"
+                    fill="#0f1923"
+                    stroke="#2ecc71"
+                    stroke-width="1.8"
+                  />
+
+                  <!-- Dimension Lines -->
+                  <!-- 1. Plate Length (Cyan) -->
+                  <line
+                    id="svgExtPlate1"
+                    stroke="rgba(0,242,254,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgExtPlate2"
+                    stroke="rgba(0,242,254,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgDimPlate"
+                    stroke="#00f2fe"
+                    stroke-width="1.3"
+                    marker-start="url(#arrCyan)"
+                    marker-end="url(#arrCyan)"
+                  />
+
+                  <!-- 2. Top Height (Amber) -->
+                  <line
+                    id="svgExtTop1"
+                    stroke="rgba(255,159,67,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgExtTop2"
+                    stroke="rgba(255,159,67,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgDimTopH"
+                    stroke="#ff9f43"
+                    stroke-width="1.3"
+                    marker-start="url(#arrAmber)"
+                    marker-end="url(#arrAmber)"
+                  />
+                  <line
+                    id="svgLeadTopH"
+                    stroke="rgba(255,159,67,0.35)"
+                    stroke-width="1"
+                    stroke-dasharray="2,2"
+                  />
+
+                  <!-- 3. Bottom Height (Green) -->
+                  <line
+                    id="svgExtBot1"
+                    stroke="rgba(46,204,113,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgExtBot2"
+                    stroke="rgba(46,204,113,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgDimBotH"
+                    stroke="#2ecc71"
+                    stroke-width="1.3"
+                    marker-start="url(#arrGreen)"
+                    marker-end="url(#arrGreen)"
+                  />
+                  <line
+                    id="svgLeadBotH"
+                    stroke="rgba(46,204,113,0.35)"
+                    stroke-width="1"
+                    stroke-dasharray="2,2"
+                  />
+
+                  <!-- 4. Base Distance (Blue) -->
+                  <line
+                    id="svgExtBase1"
+                    stroke="rgba(79,172,254,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgExtBase2"
+                    stroke="rgba(79,172,254,0.3)"
+                    stroke-width="1"
+                  />
+                  <line
+                    id="svgDimBase"
+                    stroke="#4facfe"
+                    stroke-width="1.3"
+                    marker-start="url(#arrBlue)"
+                    marker-end="url(#arrBlue)"
+                  />
+                  <line
+                    id="svgLeadBase"
+                    stroke="rgba(79,172,254,0.35)"
+                    stroke-width="1"
+                    stroke-dasharray="2,2"
+                  />
+                </svg>
+
+                <!-- Inline Editable Parameter Chips -->
+                <div class="struct-chip plate" id="chipPlateLen">
+                  <span class="c-lbl">Plate Len</span>
+                  <div class="c-row">
+                    <input
+                      type="number"
+                      step="any"
+                      class="struct-input"
+                      id="inpPlateLen"
+                      value="228.0"
+                    />
+                    <span class="c-unit">cm</span>
+                  </div>
+                </div>
+
+                <div class="struct-chip tilt" id="chipTiltAng">
+                  <span class="c-lbl">Actual Tilt</span>
+                  <div class="c-row">
+                    <input
+                      type="number"
+                      step="any"
+                      class="struct-input"
+                      id="inpTiltAng"
+                      value="22.6"
+                    />
+                    <span class="c-unit">&deg;</span>
+                  </div>
+                </div>
+
+                <div class="struct-chip top-h" id="chipTopH">
+                  <span class="c-lbl">Top H</span>
+                  <div class="c-row">
+                    <input
+                      type="number"
+                      step="any"
+                      class="struct-input"
+                      id="inpTopH"
+                      value="103.0"
+                    />
+                    <span class="c-unit">cm</span>
+                  </div>
+                </div>
+
+                <div class="struct-chip bot-h" id="chipBotH">
+                  <span class="c-lbl">Bot H</span>
+                  <div class="c-row">
+                    <input
+                      type="number"
+                      step="any"
+                      class="struct-input"
+                      id="inpBotH"
+                      value="44.7"
+                    />
+                    <span class="c-unit">cm</span>
+                  </div>
+                </div>
+
+                <div class="struct-chip base-d" id="chipBaseDist">
+                  <span class="c-lbl">Base Dist</span>
+                  <div class="c-row">
+                    <input
+                      type="number"
+                      step="any"
+                      class="struct-input"
+                      id="inpBaseDist"
+                      value="140.0"
+                    />
+                    <span class="c-unit">cm</span>
+                  </div>
+                </div>
+
+                <div class="struct-chip base-a" id="chipBaseAng">
+                  <span class="c-lbl">Base Angle</span>
+                  <div class="c-row">
+                    <input
+                      type="number"
+                      step="any"
+                      class="struct-input"
+                      id="inpBaseAng"
+                      value="0.0"
+                    />
+                    <span class="c-unit">&deg;</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="struct-footer-bar">
+              <div class="range-note" id="structRangeNote">
+                Base Distance range: 20.0 cm &ndash; 210.5 cm
+              </div>
+            </div>
+
+            <!-- Derived Structural Metrics -->
+            <div class="sun-stats-grid">
+              <div class="sun-stat-box" style="border-left-color: #a78bfa">
+                <div class="s-title">Horizon Tilt (Base + Actual)</div>
+                <div
+                  class="s-val"
+                  id="statStructHorizon"
+                  style="color: #a78bfa"
+                >
+                  --
+                </div>
+              </div>
+              <div class="sun-stat-box" style="border-left-color: #ff9f43">
+                <div class="s-title">Pillar Height Diff (&Delta;H)</div>
+                <div class="s-val" id="statStructDeltaH" style="color: #ff9f43">
+                  --
+                </div>
+              </div>
+              <div class="sun-stat-box" style="border-left-color: #00f2fe">
+                <div class="s-title">Panel Overhang (Each End)</div>
+                <div
+                  class="s-val"
+                  id="statStructOverhang"
+                  style="color: #00f2fe"
+                >
+                  --
+                </div>
+              </div>
+              <div class="sun-stat-box" style="border-left-color: #2ecc71">
+                <div class="s-title">Min Edge Clearance</div>
+                <div
+                  class="s-val"
+                  id="statStructClearance"
+                  style="color: #2ecc71"
+                >
+                  --
+                </div>
               </div>
             </div>
           </div>
@@ -3501,6 +4245,9 @@
           "% (~" +
           dailyKwh.toFixed(2) +
           " kWh/m&sup2;/d)";
+        if (typeof syncStructureTiltFromCalc === "function") {
+          syncStructureTiltFromCalc(bestTilt);
+        }
       }
       function updateMdnsBanner(enabled, host) {
         var el = document.getElementById("mdnsActiveUrl");
@@ -3881,6 +4628,794 @@
           });
       }
       setInterval(pollStats, 2000);
+
+      // ====== STRUCTURE HEIGHT GEOMETRY & SVG RENDERER ======
+      var structState = {
+        mode: "overhang", // 'overhang' = inset pillars, 'end' = end-mounted pillars
+        plateLen: 228.0, // Default 228 cm
+        calcTilt: 22.6, // Optimal target angle from Placement
+        targetTilt: 22.6, // Desired panel angle from true horizon (= baseAngle + actualTilt)
+        baseAngle: 0.0, // Existing roof/ground tilt (+ toward sun, - reverse slope)
+        actualTilt: 22.6, // Readjusted structure angle relative to base (= targetTilt - baseAngle)
+        manualTilt: false,
+        clearance: 30.0, // Min perpendicular clearance between plate edge and base (cm)
+        baseDist: 140.0, // Distance between pillars along base surface (cm)
+        topH: 103.0,
+        botH: 44.7,
+        initialized: false,
+      };
+
+      function clampNum(val, minV, maxV) {
+        return Math.max(minV, Math.min(maxV, val));
+      }
+
+      function getStructBaseBounds(plateLen, actualTiltDeg, mode) {
+        var rad = (Math.abs(actualTiltDeg) * Math.PI) / 180.0;
+        if (mode === "end") {
+          var minEnd = Math.max(
+            5.0,
+            plateLen * Math.cos((85.0 * Math.PI) / 180.0),
+          );
+          return { min: minEnd, max: plateLen };
+        }
+        var projSpan = plateLen * Math.cos(rad);
+        var minOvh = Math.min(20.0, Math.max(4.0, projSpan * 0.25));
+        return { min: minOvh, max: Math.max(minOvh, projSpan) };
+      }
+
+      function syncStructureTiltFromCalc(newBestTilt) {
+        if (isNaN(newBestTilt)) return;
+        var prevCalc = structState.calcTilt;
+        structState.calcTilt = clampNum(newBestTilt, 0.0, 85.0);
+
+        var syncSpan = document.getElementById("syncTiltVal");
+        if (syncSpan) {
+          syncSpan.innerHTML = structState.calcTilt.toFixed(1) + "&deg;";
+        }
+
+        var calcChanged = Math.abs(structState.calcTilt - prevCalc) > 0.04;
+        if (
+          !structState.initialized ||
+          !structState.manualTilt ||
+          calcChanged
+        ) {
+          structState.targetTilt = structState.calcTilt;
+          structState.actualTilt = clampNum(
+            structState.targetTilt - structState.baseAngle,
+            -45.0,
+            85.0,
+          );
+          structState.manualTilt = false;
+
+          if (!structState.initialized) {
+            var initSpan =
+              structState.plateLen *
+              Math.cos((Math.abs(structState.actualTilt) * Math.PI) / 180.0);
+            structState.baseDist =
+              initSpan >= 160.0 ? 140.0 : Math.round(initSpan * 0.65 * 10) / 10;
+            structState.initialized = true;
+          }
+          solveStructure("sync", true);
+        } else {
+          updateSyncTiltBtnState();
+        }
+      }
+
+      function updateSyncTiltBtnState() {
+        var btn = document.getElementById("syncTiltBtn");
+        if (!btn) return;
+        var horizonTilt = structState.baseAngle + structState.actualTilt;
+        var diff = Math.abs(horizonTilt - structState.calcTilt);
+        if (structState.manualTilt && diff >= 0.1) {
+          btn.classList.add("sync-needed");
+        } else {
+          btn.classList.remove("sync-needed");
+        }
+      }
+
+      function applyCalculatedTilt() {
+        structState.manualTilt = false;
+        structState.targetTilt = structState.calcTilt;
+        structState.actualTilt = clampNum(
+          structState.targetTilt - structState.baseAngle,
+          -45.0,
+          85.0,
+        );
+        solveStructure("sync", true);
+      }
+
+      function resetStructureDefaults() {
+        structState.plateLen = 228.0;
+        structState.baseAngle = 0.0;
+        structState.targetTilt = structState.calcTilt;
+        structState.actualTilt = structState.calcTilt;
+        structState.manualTilt = false;
+        structState.clearance = 30.0;
+        var span =
+          structState.plateLen *
+          Math.cos((Math.abs(structState.actualTilt) * Math.PI) / 180.0);
+        structState.baseDist =
+          structState.mode === "end"
+            ? span
+            : span >= 160.0
+              ? 140.0
+              : Math.round(span * 0.65 * 10) / 10;
+        solveStructure("reset", true);
+      }
+
+      function setStructMode(mode) {
+        structState.mode = mode === "end" ? "end" : "overhang";
+        document
+          .getElementById("modeOverhangBtn")
+          .classList.toggle("active", structState.mode === "overhang");
+        document
+          .getElementById("modeEndBtn")
+          .classList.toggle("active", structState.mode === "end");
+
+        var projSpan =
+          structState.plateLen *
+          Math.cos((Math.abs(structState.actualTilt) * Math.PI) / 180.0);
+        if (structState.mode === "end") {
+          structState.baseDist = projSpan;
+        } else if (structState.baseDist >= projSpan - 0.5) {
+          structState.baseDist =
+            projSpan >= 160.0 ? 140.0 : Math.round(projSpan * 0.65 * 10) / 10;
+        }
+        solveStructure("mode", true);
+      }
+
+      // Coupled solver with Base Angle compensation
+      function solveStructure(source, commitActiveInput) {
+        var warnMsg = "";
+        var DEG2RAD = Math.PI / 180.0;
+        var RAD2DEG = 180.0 / Math.PI;
+
+        structState.plateLen = clampNum(structState.plateLen, 20.0, 1000.0);
+        structState.baseAngle = clampNum(structState.baseAngle, -45.0, 60.0);
+
+        if (source === "baseAng") {
+          // Readjust Actual Tilt automatically so (Base Angle + Actual Tilt) == Target Tilt
+          var neededActual = structState.targetTilt - structState.baseAngle;
+          structState.actualTilt = clampNum(neededActual, -45.0, 85.0);
+          if (Math.abs(neededActual - structState.actualTilt) > 0.05) {
+            warnMsg = " (Actual tilt reached mechanical limit)";
+          }
+        } else if (source === "tilt") {
+          structState.actualTilt = clampNum(
+            structState.actualTilt,
+            -45.0,
+            85.0,
+          );
+          structState.targetTilt =
+            structState.baseAngle + structState.actualTilt;
+          structState.manualTilt = true;
+        } else {
+          structState.actualTilt = clampNum(
+            structState.actualTilt,
+            -45.0,
+            85.0,
+          );
+        }
+
+        if (structState.mode === "end" && source === "base") {
+          var bBoundsEnd = getStructBaseBounds(
+            structState.plateLen,
+            structState.actualTilt,
+            "end",
+          );
+          if (structState.baseDist < bBoundsEnd.min) {
+            structState.baseDist = bBoundsEnd.min;
+            warnMsg = " (Clamped to min base for 85° max tilt)";
+          } else if (structState.baseDist > bBoundsEnd.max) {
+            structState.baseDist = bBoundsEnd.max;
+            warnMsg = " (Clamped: Base cannot exceed Plate Length)";
+          }
+          var ratio = clampNum(
+            structState.baseDist / structState.plateLen,
+            0.0,
+            1.0,
+          );
+          var sign =
+            structState.targetTilt - structState.baseAngle < 0 ? -1.0 : 1.0;
+          structState.actualTilt = sign * Math.acos(ratio) * RAD2DEG;
+          structState.targetTilt =
+            structState.baseAngle + structState.actualTilt;
+          structState.manualTilt = true;
+        }
+
+        var actRad = structState.actualTilt * DEG2RAD;
+        var cosA = Math.cos(actRad);
+        var tanA = Math.tan(actRad);
+        var projSpan = structState.plateLen * cosA;
+
+        var bBounds = getStructBaseBounds(
+          structState.plateLen,
+          structState.actualTilt,
+          structState.mode,
+        );
+
+        if (structState.mode === "end") {
+          structState.baseDist = projSpan;
+        } else {
+          if (structState.baseDist < bBounds.min) {
+            structState.baseDist = bBounds.min;
+            if (source === "base") {
+              warnMsg = " (Clamped to min pillar spacing)";
+            }
+          } else if (structState.baseDist > bBounds.max) {
+            structState.baseDist = bBounds.max;
+            warnMsg = " (Clamped to max plate projection)";
+          }
+        }
+
+        var sOvh = Math.max(0.0, (projSpan - structState.baseDist) * 0.5);
+        var ovhDrop = sOvh * Math.abs(tanA);
+        var deltaH = structState.baseDist * tanA; // Signed: topH - botH
+
+        if (source === "botH") {
+          var minBot = deltaH >= 0.0 ? ovhDrop : ovhDrop - deltaH;
+          if (structState.botH < minBot) {
+            structState.botH = minBot;
+            warnMsg = " (Clamped: Plate edge reached base surface)";
+          }
+          structState.botH = Math.min(1000.0, structState.botH);
+          structState.topH = structState.botH + deltaH;
+          structState.clearance = Math.max(
+            0.0,
+            Math.min(structState.botH, structState.topH) - ovhDrop,
+          );
+        } else if (source === "topH") {
+          var minTop = deltaH >= 0.0 ? ovhDrop + deltaH : ovhDrop;
+          if (structState.topH < minTop) {
+            structState.topH = minTop;
+            warnMsg = " (Clamped: Plate edge reached base surface)";
+          }
+          structState.topH = Math.min(1200.0, structState.topH);
+          structState.botH = structState.topH - deltaH;
+          structState.clearance = Math.max(
+            0.0,
+            Math.min(structState.botH, structState.topH) - ovhDrop,
+          );
+        } else {
+          structState.clearance = clampNum(structState.clearance, 0.0, 1000.0);
+          if (deltaH >= 0.0) {
+            structState.botH = structState.clearance + ovhDrop;
+            structState.topH = structState.botH + deltaH;
+          } else {
+            structState.topH = structState.clearance + ovhDrop;
+            structState.botH = structState.topH - deltaH;
+          }
+        }
+
+        var activeEl = document.activeElement;
+        var fields = [
+          { id: "inpPlateLen", val: structState.plateLen.toFixed(1) },
+          { id: "inpTiltAng", val: structState.actualTilt.toFixed(1) },
+          { id: "inpTopH", val: structState.topH.toFixed(1) },
+          { id: "inpBotH", val: structState.botH.toFixed(1) },
+          { id: "inpBaseDist", val: structState.baseDist.toFixed(1) },
+          { id: "inpBaseAng", val: structState.baseAngle.toFixed(1) },
+        ];
+        fields.forEach(function (f) {
+          var el = document.getElementById(f.id);
+          if (el && (commitActiveInput || el !== activeEl)) {
+            el.value = f.val;
+          }
+        });
+
+        updateSyncTiltBtnState();
+
+        var noteEl = document.getElementById("structRangeNote");
+        if (noteEl) {
+          noteEl.textContent =
+            "Base Distance range: " +
+            bBounds.min.toFixed(1) +
+            " cm – " +
+            bBounds.max.toFixed(1) +
+            " cm" +
+            warnMsg;
+          noteEl.className = warnMsg ? "range-note warn" : "range-note";
+        }
+
+        var horizonDeg = structState.baseAngle + structState.actualTilt;
+        var bSign = structState.baseAngle >= 0 ? "+" : "";
+        var aSign = structState.actualTilt >= 0 ? "+" : "";
+        document.getElementById("statStructHorizon").innerHTML =
+          horizonDeg.toFixed(1) +
+          "&deg; (" +
+          bSign +
+          structState.baseAngle.toFixed(1) +
+          "&deg; " +
+          aSign +
+          structState.actualTilt.toFixed(1) +
+          "&deg;)";
+
+        var slopeOvh = cosA > 1e-5 ? sOvh / cosA : 0.0;
+        document.getElementById("statStructDeltaH").textContent =
+          (deltaH >= 0 ? "+" : "") + deltaH.toFixed(1) + " cm";
+        document.getElementById("statStructOverhang").textContent =
+          slopeOvh.toFixed(1) + " cm";
+        document.getElementById("statStructClearance").textContent =
+          structState.clearance.toFixed(1) + " cm";
+
+        renderStructureSVG(projSpan, sOvh, cosA);
+      }
+
+      function setLineAttrs(id, x1, y1, x2, y2) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.setAttribute("x1", x1.toFixed(1));
+        el.setAttribute("y1", y1.toFixed(1));
+        el.setAttribute("x2", x2.toFixed(1));
+        el.setAttribute("y2", y2.toFixed(1));
+      }
+
+      function positionChip(id, svgX, svgY) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.left = ((svgX / 520.0) * 100.0).toFixed(2) + "%";
+        el.style.top = ((svgY / 320.0) * 100.0).toFixed(2) + "%";
+      }
+
+      function buildAngleWedge(cx, cy, r, dx1, dy1, dx2, dy2) {
+        var a1 = Math.atan2(dy1, dx1);
+        var a2 = Math.atan2(dy2, dx2);
+        var diff = Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1));
+        var midA = a1 + diff * 0.5;
+        var mx = cx + r * Math.cos(midA);
+        var my = cy + r * Math.sin(midA);
+
+        if (Math.abs(diff) < 0.015) {
+          return { arc: "", wedge: "", mx: mx, my: my };
+        }
+        var sx = cx + r * Math.cos(a1);
+        var sy = cy + r * Math.sin(a1);
+        var ex = cx + r * Math.cos(a1 + diff);
+        var ey = cy + r * Math.sin(a1 + diff);
+        var sweep = diff > 0 ? 1 : 0;
+        var arcCmd =
+          r.toFixed(1) +
+          " " +
+          r.toFixed(1) +
+          " 0 0 " +
+          sweep +
+          " " +
+          ex.toFixed(1) +
+          " " +
+          ey.toFixed(1);
+        return {
+          arc: "M " + sx.toFixed(1) + " " + sy.toFixed(1) + " A " + arcCmd,
+          wedge:
+            "M " +
+            cx.toFixed(1) +
+            " " +
+            cy.toFixed(1) +
+            " L " +
+            sx.toFixed(1) +
+            " " +
+            sy.toFixed(1) +
+            " A " +
+            arcCmd +
+            " Z",
+          mx: mx,
+          my: my,
+        };
+      }
+
+      function renderStructureSVG(projSpan, sOvh, cosA) {
+        var DEG2RAD = Math.PI / 180.0;
+        var bRad = structState.baseAngle * DEG2RAD;
+        var hRad = (structState.baseAngle + structState.actualTilt) * DEG2RAD;
+
+        // World coordinates in cm (+X right, +Y vertically up; B_R hinge at 0,0)
+        var ubX = -Math.cos(bRad),
+          ubY = Math.sin(bRad); // Along base from right hinge to left
+        var nbX = Math.sin(bRad),
+          nbY = Math.cos(bRad); // Perpendicular upward out of base
+        var upX = -Math.cos(hRad),
+          upY = Math.sin(hRad); // Along solar plate from front to rear
+
+        var padB = Math.max(14.0, projSpan * 0.09);
+        var sBot = padB + sOvh;
+        var sTop = sBot + structState.baseDist;
+        var sEnd = projSpan + 2.0 * padB;
+        var slopeOvh = cosA > 1e-5 ? sOvh / cosA : 0.0;
+
+        var BR = { x: 0.0, y: 0.0 };
+        var BL = { x: sEnd * ubX, y: sEnd * ubY };
+        var FBot = { x: sBot * ubX, y: sBot * ubY };
+        var FTop = { x: sTop * ubX, y: sTop * ubY };
+        var JBot = {
+          x: FBot.x + structState.botH * nbX,
+          y: FBot.y + structState.botH * nbY,
+        };
+        var JTop = {
+          x: FTop.x + structState.topH * nbX,
+          y: FTop.y + structState.topH * nbY,
+        };
+        var PFront = {
+          x: JBot.x - slopeOvh * upX,
+          y: JBot.y - slopeOvh * upY,
+        };
+        var PRear = {
+          x: JTop.x + slopeOvh * upX,
+          y: JTop.y + slopeOvh * upY,
+        };
+        var HDatum = { x: -Math.max(45.0, sEnd * 0.68), y: 0.0 };
+
+        // Isotropic auto-fit camera inside central safe zone [136..384, 70..228]
+        var pts = [BR, BL, FBot, FTop, JBot, JTop, PFront, PRear, HDatum];
+        var minX = Infinity,
+          maxX = -Infinity,
+          minY = Infinity,
+          maxY = -Infinity;
+        pts.forEach(function (p) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+        });
+
+        var spanX = Math.max(maxX - minX, 30.0);
+        var spanY = Math.max(maxY - minY, 25.0);
+        var scale = Math.min(244.0 / spanX, 152.0 / spanY);
+        var midX = (minX + maxX) * 0.5;
+        var midY = (minY + maxY) * 0.5;
+
+        function sx(wx) {
+          return 260.0 + (wx - midX) * scale;
+        }
+        function sy(wy) {
+          return 154.0 - (wy - midY) * scale;
+        }
+
+        var sBR = { x: sx(BR.x), y: sy(BR.y) };
+        var sBL = { x: sx(BL.x), y: sy(BL.y) };
+        var sFBot = { x: sx(FBot.x), y: sy(FBot.y) };
+        var sFTop = { x: sx(FTop.x), y: sy(FTop.y) };
+        var sJBot = { x: sx(JBot.x), y: sy(JBot.y) };
+        var sJTop = { x: sx(JTop.x), y: sy(JTop.y) };
+        var sPFront = { x: sx(PFront.x), y: sy(PFront.y) };
+        var sPRear = { x: sx(PRear.x), y: sy(PRear.y) };
+
+        // Screen-space unit vectors
+        var sux = ubX,
+          suy = -ubY; // Along base (right -> left)
+        var snx = nbX,
+          sny = -nbY; // Outward perpendicular from base (upward)
+        var spx = upX,
+          spy = -upY; // Along plate (front -> rear)
+        var pnx = -spy,
+          pny = spx; // Outward upward normal from plate
+        if (pny > 0) {
+          pnx = -pnx;
+          pny = -pny;
+        }
+
+        // Horizontal Ground Datum & Tilted Base
+        var datumLen = clampNum(
+          Math.hypot(sBL.x - sBR.x, sBL.y - sBR.y) * 0.72,
+          56.0,
+          175.0,
+        );
+        setLineAttrs(
+          "svgHorizDatum",
+          sBR.x + 8,
+          sBR.y,
+          sBR.x - datumLen,
+          sBR.y,
+        );
+        setLineAttrs(
+          "svgBaseSub",
+          sBL.x - snx * 3,
+          sBL.y - sny * 3,
+          sBR.x - snx * 3,
+          sBR.y - sny * 3,
+        );
+        setLineAttrs("svgBaseLine", sBL.x, sBL.y, sBR.x, sBR.y);
+
+        var hingeEl = document.getElementById("svgBaseHinge");
+        hingeEl.setAttribute("cx", sBR.x.toFixed(1));
+        hingeEl.setAttribute("cy", sBR.y.toFixed(1));
+
+        // Base Angle Arc (Gold) at sBR between Horizontal Left (-1,0) and Base (sux, suy)
+        var baseArcR = 30.0;
+        var bWedge = buildAngleWedge(sBR.x, sBR.y, baseArcR, -1, 0, sux, suy);
+        document.getElementById("svgBaseArc").setAttribute("d", bWedge.arc);
+        document.getElementById("svgBaseWedge").setAttribute("d", bWedge.wedge);
+
+        // Pillars, Footings & Joints
+        setLineAttrs("svgTopPillar", sFTop.x, sFTop.y, sJTop.x, sJTop.y);
+        setLineAttrs("svgBotPillar", sFBot.x, sFBot.y, sJBot.x, sJBot.y);
+        setLineAttrs(
+          "svgTopFooting",
+          sFTop.x - sux * 7,
+          sFTop.y - suy * 7,
+          sFTop.x + sux * 7,
+          sFTop.y + suy * 7,
+        );
+        setLineAttrs(
+          "svgBotFooting",
+          sFBot.x - sux * 7,
+          sFBot.y - suy * 7,
+          sFBot.x + sux * 7,
+          sFBot.y + suy * 7,
+        );
+
+        var jTop = document.getElementById("svgJointTop");
+        jTop.setAttribute("cx", sJTop.x.toFixed(1));
+        jTop.setAttribute("cy", sJTop.y.toFixed(1));
+        var jBot = document.getElementById("svgJointBot");
+        jBot.setAttribute("cx", sJBot.x.toFixed(1));
+        jBot.setAttribute("cy", sJBot.y.toFixed(1));
+
+        // 90-deg perpendicular base markers
+        var topPixH = Math.hypot(sJTop.x - sFTop.x, sJTop.y - sFTop.y);
+        var botPixH = Math.hypot(sJBot.x - sFBot.x, sJBot.y - sFBot.y);
+        document
+          .getElementById("svgRightAngTop")
+          .setAttribute(
+            "d",
+            topPixH > 12
+              ? "M " +
+                  (sFTop.x - sux * 6).toFixed(1) +
+                  " " +
+                  (sFTop.y - suy * 6).toFixed(1) +
+                  " L " +
+                  (sFTop.x - sux * 6 + snx * 6).toFixed(1) +
+                  " " +
+                  (sFTop.y - suy * 6 + sny * 6).toFixed(1) +
+                  " L " +
+                  (sFTop.x + snx * 6).toFixed(1) +
+                  " " +
+                  (sFTop.y + sny * 6).toFixed(1)
+              : "",
+          );
+        document
+          .getElementById("svgRightAngBot")
+          .setAttribute(
+            "d",
+            botPixH > 12
+              ? "M " +
+                  (sFBot.x + sux * 6).toFixed(1) +
+                  " " +
+                  (sFBot.y + suy * 6).toFixed(1) +
+                  " L " +
+                  (sFBot.x + sux * 6 + snx * 6).toFixed(1) +
+                  " " +
+                  (sFBot.y + suy * 6 + sny * 6).toFixed(1) +
+                  " L " +
+                  (sFBot.x + snx * 6).toFixed(1) +
+                  " " +
+                  (sFBot.y + sny * 6).toFixed(1)
+              : "",
+          );
+
+        // Solar Plate
+        setLineAttrs("svgPlateBack", sPRear.x, sPRear.y, sPFront.x, sPFront.y);
+        setLineAttrs("svgPlateFace", sPRear.x, sPRear.y, sPFront.x, sPFront.y);
+
+        // Actual Tilt Arc (Purple) at sJBot between Base-parallel (sux, suy) and Plate (spx, spy)
+        var basePixD = Math.hypot(sFTop.x - sFBot.x, sFTop.y - sFBot.y);
+        var refLen = clampNum(basePixD * 0.65, 34.0, 95.0);
+        setLineAttrs(
+          "svgTrigBaseRef",
+          sJBot.x,
+          sJBot.y,
+          sJBot.x + sux * refLen,
+          sJBot.y + suy * refLen,
+        );
+
+        var tiltArcR = clampNum(basePixD * 0.34, 18.0, 30.0);
+        var tWedge = buildAngleWedge(
+          sJBot.x,
+          sJBot.y,
+          tiltArcR,
+          sux,
+          suy,
+          spx,
+          spy,
+        );
+        document.getElementById("svgTiltArc").setAttribute("d", tWedge.arc);
+        document.getElementById("svgTiltWedge").setAttribute("d", tWedge.wedge);
+        var dotEl = document.getElementById("svgTiltDot");
+        dotEl.setAttribute("cx", tWedge.mx.toFixed(1));
+        dotEl.setAttribute("cy", tWedge.my.toFixed(1));
+
+        // 1. Plate Length Dimension & Chip (Top Band)
+        var pOff = 15.0;
+        setLineAttrs(
+          "svgExtPlate1",
+          sPRear.x + pnx * 5,
+          sPRear.y + pny * 5,
+          sPRear.x + pnx * (pOff + 4),
+          sPRear.y + pny * (pOff + 4),
+        );
+        setLineAttrs(
+          "svgExtPlate2",
+          sPFront.x + pnx * 5,
+          sPFront.y + pny * 5,
+          sPFront.x + pnx * (pOff + 4),
+          sPFront.y + pny * (pOff + 4),
+        );
+        var dP1x = sPRear.x + pnx * pOff,
+          dP1y = sPRear.y + pny * pOff;
+        var dP2x = sPFront.x + pnx * pOff,
+          dP2y = sPFront.y + pny * pOff;
+        setLineAttrs("svgDimPlate", dP1x, dP1y, dP2x, dP2y);
+
+        var chipPlateX = clampNum((dP1x + dP2x) * 0.5 + pnx * 24, 155.0, 355.0);
+        var chipPlateY = clampNum(
+          Math.min((dP1y + dP2y) * 0.5 + pny * 22, 42.0),
+          23.0,
+          44.0,
+        );
+        positionChip("chipPlateLen", chipPlateX, chipPlateY);
+
+        // 2. Top Height Dimension & Chip (Left Perimeter)
+        var tOff = Math.max(16.0, slopeOvh * scale + 10.0);
+        var dT1x = sFTop.x + sux * tOff,
+          dT1y = sFTop.y + suy * tOff;
+        var dT2x = sJTop.x + sux * tOff,
+          dT2y = sJTop.y + suy * tOff;
+        setLineAttrs(
+          "svgExtTop1",
+          sFTop.x + sux * 3,
+          sFTop.y + suy * 3,
+          dT1x + sux * 4,
+          dT1y + suy * 4,
+        );
+        setLineAttrs(
+          "svgExtTop2",
+          sJTop.x + sux * 3,
+          sJTop.y + suy * 3,
+          dT2x + sux * 4,
+          dT2y + suy * 4,
+        );
+        setLineAttrs("svgDimTopH", dT1x, dT1y, dT2x, dT2y);
+        document.getElementById("svgDimTopH").style.opacity =
+          topPixH > 7 ? "1" : "0";
+
+        var midTopX = (dT1x + dT2x) * 0.5,
+          midTopY = (dT1y + dT2y) * 0.5;
+        var chipTopX = 56.0;
+        var chipTopY = clampNum(midTopY, 86.0, 224.0);
+        positionChip("chipTopH", chipTopX, chipTopY);
+        setLineAttrs("svgLeadTopH", midTopX, midTopY, chipTopX + 34, chipTopY);
+
+        // 3. Bottom Height Dimension & Chip (Right-Middle Perimeter)
+        var bOff = Math.max(16.0, slopeOvh * scale + 10.0);
+        var dB1x = sFBot.x - sux * bOff,
+          dB1y = sFBot.y - suy * bOff;
+        var dB2x = sJBot.x - sux * bOff,
+          dB2y = sJBot.y - suy * bOff;
+        setLineAttrs(
+          "svgExtBot1",
+          sFBot.x - sux * 3,
+          sFBot.y - suy * 3,
+          dB1x - sux * 4,
+          dB1y - suy * 4,
+        );
+        setLineAttrs(
+          "svgExtBot2",
+          sJBot.x - sux * 3,
+          sJBot.y - suy * 3,
+          dB2x - sux * 4,
+          dB2y - suy * 4,
+        );
+        setLineAttrs("svgDimBotH", dB1x, dB1y, dB2x, dB2y);
+        document.getElementById("svgDimBotH").style.opacity =
+          botPixH > 7 ? "1" : "0";
+
+        var midBotX = (dB1x + dB2x) * 0.5,
+          midBotY = (dB1y + dB2y) * 0.5;
+        var chipBotX = 464.0;
+        var chipBotY = clampNum(midBotY, 158.0, 228.0);
+        positionChip("chipBotH", chipBotX, chipBotY);
+        setLineAttrs("svgLeadBotH", midBotX, midBotY, chipBotX - 34, chipBotY);
+
+        // 4. Actual Tilt Chip (Right-Upper Perimeter, collision-free above Bot H)
+        var chipTiltX = 464.0;
+        var chipTiltY = 78.0;
+        positionChip("chipTiltAng", chipTiltX, chipTiltY);
+        setLineAttrs(
+          "svgTiltLeader",
+          tWedge.mx,
+          tWedge.my,
+          chipTiltX - 36,
+          chipTiltY,
+        );
+
+        // 5. Base Distance Dimension & Chip (Bottom-Left Perimeter)
+        var baseOff = 15.0;
+        var dBs1x = sFTop.x - snx * baseOff,
+          dBs1y = sFTop.y - sny * baseOff;
+        var dBs2x = sFBot.x - snx * baseOff,
+          dBs2y = sFBot.y - sny * baseOff;
+        setLineAttrs(
+          "svgExtBase1",
+          sFTop.x - snx * 3,
+          sFTop.y - sny * 3,
+          dBs1x - snx * 4,
+          dBs1y - sny * 4,
+        );
+        setLineAttrs(
+          "svgExtBase2",
+          sFBot.x - snx * 3,
+          sFBot.y - sny * 3,
+          dBs2x - snx * 4,
+          dBs2y - sny * 4,
+        );
+        setLineAttrs("svgDimBase", dBs1x, dBs1y, dBs2x, dBs2y);
+
+        var midBsX = (dBs1x + dBs2x) * 0.5,
+          midBsY = (dBs1y + dBs2y) * 0.5;
+        var chipBaseX = 166.0;
+        var chipBaseY = 290.0;
+        positionChip("chipBaseDist", chipBaseX, chipBaseY);
+        setLineAttrs("svgLeadBase", midBsX, midBsY, chipBaseX, chipBaseY - 16);
+
+        // 6. Base Angle Chip (Bottom-Right Perimeter)
+        var chipBaseAngX = 366.0;
+        var chipBaseAngY = 290.0;
+        positionChip("chipBaseAng", chipBaseAngX, chipBaseAngY);
+        var bAnchorX =
+          Math.abs(structState.baseAngle) >= 0.8 ? bWedge.mx : sBR.x - 14.0;
+        var bAnchorY =
+          Math.abs(structState.baseAngle) >= 0.8 ? bWedge.my : sBR.y;
+        setLineAttrs(
+          "svgBaseLeader",
+          bAnchorX,
+          bAnchorY,
+          chipBaseAngX,
+          chipBaseAngY - 16,
+        );
+      }
+
+      // Bind live typing + blur formatting
+      (function initStructureInputs() {
+        var bindings = [
+          { id: "inpPlateLen", key: "plateLen", src: "len" },
+          { id: "inpTiltAng", key: "actualTilt", src: "tilt" },
+          { id: "inpTopH", key: "topH", src: "topH" },
+          { id: "inpBotH", key: "botH", src: "botH" },
+          { id: "inpBaseDist", key: "baseDist", src: "base" },
+          { id: "inpBaseAng", key: "baseAngle", src: "baseAng" },
+        ];
+
+        bindings.forEach(function (b) {
+          var el = document.getElementById(b.id);
+          if (!el) return;
+
+          el.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              el.blur();
+            }
+          });
+
+          el.addEventListener("input", function () {
+            var v = parseFloat(el.value);
+            if (isNaN(v)) return;
+            structState[b.key] = v;
+            solveStructure(b.src, false);
+          });
+
+          el.addEventListener("change", function () {
+            var v = parseFloat(el.value);
+            if (!isNaN(v)) {
+              structState[b.key] = v;
+            }
+            solveStructure(b.src, true);
+          });
+
+          el.addEventListener("blur", function () {
+            solveStructure(b.src, true);
+          });
+        });
+
+        solveStructure("init", true);
+      })();
     </script>
   </body>
 </html>

@@ -168,7 +168,7 @@ int httpResponseCode = 0;
 
 // -- Welcome Message
 const char MSG_WELCOME[] PROGMEM = "ESP";
-const char MSG_SUBTITLE[] PROGMEM = "SOLAR - TEM";
+const char MSG_SUBTITLE[] PROGMEM = "SPV - LOG";
 const char MSG_DEVELOPER[] PROGMEM = "developed by M.Maity";
 
 // Forward declarations
