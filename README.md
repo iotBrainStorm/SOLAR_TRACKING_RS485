@@ -23,7 +23,8 @@ Industrial-grade solar monitoring with real-time sensor data, OLED display, and 
 
 **Watch Full Working Demos (Mrinal's Tech Lab):**
 
-- 🌞 **[Latest: Sun Map & Updated Web UI Demo](http://www.youtube.com/watch?v=mzdl66dy0Fc)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, and GPS/timezone setup.
+- 🌞 **[Latest: Complete Setup & Updated Web UI](http://www.youtube.com/watch?v=mzdl66dy0Fc)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, GPS/timezone setup, Structure Setup, mDNS setup, Network setup.
+- 🌞 **[Sun Map & Updated Web UI Demo](http://www.youtube.com/watch?v=mzdl66dy0Fc)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, and GPS/timezone setup.
 - ☀️ **[Waterproof Rooftop Sender & Live High-Load Test](http://www.youtube.com/watch?v=nSapfp4AQMc)** — Weatherproof sensor enclosure, live panel temperature (67.5 °C), and sunlight intensity tracking.
 - 📡 **[Receiver Enclosure & Live Web Config Sync](http://www.youtube.com/watch?v=SrXycDGpsag)** — Master module hardware assembly, buck converter power routing, Modbus polling interval tuning, and buzzer feedback.
 - 🔧 **[Complete System Overview & Hardware Walkthrough](http://www.youtube.com/watch?v=VbW-eC95sSU)** — Deep dive into the NTC thermistor, BH1750 LUX sensor, Cat6 RS485 wiring, OLED readout, and Node-RED HTTP status (`NR 200`).
