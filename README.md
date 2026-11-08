@@ -23,7 +23,7 @@ Industrial-grade solar monitoring with real-time sensor data, OLED display, and 
 
 **Watch Full Working Demos (Mrinal's Tech Lab):**
 
-- 🌞 **[Latest: Complete Setup & Updated Web UI](http://www.youtube.com/watch?v=mzdl66dy0Fc)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, GPS/timezone setup, Structure Setup, mDNS setup, Network setup.
+- 🌞 **[Latest: Complete Setup & Updated Web UI](https://youtu.be/tATf_RWyX3A)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, GPS/timezone setup, Structure Setup, mDNS setup, Network setup.
 - 🌞 **[Sun Map & Updated Web UI Demo](http://www.youtube.com/watch?v=mzdl66dy0Fc)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, and GPS/timezone setup.
 - ☀️ **[Waterproof Rooftop Sender & Live High-Load Test](http://www.youtube.com/watch?v=nSapfp4AQMc)** — Weatherproof sensor enclosure, live panel temperature (67.5 °C), and sunlight intensity tracking.
 - 📡 **[Receiver Enclosure & Live Web Config Sync](http://www.youtube.com/watch?v=SrXycDGpsag)** — Master module hardware assembly, buck converter power routing, Modbus polling interval tuning, and buzzer feedback.
