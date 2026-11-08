@@ -19,31 +19,34 @@ Industrial-grade solar monitoring with real-time sensor data, OLED display, and 
 
 ---
 
-## Demo
+## Video Demos
 
-**Watch Full Working Demo:**
-[Demo 1](https://youtu.be/VbW-eC95sSU) |
-[Demo 2](https://youtu.be/SrXycDGpsag) |
-[Demo 3](https://youtu.be/nSapfp4AQMc) |
-[Demo 4](https://youtu.be/mzdl66dy0Fc)
+**Watch Full Working Demos (Mrinal's Tech Lab):**
+
+- 🌞 **[Latest: Sun Map & Updated Web UI Demo](http://www.youtube.com/watch?v=mzdl66dy0Fc)** — Real-time NOAA solar trajectory, compass azimuth, optimal 45° efficiency window, and GPS/timezone setup.
+- ☀️ **[Waterproof Rooftop Sender & Live High-Load Test](http://www.youtube.com/watch?v=nSapfp4AQMc)** — Weatherproof sensor enclosure, live panel temperature (67.5 °C), and sunlight intensity tracking.
+- 📡 **[Receiver Enclosure & Live Web Config Sync](http://www.youtube.com/watch?v=SrXycDGpsag)** — Master module hardware assembly, buck converter power routing, Modbus polling interval tuning, and buzzer feedback.
+- 🔧 **[Complete System Overview & Hardware Walkthrough](http://www.youtube.com/watch?v=VbW-eC95sSU)** — Deep dive into the NTC thermistor, BH1750 LUX sensor, Cat6 RS485 wiring, OLED readout, and Node-RED HTTP status (`NR 200`).
 
 ---
 
 ## System Architecture
 
-```
-SENDER (Slave ESP32)        RECEIVER (Master ESP32)
+```text
+SENDER (Slave ESP32-C3)      RECEIVER (Master ESP32)
   - NTC Thermistor             - AHT10 Temp/Humidity
-  - BH1750 LUX                 - OLED Display
-  - LED Feedback               - WiFi + Web UI
-                               - Node-RED Link
+  - BH1750 LUX                 - SH1106 OLED Display
+  - LED Feedback               - Active Buzzer
+        |                      - WiFi + Async Web UI
+        |                      - Node-RED HTTP Link
         |                      - LED Feedback
-        |    RS485 Modbus           |
-        |    (Half-Duplex)          |
-        +<========115200=======>+   |
-                                    v
+        |    RS485 Modbus          |
+        |    (Half-Duplex)         |
+        +<========115200==========>+
+                                   |
+                                   v
                               Web Browser
-                          (Dashboard + Config)
+                     (Dashboard + Sun Map + Config)
 ```
 
 ---
@@ -142,6 +145,7 @@ RECEIVER (Master)          SENDER (Slave)
 | AHT10 SDA   | I2C Data (shared)  | 21   |
 | AHT10 SCL   | I2C Clock (shared) | 22   |
 | Status LED  | Feedback           | 2    |
+| ACTIVE BUZ  | Beep Feedback      | 32   |
 
 **SENDER (Slave)**
 
@@ -154,6 +158,8 @@ RECEIVER (Master)          SENDER (Slave)
 | BH1750 SCL     | I2C Clock | 22   |
 | NTC Thermistor | ADC Input | 0    |
 | Status LED     | Feedback  | 2    |
+| NTC LED        | Feedback  | 6    |
+| LUX LED        | Feedback  | 7    |
 
 > **Note:** On the Sender, GPIO 21 is shared between RS485 TX and I2C SDA. Ensure your board supports this or remap.
 
