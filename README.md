@@ -313,7 +313,7 @@ git clone https://github.com/iotBrainStorm/SOLAR_TRACKING_RS485.git
 
 - Open `RECEIVER/RECEIVER.ino` in Arduino IDE
 - Upload SPIFFS data: `Tools → ESP32 Sketch Data Upload`
-- Upload the sketch
+- Upload the sketch - Partition Scheme: Huge APP (3MB No OTA/1MB SPIFFS)
 
 **4. Connect WiFi**
 
