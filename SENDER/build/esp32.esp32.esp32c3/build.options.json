@@ -1,0 +1,11 @@
+{
+  "additionalFiles": "",
+  "builtInLibrariesFolders": "C:\\Users\\mrina\\AppData\\Local\\Arduino15\\libraries",
+  "builtInToolsFolders": "",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "build.warn_data_percentage=75",
+  "fqbn": "esp32:esp32:esp32c3:UploadSpeed=256000,CDCOnBoot=cdc,CPUFreq=160,FlashFreq=80,FlashMode=qio,FlashSize=4M,PartitionScheme=huge_app,DebugLevel=none,EraseFlash=none,JTAGAdapter=default,ZigbeeMode=default",
+  "hardwareFolders": "c:\\Users\\mrina\\AppData\\Local\\Arduino15\\packages",
+  "otherLibrariesFolders": "c:\\Users\\mrina\\Documents\\Arduino\\libraries",
+  "sketchLocation": "C:\\Users\\mrina\\Documents\\Arduino\\ESP32\\SOLAR_TRACKING_RS485\\SENDER"
+}

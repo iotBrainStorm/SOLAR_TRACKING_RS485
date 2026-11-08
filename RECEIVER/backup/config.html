@@ -128,6 +128,15 @@
         width: 24px;
         text-align: center;
         flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .nav-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
       }
 
       .sidebar-footer {
@@ -1500,35 +1509,124 @@
         <span>ESP32 Settings</span>
       </div>
 
+      <!-- 1. Temperature: Thermometer with Scale Ticks -->
       <div class="nav-item active" onclick="showPanel('temperature', this)">
-        <span class="nav-icon">&#127777;</span> Temperature
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-1v1h1v2h-1v1h1v2h-2V5z"
+            />
+          </svg>
+        </span>
+        Temperature
       </div>
+
+      <!-- 2. NTC Sensor: Electronic Sensor & Sensing Waves Icon -->
       <div class="nav-item" onclick="showPanel('ntc', this)">
-        <span class="nav-icon">&#128268;</span> NTC Sensor
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M7.76 16.24C6.67 15.16 6 13.66 6 12s.67-3.16 1.76-4.24l1.42 1.42C8.45 9.9 8 10.9 8 12c0 1.1.45 2.1 1.17 2.83l-1.41 1.41zm8.48 0C17.33 15.16 18 13.66 18 12s-.67-3.16-1.76-4.24l-1.42 1.42C15.55 9.9 16 10.9 16 12c0 1.1-.45 2.1-1.17 2.83l1.41 1.41zM12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 2c0 2.21-.9 4.21-2.35 5.65l1.42 1.42C20.88 17.26 22 14.76 22 12s-1.12-5.26-2.93-7.07l-1.42 1.42C19.1 7.79 20 9.79 20 12zM4 12c0-2.21.9-4.21 2.35-5.65L4.93 4.93C3.12 6.74 2 9.24 2 12s1.12 5.26 2.93 7.07l1.42-1.42C4.9 16.21 4 14.21 4 12z"
+            />
+          </svg>
+        </span>
+        NTC Sensor
       </div>
+
+      <!-- 3. LUX Settings: Sun Icon -->
       <div class="nav-item" onclick="showPanel('lux', this)">
-        <span class="nav-icon">&#128161;</span> LUX Settings
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"
+            />
+          </svg>
+        </span>
+        LUX Settings
       </div>
+
+      <!-- 4. Node-RED: Server Stack Icon -->
       <div class="nav-item" onclick="showPanel('nodered', this)">
-        <span class="nav-icon">&#128279;</span> Node-RED
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+            />
+          </svg>
+        </span>
+        Node-RED
       </div>
+
+      <!-- 5. RS485 Modbus: Bidirectional Serial Communication Icon -->
       <div class="nav-item" onclick="showPanel('rs485', this)">
-        <span class="nav-icon">&#128225;</span> RS485 Modbus
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"
+            />
+          </svg>
+        </span>
+        RS485 Modbus
       </div>
+
+      <!-- 6. Time: Clock Icon -->
       <div class="nav-item" onclick="showPanel('time', this)">
-        <span class="nav-icon">&#128336;</span> Time
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"
+            />
+          </svg>
+        </span>
+        Time
       </div>
+
+      <!-- 7. Location: Google Map Folded Map Icon -->
       <div class="nav-item" onclick="showPanel('location', this)">
-        <span class="nav-icon">&#128205;</span> Location
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"
+            />
+          </svg>
+        </span>
+        Location
       </div>
+
+      <!-- 8. Placement: Compass Orientation Icon -->
       <div class="nav-item" onclick="showPanel('placement', this)">
-        <span class="nav-icon">&#129517;</span> Placement
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5zm5.5-6.6c.61 0 1.1.49 1.1 1.1s-.49 1.1-1.1 1.1-1.1-.49-1.1-1.1.49-1.1 1.1-1.1z"
+            />
+          </svg>
+        </span>
+        Placement
       </div>
+
+      <!-- 9. Network: Globe Network Icon -->
       <div class="nav-item" onclick="showPanel('mdns', this)">
-        <span class="nav-icon">&#127760;</span> Network
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
+            />
+          </svg>
+        </span>
+        Network
       </div>
+
+      <!-- 10. Stats: Analytics Bar Chart Icon -->
       <div class="nav-item" onclick="showPanel('stats', this)">
-        <span class="nav-icon">&#128202;</span> Stats
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"
+            />
+          </svg>
+        </span>
+        Stats
       </div>
 
       <div class="sidebar-footer">
